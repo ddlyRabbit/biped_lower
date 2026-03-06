@@ -62,6 +62,27 @@ ALL_JOINTS = [
 # Custom reward functions — EXACT Berkeley implementations
 ###############################################################################
 
+def feet_air_time_hybrid(
+    env: "ManagerBasedRLEnv",
+    command_name: str,
+    sensor_cfg: SceneEntityCfg,
+    threshold_min: float,
+    threshold_max: float,
+    switch_step: int = 500 * 24,  # 500 iters × 24 steps/iter
+) -> torch.Tensor:
+    """Hybrid feet air time: continuous for first 500 iters, then impact-based.
+
+    Continuous gives gradient every step → learns to lift feet.
+    Impact-based rewards proportional to air time → refines gait.
+    """
+    if env.common_step_counter < switch_step:
+        return feet_air_time_positive_biped(
+            env, command_name, threshold_min, threshold_max, sensor_cfg,
+        )
+    else:
+        return feet_air_time(env, command_name, sensor_cfg, threshold_min, threshold_max)
+
+
 def feet_air_time(
     env: "ManagerBasedRLEnv",
     command_name: str,
@@ -268,7 +289,7 @@ BIPED_CFG = ArticulationCfg(
             max_depenetration_velocity=1.0,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            enabled_self_collisions=False,
+            enabled_self_collisions=True,
             solver_position_iteration_count=4,
             solver_velocity_iteration_count=4,
         ),
@@ -529,13 +550,14 @@ class RewardsCfg:
     )
     action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.01)
     feet_air_time = RewTerm(
-        func="biped_env_cfg:feet_air_time",
+        func="biped_env_cfg:feet_air_time_hybrid",
         weight=2.0,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
             "threshold_min": 0.05,
             "threshold_max": 0.5,
+            "switch_step": 500 * 24,  # continuous → impact-based after 500 iters
         },
     )
     feet_slide = RewTerm(
@@ -742,7 +764,7 @@ class CurriculumsCfg:
 
 @configclass
 class BipedFlatEnvCfg(ManagerBasedRLEnvCfg):
-    scene: BipedSceneCfg = BipedSceneCfg(num_envs=4096, env_spacing=2.5)
+    scene: BipedSceneCfg = BipedSceneCfg(num_envs=16384, env_spacing=2.5)
     commands: CommandsCfg = CommandsCfg()
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
@@ -756,7 +778,7 @@ class BipedFlatEnvCfg(ManagerBasedRLEnvCfg):
         self.episode_length_s = 20.0
         self.sim.dt = 0.005
         self.sim.render_interval = self.decimation
-        self.sim.disable_contact_processing = True  # Berkeley default
+        self.sim.disable_contact_processing = False  # V56: enable for self-collisions
         self.sim.physics_material = self.scene.terrain.physics_material
         self.sim.physx.gpu_max_rigid_patch_count = 10 * 2**15
         if self.scene.contact_forces is not None:
@@ -767,7 +789,7 @@ class BipedFlatEnvCfg(ManagerBasedRLEnvCfg):
 class BipedFlatEnvCfg_PLAY(BipedFlatEnvCfg):
     def __post_init__(self):
         super().__post_init__()
-        self.scene.num_envs = 50
+        self.scene.num_envs = 100
         self.scene.env_spacing = 2.5
         self.observations.policy.enable_corruption = False
-        self.events.push_robot = None
+        # push_robot stays active during inference
