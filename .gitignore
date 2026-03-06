@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pt
+*.onnx
+*.mp4
+*.tar.gz
+*.egg-info/
+.eggs/
+dist/
+build/

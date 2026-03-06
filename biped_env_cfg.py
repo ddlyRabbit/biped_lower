@@ -1,0 +1,773 @@
+# Biped V52 — Exact Berkeley Humanoid (original) everything except actuators
+# Source: https://github.com/HybridRobotics/isaac_berkeley_humanoid
+# Our actuators (2× Berkeley ImplicitActuator) retained. Everything else matched.
+#
+# MATCHED TO BERKELEY:
+#   REWARDS:      Exact flat config (13 terms)
+#   CURRICULUM:   push_force_levels + command_vel
+#   PPO:          [128,128,128], init_noise_std=1.0, entropy_coef=0.005
+#   OBSERVATIONS: base_lin_vel in policy, per-joint-group noise, obs_dim=48
+#   ACTIONS:      scale=0.5 (Berkeley exact)
+#   COMMANDS:     [-1.0, 1.0] range, rel_standing_envs=0.02, heading_command=True
+#   TERMINATIONS: base_contact (torso, threshold=1.0), time_out
+#   EVENTS:       All Berkeley events + push_robot
+#   DECIMATION:   4 (50 Hz control)
+#
+# ONLY DIFFERENCE: Our actuators (ImplicitActuator 2× Berkeley values)
+#   EVENTS:       push_robot added (interval, for curriculum)
+#                 scale_all_link_masses added (startup)
+#   DECIMATION:   4 (was 8, matching Berkeley 50Hz control)
+#
+# NOTE: action_scale=0.25 retained (Berkeley uses 0.5)
+
+import math
+import torch
+import numpy as np
+from typing import Literal, TYPE_CHECKING
+from collections.abc import Sequence
+
+import isaaclab.sim as sim_utils
+from isaaclab.actuators import ImplicitActuatorCfg
+from isaaclab.assets import Articulation, ArticulationCfg, AssetBaseCfg
+from isaaclab.sim.converters.urdf_converter_cfg import UrdfConverterCfg
+from isaaclab.managers import EventTermCfg as EventTerm
+from isaaclab.managers import ObservationGroupCfg as ObsGroup
+from isaaclab.managers import ObservationTermCfg as ObsTerm
+from isaaclab.managers import RewardTermCfg as RewTerm
+from isaaclab.managers import TerminationTermCfg as DoneTerm
+from isaaclab.managers import CurriculumTermCfg as CurrTerm
+from isaaclab.managers import SceneEntityCfg
+from isaaclab.utils import configclass
+from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
+from isaaclab.sensors import ContactSensor, ContactSensorCfg
+from isaaclab.terrains import TerrainImporterCfg
+from isaaclab.scene import InteractiveSceneCfg
+from isaaclab.envs import ManagerBasedRLEnvCfg, ManagerBasedEnv
+from isaaclab.envs import mdp as base_mdp
+from isaaclab.envs.mdp.events import _randomize_prop_by_op
+
+if TYPE_CHECKING:
+    from isaaclab.envs import ManagerBasedRLEnv
+
+
+ALL_JOINTS = [
+    "right_hip_yaw_03", "right_hip_roll_03", "right_hip_pitch_04",
+    "right_knee_04", "right_foot_pitch_02", "right_foot_roll_02",
+    "left_hip_yaw_03", "left_hip_roll_03", "left_hip_pitch_04",
+    "left_knee_04", "left_foot_pitch_02", "left_foot_roll_02",
+]
+
+
+###############################################################################
+# Custom reward functions — EXACT Berkeley implementations
+###############################################################################
+
+def feet_air_time(
+    env: "ManagerBasedRLEnv",
+    command_name: str,
+    sensor_cfg: SceneEntityCfg,
+    threshold_min: float,
+    threshold_max: float,
+) -> torch.Tensor:
+    """Berkeley impact-based feet air time reward.
+
+    Rewards at landing only (first contact), proportional to air time.
+    Penalizes short steps (< threshold_min), caps at threshold_max.
+    """
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    first_contact = contact_sensor.compute_first_contact(env.step_dt)[:, sensor_cfg.body_ids]
+    last_air_time = contact_sensor.data.last_air_time[:, sensor_cfg.body_ids]
+    # negative reward for small steps
+    air_time = (last_air_time - threshold_min) * first_contact
+    # no reward for large steps
+    air_time = torch.clamp(air_time, max=threshold_max - threshold_min)
+    reward = torch.sum(air_time, dim=1)
+    # no reward for zero command
+    reward *= torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) > 0.1
+    return reward
+
+
+def feet_air_time_positive_biped(
+    env: "ManagerBasedRLEnv",
+    command_name: str,
+    threshold_min: float,
+    threshold_max: float,
+    sensor_cfg: SceneEntityCfg,
+) -> torch.Tensor:
+    """Continuous biped stepping reward — from Skyentific/Berkeley.
+
+    Rewards single stance (exactly one foot in air) every timestep.
+    Uses current_air_time / current_contact_time, not impact-based.
+    Provides gradient every step, not just at landing.
+    """
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    air_time = contact_sensor.data.current_air_time[:, sensor_cfg.body_ids]
+    contact_time = contact_sensor.data.current_contact_time[:, sensor_cfg.body_ids]
+    in_contact = contact_time > 0.0
+    in_mode_time = torch.where(in_contact, contact_time, air_time)
+    single_stance = torch.sum(in_contact.int(), dim=1) == 1
+    reward = torch.min(torch.where(single_stance.unsqueeze(-1), in_mode_time, 0.0), dim=1)[0]
+    reward = torch.clamp(reward, max=threshold_max)
+    # no reward for small steps
+    reward *= reward > threshold_min
+    # no reward for zero command
+    reward *= torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) > 0.1
+    return reward
+
+
+def feet_slide(
+    env: "ManagerBasedRLEnv",
+    sensor_cfg: SceneEntityCfg,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Penalize feet sliding — exact Berkeley."""
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    contacts = (
+        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :]
+        .norm(dim=-1)
+        .max(dim=1)[0]
+        > 1.0
+    )
+    asset = env.scene[asset_cfg.name]
+    body_vel = asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2]
+    reward = torch.sum(body_vel.norm(dim=-1) * contacts, dim=1)
+    return reward
+
+
+###############################################################################
+# Custom event functions
+###############################################################################
+
+def randomize_joint_default_pos(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor | None,
+    asset_cfg: SceneEntityCfg,
+    pos_distribution_params: tuple[float, float] | None = None,
+    operation: Literal["add", "scale", "abs"] = "abs",
+    distribution: Literal["uniform", "log_uniform", "gaussian"] = "uniform",
+):
+    """Randomize joint default positions — exact Berkeley."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    if env_ids is None:
+        env_ids = torch.arange(env.scene.num_envs, device=asset.device)
+    if asset_cfg.joint_ids == slice(None):
+        joint_ids = slice(None)
+    else:
+        joint_ids = torch.tensor(asset_cfg.joint_ids, dtype=torch.int, device=asset.device)
+    if pos_distribution_params is not None:
+        pos = asset.data.default_joint_pos.to(asset.device).clone()
+        pos = _randomize_prop_by_op(
+            pos, pos_distribution_params, env_ids, joint_ids,
+            operation=operation, distribution=distribution,
+        )[env_ids][:, joint_ids]
+        if env_ids != slice(None) and joint_ids != slice(None):
+            env_ids = env_ids[:, None]
+        asset.data.default_joint_pos[env_ids, joint_ids] = pos
+
+
+###############################################################################
+# Custom curriculum functions — EXACT Berkeley implementations
+###############################################################################
+
+def modify_push_force(
+    env: "ManagerBasedRLEnv",
+    env_ids: Sequence[int],
+    term_name: str,
+    max_velocity: Sequence[float],
+    interval: int,
+    starting_step: float = 0.0,
+):
+    """Adaptive push force curriculum — exact Berkeley.
+
+    Increases push when robot is stable (few falls vs timeouts).
+    Decreases when falling too much.
+    """
+    try:
+        term_cfg = env.event_manager.get_term_cfg("push_robot")
+    except Exception:
+        return 0.0
+    curr_setting = term_cfg.params["velocity_range"]["x"][1]
+    if env.common_step_counter < starting_step:
+        return curr_setting
+    if env.common_step_counter % interval == 0:
+        base_contact_count = torch.sum(
+            env.termination_manager._term_dones["base_contact"]
+        )
+        time_out_count = torch.sum(
+            env.termination_manager._term_dones["time_out"]
+        )
+        # Stable → increase push
+        if base_contact_count < time_out_count * 2:
+            term_cfg = env.event_manager.get_term_cfg("push_robot")
+            curr_setting = term_cfg.params["velocity_range"]["x"][1]
+            curr_setting = np.clip(curr_setting * 1.5, 0.0, max_velocity[0])
+            term_cfg.params["velocity_range"]["x"] = (-curr_setting, curr_setting)
+            curr_setting_y = term_cfg.params["velocity_range"]["y"][1]
+            curr_setting_y = np.clip(curr_setting_y * 1.5, 0.0, max_velocity[1])
+            term_cfg.params["velocity_range"]["y"] = (-curr_setting_y, curr_setting_y)
+            env.event_manager.set_term_cfg("push_robot", term_cfg)
+        # Falling too much → decrease push
+        if base_contact_count > time_out_count / 2:
+            term_cfg = env.event_manager.get_term_cfg("push_robot")
+            curr_setting = term_cfg.params["velocity_range"]["x"][1]
+            curr_setting = np.clip(curr_setting - 0.2, 0.0, max_velocity[0])
+            term_cfg.params["velocity_range"]["x"] = (-curr_setting, curr_setting)
+            curr_setting_y = term_cfg.params["velocity_range"]["y"][1]
+            curr_setting_y = np.clip(curr_setting_y - 0.2, 0.0, max_velocity[1])
+            term_cfg.params["velocity_range"]["y"] = (-curr_setting_y, curr_setting_y)
+            env.event_manager.set_term_cfg("push_robot", term_cfg)
+    return curr_setting
+
+
+def modify_command_velocity(
+    env: "ManagerBasedRLEnv",
+    env_ids: Sequence[int],
+    term_name: str,
+    max_velocity: Sequence[float],
+    interval: int,
+    starting_step: float = 0.0,
+):
+    """Adaptive command velocity curriculum — exact Berkeley.
+
+    Expands lin_vel_x range when tracking reward is good (>80% of max).
+    """
+    command_cfg = env.command_manager.get_term("base_velocity").cfg
+    curr_lin_vel_x = command_cfg.ranges.lin_vel_x
+    if env.common_step_counter < starting_step:
+        return curr_lin_vel_x[1]
+    if env.common_step_counter % interval == 0:
+        term_cfg = env.reward_manager.get_term_cfg(term_name)
+        rew = env.reward_manager._episode_sums[term_name][env_ids]
+        if (
+            torch.mean(rew) / env.max_episode_length
+            > 0.8 * term_cfg.weight * env.step_dt
+        ):
+            curr_lin_vel_x = (
+                np.clip(curr_lin_vel_x[0] - 0.5, max_velocity[0], 0.0),
+                np.clip(curr_lin_vel_x[1] + 0.5, 0.0, max_velocity[1]),
+            )
+            command_cfg.ranges.lin_vel_x = curr_lin_vel_x
+    return curr_lin_vel_x[1]
+
+
+###############################################################################
+# Robot config — OUR actuators retained (2× Berkeley ImplicitActuator)
+###############################################################################
+
+BIPED_CFG = ArticulationCfg(
+    spawn=sim_utils.UrdfFileCfg(
+        asset_path="/uploads/robot.urdf",
+        activate_contact_sensors=True,
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(
+            disable_gravity=False,
+            retain_accelerations=False,
+            linear_damping=0.0,
+            angular_damping=0.0,
+            max_linear_velocity=1000.0,
+            max_angular_velocity=1000.0,
+            max_depenetration_velocity=1.0,
+        ),
+        articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+            enabled_self_collisions=False,
+            solver_position_iteration_count=4,
+            solver_velocity_iteration_count=4,
+        ),
+        fix_base=False,
+        joint_drive=UrdfConverterCfg.JointDriveCfg(
+            drive_type="force",
+            target_type="position",
+            gains=UrdfConverterCfg.JointDriveCfg.PDGainsCfg(
+                stiffness=0.0,
+                damping=0.0,
+            ),
+        ),
+    ),
+    init_state=ArticulationCfg.InitialStateCfg(
+        pos=(0.0, 0.0, 0.80),
+        joint_pos={
+            "right_hip_pitch.*": -0.2,
+            "left_hip_pitch.*": 0.2,
+            ".*hip_roll.*": 0.0,
+            ".*hip_yaw.*": 0.0,
+            ".*knee.*": 0.4,
+            ".*foot_pitch.*": -0.2,
+            ".*foot_roll.*": 0.0,
+        },
+        joint_vel={".*": 0.0},
+    ),
+    soft_joint_pos_limit_factor=0.9,
+    actuators={
+        "hip_roll": ImplicitActuatorCfg(
+            joint_names_expr=[".*hip_roll.*"],
+            effort_limit=78.0, velocity_limit=10.0,
+            stiffness=20.0, damping=3.0, armature=0.0112,
+        ),
+        "hip_yaw": ImplicitActuatorCfg(
+            joint_names_expr=[".*hip_yaw.*"],
+            effort_limit=78.0, velocity_limit=10.0,
+            stiffness=20.0, damping=3.0, armature=0.0112,
+        ),
+        "hip_pitch": ImplicitActuatorCfg(
+            joint_names_expr=[".*hip_pitch.*"],
+            effort_limit=117.0, velocity_limit=10.0,
+            stiffness=30.0, damping=3.0, armature=0.0152,
+        ),
+        "knee": ImplicitActuatorCfg(
+            joint_names_expr=[".*knee.*"],
+            effort_limit=117.0, velocity_limit=10.0,
+            stiffness=30.0, damping=3.0, armature=0.024,
+        ),
+        "foot_pitch": ImplicitActuatorCfg(
+            joint_names_expr=[".*foot_pitch.*"],
+            effort_limit=20.0, velocity_limit=10.0,
+            stiffness=2.0, damping=0.2, armature=0.0112,
+        ),
+        "foot_roll": ImplicitActuatorCfg(
+            joint_names_expr=[".*foot_roll.*"],
+            effort_limit=26.0, velocity_limit=10.0,
+            stiffness=2.0, damping=0.2, armature=0.001,
+        ),
+    },
+)
+
+
+###############################################################################
+# Scene
+###############################################################################
+
+@configclass
+class BipedSceneCfg(InteractiveSceneCfg):
+    terrain = TerrainImporterCfg(
+        prim_path="/World/ground",
+        terrain_type="plane",
+        terrain_generator=None,
+        max_init_terrain_level=5,
+        collision_group=-1,
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            friction_combine_mode="multiply",
+            restitution_combine_mode="multiply",
+            static_friction=1.0,
+            dynamic_friction=1.0,
+        ),
+        visual_material=sim_utils.MdlFileCfg(
+            mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
+            project_uvw=True,
+        ),
+        debug_vis=False,
+    )
+    robot: ArticulationCfg = BIPED_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+    contact_forces = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/.*",
+        history_length=3,
+        track_air_time=True,
+        track_pose=True,
+    )
+    light = AssetBaseCfg(
+        prim_path="/World/light",
+        spawn=sim_utils.DistantLightCfg(color=(0.75, 0.75, 0.75), intensity=3000.0),
+    )
+    sky_light = AssetBaseCfg(
+        prim_path="/World/skyLight",
+        spawn=sim_utils.DomeLightCfg(color=(0.13, 0.13, 0.13), intensity=1000.0),
+    )
+
+
+###############################################################################
+# Commands — EXACT Berkeley
+###############################################################################
+
+@configclass
+class CommandsCfg:
+    base_velocity = base_mdp.UniformVelocityCommandCfg(
+        resampling_time_range=(10.0, 10.0),
+        debug_vis=True,
+        asset_name="robot",
+        heading_command=True,
+        heading_control_stiffness=0.5,
+        rel_standing_envs=0.02,
+        rel_heading_envs=1.0,
+        ranges=base_mdp.UniformVelocityCommandCfg.Ranges(
+            lin_vel_x=(-1.0, 1.0),
+            lin_vel_y=(-1.0, 1.0),
+            ang_vel_z=(-1.0, 1.0),
+            heading=(-math.pi, math.pi),
+        ),
+    )
+
+
+###############################################################################
+# Observations — EXACT Berkeley
+# base_lin_vel IN policy (with noise), per-joint-group noise levels
+# obs_dim = 3+3+3+3+6+2+2+2+12+12 = 48
+###############################################################################
+
+@configclass
+class ObservationsCfg:
+
+    @configclass
+    class PolicyCfg(ObsGroup):
+        base_lin_vel = ObsTerm(
+            func=base_mdp.base_lin_vel,
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+        )
+        base_ang_vel = ObsTerm(
+            func=base_mdp.base_ang_vel,
+            noise=Unoise(n_min=-0.2, n_max=0.2),
+        )
+        projected_gravity = ObsTerm(
+            func=base_mdp.projected_gravity,
+            noise=Unoise(n_min=-0.05, n_max=0.05),
+        )
+        velocity_commands = ObsTerm(
+            func=base_mdp.generated_commands,
+            params={"command_name": "base_velocity"},
+        )
+        # Per-joint-group noise — Berkeley exact
+        hip_pos = ObsTerm(
+            func=base_mdp.joint_pos_rel,
+            params={
+                "asset_cfg": SceneEntityCfg(
+                    "robot",
+                    joint_names=[
+                        ".*hip_roll.*", ".*hip_yaw.*", ".*hip_pitch.*",
+                    ],
+                ),
+            },
+            noise=Unoise(n_min=-0.03, n_max=0.03),
+        )
+        knee_pos = ObsTerm(
+            func=base_mdp.joint_pos_rel,
+            params={
+                "asset_cfg": SceneEntityCfg(
+                    "robot", joint_names=[".*knee.*"],
+                ),
+            },
+            noise=Unoise(n_min=-0.05, n_max=0.05),
+        )
+        foot_pitch_pos = ObsTerm(
+            func=base_mdp.joint_pos_rel,
+            params={
+                "asset_cfg": SceneEntityCfg(
+                    "robot", joint_names=[".*foot_pitch.*"],
+                ),
+            },
+            noise=Unoise(n_min=-0.08, n_max=0.08),
+        )
+        foot_roll_pos = ObsTerm(
+            func=base_mdp.joint_pos_rel,
+            params={
+                "asset_cfg": SceneEntityCfg(
+                    "robot", joint_names=[".*foot_roll.*"],
+                ),
+            },
+            noise=Unoise(n_min=-0.03, n_max=0.03),
+        )
+        joint_vel = ObsTerm(
+            func=base_mdp.joint_vel_rel,
+            noise=Unoise(n_min=-1.5, n_max=1.5),
+        )
+        actions = ObsTerm(func=base_mdp.last_action)
+
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
+
+    @configclass
+    class CriticCfg(PolicyCfg):
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
+    policy: PolicyCfg = PolicyCfg()
+    critic: CriticCfg = CriticCfg()
+
+
+###############################################################################
+# Actions — EXACT Berkeley (scale=0.5)
+###############################################################################
+
+@configclass
+class ActionsCfg:
+    joint_pos = base_mdp.JointPositionActionCfg(
+        asset_name="robot",
+        joint_names=ALL_JOINTS,
+        scale=0.5,
+        preserve_order=True,
+        use_default_offset=True,
+    )
+
+
+###############################################################################
+# Rewards — EXACT Berkeley flat config (13 terms)
+#
+# Berkeley rough base → flat overrides:
+#   flat_orientation: -0.5 → -5.0
+#   joint_torques:   -1e-5 → -2.5e-5
+#   feet_air_time:     2.0 → 0.5
+#   dof_pos_limits:    0.0 → -1.0 (set by rough, not changed by flat)
+###############################################################################
+
+@configclass
+class RewardsCfg:
+    # -- tracking (positive)
+    track_lin_vel_xy_exp = RewTerm(
+        func=base_mdp.track_lin_vel_xy_exp,
+        weight=1.0,
+        params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
+    )
+    track_ang_vel_z_exp = RewTerm(
+        func=base_mdp.track_ang_vel_z_exp,
+        weight=0.5,
+        params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
+    )
+    # -- penalties
+    lin_vel_z_l2 = RewTerm(func=base_mdp.lin_vel_z_l2, weight=-2.0)
+    ang_vel_xy_l2 = RewTerm(func=base_mdp.ang_vel_xy_l2, weight=-0.05)
+    joint_torques_l2 = RewTerm(
+        func=base_mdp.joint_torques_l2,
+        weight=-1.0e-5,
+    )
+    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.01)
+    feet_air_time = RewTerm(
+        func="biped_env_cfg:feet_air_time",
+        weight=2.0,
+        params={
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
+            "threshold_min": 0.05,
+            "threshold_max": 0.5,
+        },
+    )
+    feet_slide = RewTerm(
+        func="biped_env_cfg:feet_slide",
+        weight=-0.25,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
+            "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
+        },
+    )
+    undesired_contacts = RewTerm(
+        func=base_mdp.undesired_contacts,
+        weight=-1.0,
+        params={
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces",
+                body_names=[
+                    "kd_d_102r_6061", "kd_d_102l_6061",  # hip yaw links (≈ HAA)
+                    "kd_d_201r_6061", "rs03",              # hip pitch links (≈ HFE)
+                ],
+            ),
+            "threshold": 1.0,
+        },
+    )
+    joint_deviation_hip = RewTerm(
+        func=base_mdp.joint_deviation_l1,
+        weight=-0.1,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot", joint_names=[".*hip_roll.*", ".*hip_yaw.*"],
+            ),
+        },
+    )
+    joint_deviation_knee = RewTerm(
+        func=base_mdp.joint_deviation_l1,
+        weight=-0.01,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*knee.*"]),
+        },
+    )
+    flat_orientation_l2 = RewTerm(func=base_mdp.flat_orientation_l2, weight=-0.5)
+    dof_pos_limits = RewTerm(func=base_mdp.joint_pos_limits, weight=-1.0)
+
+
+###############################################################################
+# Terminations — EXACT Berkeley
+###############################################################################
+
+@configclass
+class TerminationsCfg:
+    time_out = DoneTerm(func=base_mdp.time_out, time_out=True)
+    base_contact = DoneTerm(
+        func=base_mdp.illegal_contact,
+        params={
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces",
+                body_names="assy_formfg___kd_b_102b_torso_btm",
+            ),
+            "threshold": 1.0,
+        },
+    )
+
+
+###############################################################################
+# Events — Berkeley events + push_robot for curriculum
+###############################################################################
+
+@configclass
+class EventsCfg:
+    # --- Startup ---
+    physics_material = EventTerm(
+        func=base_mdp.randomize_rigid_body_material,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+            "static_friction_range": (0.2, 1.25),
+            "dynamic_friction_range": (0.2, 1.25),
+            "restitution_range": (0.0, 0.1),
+            "num_buckets": 64,
+        },
+        mode="startup",
+    )
+    scale_all_link_masses = EventTerm(
+        func=base_mdp.randomize_rigid_body_mass,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+            "mass_distribution_params": (0.9, 1.1),
+            "operation": "scale",
+        },
+        mode="startup",
+    )
+    add_base_mass = EventTerm(
+        func=base_mdp.randomize_rigid_body_mass,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot", body_names="assy_formfg___kd_b_102b_torso_btm",
+            ),
+            "mass_distribution_params": (-1.0, 1.0),
+            "operation": "add",
+        },
+        mode="startup",
+    )
+    add_all_joint_default_pos = EventTerm(
+        func="biped_env_cfg:randomize_joint_default_pos",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
+            "pos_distribution_params": (-0.05, 0.05),
+            "operation": "add",
+        },
+        mode="startup",
+    )
+    scale_all_actuator_gains = EventTerm(
+        func=base_mdp.randomize_actuator_gains,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
+            "stiffness_distribution_params": (0.8, 1.2),
+            "damping_distribution_params": (0.8, 1.2),
+            "operation": "scale",
+        },
+        mode="startup",
+    )
+
+    # --- Reset ---
+    reset_base = EventTerm(
+        func=base_mdp.reset_root_state_uniform,
+        params={
+            "pose_range": {
+                "x": (-0.5, 0.5),
+                "y": (-0.5, 0.5),
+                "yaw": (-3.14, 3.14),
+            },
+            "velocity_range": {
+                "x": (-0.5, 0.5),
+                "y": (-0.5, 0.5),
+                "z": (-0.5, 0.5),
+                "roll": (-0.5, 0.5),
+                "pitch": (-0.5, 0.5),
+                "yaw": (-0.5, 0.5),
+            },
+        },
+        mode="reset",
+    )
+    reset_robot_joints = EventTerm(
+        func=base_mdp.reset_joints_by_scale,
+        params={
+            "position_range": (0.5, 1.5),
+            "velocity_range": (0.0, 0.0),
+        },
+        mode="reset",
+    )
+    base_external_force_torque = EventTerm(
+        func=base_mdp.apply_external_force_torque,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot", body_names="assy_formfg___kd_b_102b_torso_btm",
+            ),
+            "force_range": (0.0, 0.0),
+            "torque_range": (0.0, 0.0),
+        },
+        mode="reset",
+    )
+
+    # --- Interval ---
+    push_robot = EventTerm(
+        func=base_mdp.push_by_setting_velocity,
+        params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
+        mode="interval",
+        interval_range_s=(10.0, 15.0),
+    )
+
+
+###############################################################################
+# Curriculum — EXACT Berkeley (push_force + command_vel)
+#
+# push_force_levels: after iter 1500, adaptively increase/decrease push
+#   based on base_contact vs time_out ratio
+# command_vel: after iter 5000, expand lin_vel_x when tracking > 80% of max
+###############################################################################
+
+@configclass
+class CurriculumsCfg:
+    push_force_levels = CurrTerm(
+        func="biped_env_cfg:modify_push_force",
+        params={
+            "term_name": "push_robot",
+            "max_velocity": [3.0, 3.0],
+            "interval": 200 * 24,         # check every 200 iterations
+            "starting_step": 1500 * 24,   # start after 1500 iterations
+        },
+    )
+    command_vel = CurrTerm(
+        func="biped_env_cfg:modify_command_velocity",
+        params={
+            "term_name": "track_lin_vel_xy_exp",
+            "max_velocity": [-1.5, 3.0],
+            "interval": 200 * 24,         # check every 200 iterations
+            "starting_step": 5000 * 24,   # start after 5000 iterations
+        },
+    )
+
+
+###############################################################################
+# Main Env Config
+###############################################################################
+
+@configclass
+class BipedFlatEnvCfg(ManagerBasedRLEnvCfg):
+    scene: BipedSceneCfg = BipedSceneCfg(num_envs=4096, env_spacing=2.5)
+    commands: CommandsCfg = CommandsCfg()
+    observations: ObservationsCfg = ObservationsCfg()
+    actions: ActionsCfg = ActionsCfg()
+    rewards: RewardsCfg = RewardsCfg()
+    terminations: TerminationsCfg = TerminationsCfg()
+    events: EventsCfg = EventsCfg()
+    curriculums: CurriculumsCfg = CurriculumsCfg()
+
+    def __post_init__(self):
+        self.decimation = 4  # Berkeley exact (50 Hz control, was 8)
+        self.episode_length_s = 20.0
+        self.sim.dt = 0.005
+        self.sim.render_interval = self.decimation
+        self.sim.disable_contact_processing = True  # Berkeley default
+        self.sim.physics_material = self.scene.terrain.physics_material
+        self.sim.physx.gpu_max_rigid_patch_count = 10 * 2**15
+        if self.scene.contact_forces is not None:
+            self.scene.contact_forces.update_period = self.sim.dt
+
+
+@configclass
+class BipedFlatEnvCfg_PLAY(BipedFlatEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.scene.num_envs = 50
+        self.scene.env_spacing = 2.5
+        self.observations.policy.enable_corruption = False
+        self.events.push_robot = None
