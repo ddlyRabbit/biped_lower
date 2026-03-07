@@ -13,6 +13,7 @@ parser.add_argument("--num_envs", type=int, default=16)
 parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--video", action="store_true")
 parser.add_argument("--video_length", type=int, default=300)
+parser.add_argument("--rough", action="store_true", help="Use rough terrain config")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -30,20 +31,35 @@ from isaaclab_rl.skrl import SkrlVecEnvWrapper
 
 from biped_env_cfg import BipedFlatEnvCfg_PLAY
 
+if args_cli.rough:
+    from biped_rough_env_cfg import BipedRoughEnvCfg_PLAY
+
 gym.register(
     id="Biped-Flat-Play-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={"env_cfg_entry_point": "biped_env_cfg:BipedFlatEnvCfg_PLAY"},
 )
+gym.register(
+    id="Biped-Rough-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={"env_cfg_entry_point": "biped_rough_env_cfg:BipedRoughEnvCfg_PLAY"},
+)
 
 
 def main():
-    env_cfg = BipedFlatEnvCfg_PLAY()
+    if args_cli.rough:
+        env_cfg = BipedRoughEnvCfg_PLAY()
+        env_id = "Biped-Rough-Play-v0"
+    else:
+        env_cfg = BipedFlatEnvCfg_PLAY()
+        env_id = "Biped-Flat-Play-v0"
+
     env_cfg.scene.num_envs = args_cli.num_envs
 
     env = gym.make(
-        "Biped-Flat-Play-v0",
+        env_id,
         cfg=env_cfg,
         render_mode="rgb_array" if args_cli.video else None,
     )

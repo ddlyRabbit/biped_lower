@@ -21,6 +21,7 @@ parser.add_argument("--num_envs", type=int, default=4096)
 parser.add_argument("--max_iterations", type=int, default=15000)
 parser.add_argument("--seed", type=int, default=42)
 parser.add_argument("--resume", type=str, default=None)
+parser.add_argument("--rough", action="store_true", help="Use rough terrain config")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 app_launcher = AppLauncher(args_cli)
@@ -34,12 +35,21 @@ from rsl_rl.runners import OnPolicyRunner
 
 from biped_env_cfg import BipedFlatEnvCfg
 
-# Register environment
+if args_cli.rough:
+    from biped_rough_env_cfg import BipedRoughEnvCfg
+
+# Register environments
 gym.register(
     id="Biped-Flat-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={"env_cfg_entry_point": "biped_env_cfg:BipedFlatEnvCfg"},
+)
+gym.register(
+    id="Biped-Rough-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={"env_cfg_entry_point": "biped_rough_env_cfg:BipedRoughEnvCfg"},
 )
 
 # EXACT Berkeley Flat PPO config
@@ -81,16 +91,25 @@ TRAIN_CFG = {
 
 
 def main():
-    env_cfg = BipedFlatEnvCfg()
+    if args_cli.rough:
+        env_cfg = BipedRoughEnvCfg()
+        env_id = "Biped-Rough-v0"
+        experiment = "biped_rough_v57"
+    else:
+        env_cfg = BipedFlatEnvCfg()
+        env_id = "Biped-Flat-v0"
+        experiment = "biped_flat_v52"
+
     env_cfg.scene.num_envs = args_cli.num_envs
     env_cfg.seed = args_cli.seed
 
-    env = gym.make("Biped-Flat-v0", cfg=env_cfg)
+    env = gym.make(env_id, cfg=env_cfg)
     env = RslRlVecEnvWrapper(env)
 
     train_cfg = TRAIN_CFG.copy()
     train_cfg["max_iterations"] = args_cli.max_iterations
     train_cfg["seed"] = args_cli.seed
+    train_cfg["experiment_name"] = experiment
 
     log_dir = os.path.join("/results/logs/rsl_rl", train_cfg["experiment_name"])
     os.makedirs(log_dir, exist_ok=True)

@@ -62,77 +62,121 @@ ALL_JOINTS = [
 # Custom reward functions — EXACT Berkeley implementations
 ###############################################################################
 
-def feet_air_time_hybrid(
-    env: "ManagerBasedRLEnv",
-    command_name: str,
-    sensor_cfg: SceneEntityCfg,
-    threshold_min: float,
-    threshold_max: float,
-    switch_step: int = 500 * 24,  # 500 iters × 24 steps/iter
-) -> torch.Tensor:
-    """Hybrid feet air time: continuous for first 500 iters, then impact-based.
-
-    Continuous gives gradient every step → learns to lift feet.
-    Impact-based rewards proportional to air time → refines gait.
-    """
-    if env.common_step_counter < switch_step:
-        return feet_air_time_positive_biped(
-            env, command_name, threshold_min, threshold_max, sensor_cfg,
-        )
-    else:
-        return feet_air_time(env, command_name, sensor_cfg, threshold_min, threshold_max)
-
-
 def feet_air_time(
     env: "ManagerBasedRLEnv",
     command_name: str,
-    sensor_cfg: SceneEntityCfg,
-    threshold_min: float,
-    threshold_max: float,
+    asset_cfg: SceneEntityCfg,
+    height_threshold: float = 0.058,
 ) -> torch.Tensor:
-    """Berkeley impact-based feet air time reward.
+    """Continuous single-stance reward — foot HEIGHT contact detection.
 
-    Rewards at landing only (first contact), proportional to air time.
-    Penalizes short steps (< threshold_min), caps at threshold_max.
+    Fixed reward every step exactly ONE foot is airborne (height > threshold).
+    Uses foot Z position — immune to self-collision noise.
+    Foot center rests at ~0.053m; threshold 0.058m = 0.5cm clearance.
     """
-    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
-    first_contact = contact_sensor.compute_first_contact(env.step_dt)[:, sensor_cfg.body_ids]
-    last_air_time = contact_sensor.data.last_air_time[:, sensor_cfg.body_ids]
-    # negative reward for small steps
-    air_time = (last_air_time - threshold_min) * first_contact
-    # no reward for large steps
-    air_time = torch.clamp(air_time, max=threshold_max - threshold_min)
-    reward = torch.sum(air_time, dim=1)
-    # no reward for zero command
-    reward *= torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) > 0.1
+    asset = env.scene[asset_cfg.name]
+    foot_z = asset.data.body_pos_w[:, asset_cfg.body_ids, 2]  # [num_envs, num_feet]
+
+    in_air = foot_z > height_threshold
+    num_airborne = in_air.sum(dim=1)
+
+    # Reward only when exactly 1 foot is in the air
+    single_foot_air = (num_airborne == 1).float()
+    reward = single_foot_air * 0.1
+
+    # No reward for zero command
+    reward *= torch.norm(
+        env.command_manager.get_command(command_name)[:, :2], dim=1
+    ) > 0.1
+
+    # Debug every 50 steps
+    if not hasattr(env, "_feet_air_debug_step"):
+        env._feet_air_debug_step = 0
+    env._feet_air_debug_step += 1
+    if env._feet_air_debug_step % 50 == 0:
+        n = in_air.shape[0]
+        both_ground = (num_airborne == 0).sum().item()
+        one_air = (num_airborne == 1).sum().item()
+        both_air = (num_airborne == 2).sum().item()
+        mean_h0 = foot_z[:, 0].mean().item()
+        mean_h1 = foot_z[:, 1].mean().item()
+        mean_r = reward.mean().item()
+        with open("/results/feet_air_debug.txt", "a") as f:
+            f.write(
+                f"step={env._feet_air_debug_step} "
+                f"both_ground={both_ground}/{n} one_air={one_air}/{n} both_air={both_air}/{n} "
+                f"h0={mean_h0:.4f} h1={mean_h1:.4f} "
+                f"reward={mean_r:.6f}\n"
+            )
+
     return reward
 
 
-def feet_air_time_positive_biped(
+def feet_air_time_impact(
     env: "ManagerBasedRLEnv",
     command_name: str,
-    threshold_min: float,
-    threshold_max: float,
-    sensor_cfg: SceneEntityCfg,
+    asset_cfg: SceneEntityCfg,
+    threshold_min: float = 0.05,
+    threshold_max: float = 0.5,
+    height_threshold: float = 0.058,
 ) -> torch.Tensor:
-    """Continuous biped stepping reward — from Skyentific/Berkeley.
+    """Impact-based feet air time reward — height detection, V55 thresholds.
 
-    Rewards single stance (exactly one foot in air) every timestep.
-    Uses current_air_time / current_contact_time, not impact-based.
-    Provides gradient every step, not just at landing.
+    Rewards at landing proportional to air time. Penalizes short steps
+    (< threshold_min). Caps at threshold_max. Uses foot Z for contact.
     """
-    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
-    air_time = contact_sensor.data.current_air_time[:, sensor_cfg.body_ids]
-    contact_time = contact_sensor.data.current_contact_time[:, sensor_cfg.body_ids]
-    in_contact = contact_time > 0.0
-    in_mode_time = torch.where(in_contact, contact_time, air_time)
-    single_stance = torch.sum(in_contact.int(), dim=1) == 1
-    reward = torch.min(torch.where(single_stance.unsqueeze(-1), in_mode_time, 0.0), dim=1)[0]
-    reward = torch.clamp(reward, max=threshold_max)
-    # no reward for small steps
-    reward *= reward > threshold_min
-    # no reward for zero command
-    reward *= torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) > 0.1
+    asset = env.scene[asset_cfg.name]
+    foot_z = asset.data.body_pos_w[:, asset_cfg.body_ids, 2]
+
+    in_air = foot_z > height_threshold
+    in_contact = ~in_air
+
+    # Persistent tracking
+    if not hasattr(env, "_impact_timer"):
+        env._impact_timer = torch.zeros_like(foot_z)
+        env._impact_was_air = torch.zeros(
+            *foot_z.shape, dtype=torch.bool, device=foot_z.device
+        )
+
+    dt = env.step_dt
+    timer = env._impact_timer
+    was_air = env._impact_was_air
+
+    # First contact: was airborne, now on ground
+    first_contact = was_air & in_contact
+
+    # Accumulate air time, reset on contact
+    timer[in_air] += dt
+    last_air_time = timer.clone()
+    timer[in_contact] = 0.0
+    was_air[:] = in_air
+
+    # Impact reward at landing
+    air_time = (last_air_time - threshold_min) * first_contact
+    air_time = torch.clamp(air_time, max=threshold_max - threshold_min)
+    reward = torch.sum(air_time, dim=1)
+
+    # No reward for zero command
+    reward *= torch.norm(
+        env.command_manager.get_command(command_name)[:, :2], dim=1
+    ) > 0.1
+
+    # Debug every 50 steps
+    if not hasattr(env, "_impact_debug_step"):
+        env._impact_debug_step = 0
+    env._impact_debug_step += 1
+    if env._impact_debug_step % 50 == 0:
+        n = in_air.shape[0]
+        n_land = first_contact.any(dim=1).sum().item()
+        mean_air_t = last_air_time[first_contact].mean().item() if first_contact.any() else 0.0
+        mean_r = reward.mean().item()
+        with open("/results/feet_air_debug_impact.txt", "a") as f:
+            f.write(
+                f"step={env._impact_debug_step} "
+                f"landings={n_land}/{n} mean_air_t={mean_air_t:.4f} "
+                f"reward={mean_r:.6f}\n"
+            )
+
     return reward
 
 
@@ -140,18 +184,20 @@ def feet_slide(
     env: "ManagerBasedRLEnv",
     sensor_cfg: SceneEntityCfg,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    height_threshold: float = 0.02,
 ) -> torch.Tensor:
-    """Penalize feet sliding — exact Berkeley."""
-    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
-    contacts = (
-        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :]
-        .norm(dim=-1)
-        .max(dim=1)[0]
-        > 1.0
-    )
+    """Penalize feet sliding — height-based contact detection.
+
+    Penalizes horizontal foot velocity when foot is on/near ground.
+    Uses foot Z position (not contact forces) to avoid self-collision noise.
+    """
     asset = env.scene[asset_cfg.name]
-    body_vel = asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2]
-    reward = torch.sum(body_vel.norm(dim=-1) * contacts, dim=1)
+    # Foot height for contact detection
+    foot_z = asset.data.body_pos_w[:, asset_cfg.body_ids, 2]  # [num_envs, num_feet]
+    on_ground = foot_z < height_threshold  # [num_envs, num_feet]
+    # Horizontal velocity of feet
+    body_vel = asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2]  # [num_envs, num_feet, 2]
+    reward = torch.sum(body_vel.norm(dim=-1) * on_ground, dim=1)
     return reward
 
 
@@ -550,14 +596,14 @@ class RewardsCfg:
     )
     action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.01)
     feet_air_time = RewTerm(
-        func="biped_env_cfg:feet_air_time_hybrid",
+        func="biped_env_cfg:feet_air_time_impact",
         weight=2.0,
         params={
             "command_name": "base_velocity",
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
+            "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
             "threshold_min": 0.05,
             "threshold_max": 0.5,
-            "switch_step": 500 * 24,  # continuous → impact-based after 500 iters
+            "height_threshold": 0.063,
         },
     )
     feet_slide = RewTerm(
@@ -566,6 +612,7 @@ class RewardsCfg:
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
             "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
+            "height_threshold": 0.063,
         },
     )
     undesired_contacts = RewTerm(
@@ -792,4 +839,4 @@ class BipedFlatEnvCfg_PLAY(BipedFlatEnvCfg):
         self.scene.num_envs = 100
         self.scene.env_spacing = 2.5
         self.observations.policy.enable_corruption = False
-        # push_robot stays active during inference
+        self.events.push_robot = None  # disabled for this test
