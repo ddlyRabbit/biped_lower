@@ -14,6 +14,8 @@ parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--video", action="store_true")
 parser.add_argument("--video_length", type=int, default=300)
 parser.add_argument("--rough", action="store_true", help="Use rough terrain config")
+parser.add_argument("--env_index", type=int, default=0, help="Which env to follow with camera")
+parser.add_argument("--video_dir", type=str, default="/results/videos", help="Video output directory")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -58,6 +60,13 @@ def main():
 
     env_cfg.scene.num_envs = args_cli.num_envs
 
+    # Camera follows robot 0 — offset behind and above
+    env_cfg.viewer.origin_type = "asset_root"
+    env_cfg.viewer.asset_name = "robot"
+    env_cfg.viewer.env_index = args_cli.env_index
+    env_cfg.viewer.eye = (3.0, 3.0, 2.0)
+    env_cfg.viewer.lookat = (0.0, 0.0, 0.5)
+
     env = gym.make(
         env_id,
         cfg=env_cfg,
@@ -65,7 +74,7 @@ def main():
     )
 
     if args_cli.video:
-        video_dir = "/results/videos/v52"
+        video_dir = args_cli.video_dir
         os.makedirs(video_dir, exist_ok=True)
         env = gym.wrappers.RecordVideo(
             env,
