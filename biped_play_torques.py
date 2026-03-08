@@ -44,12 +44,12 @@ gym.register(
 )
 
 JOINT_NAMES = [
-    "right_hip_roll", "right_hip_yaw", "right_hip_pitch",
-    "right_knee",
-    "right_foot_pitch", "right_foot_roll",
-    "left_hip_roll", "left_hip_yaw", "left_hip_pitch",
-    "left_knee",
-    "left_foot_pitch", "left_foot_roll",
+    "left_hip_pitch_04", "right_hip_pitch_04",
+    "left_hip_roll_03", "right_hip_roll_03",
+    "left_hip_yaw_03", "right_hip_yaw_03",
+    "left_knee_04", "right_knee_04",
+    "left_foot_pitch_02", "right_foot_pitch_02",
+    "left_foot_roll_02", "right_foot_roll_02",
 ]
 
 
@@ -62,9 +62,11 @@ def main():
         env_id = "Biped-Flat-Play-v0"
 
     env_cfg.scene.num_envs = args_cli.num_envs
+    print("[DBG] Creating env", flush=True)
     env = gym.make(env_id, cfg=env_cfg)
     env = SkrlVecEnvWrapper(env, ml_framework="torch")
     obs, _ = env.reset()
+    print(f"[DBG] obs shape={obs.shape}", flush=True)
 
     # Load actor
     ckpt = torch.load(args_cli.checkpoint, map_location="cuda:0")
@@ -84,6 +86,7 @@ def main():
             actor_sd[k.replace("actor.", "")] = v
     actor.load_state_dict(actor_sd)
     actor.eval()
+    print("[DBG] Actor loaded, starting loop", flush=True)
 
     # Get reference to the underlying Isaac env for torque data
     isaac_env = env.unwrapped.unwrapped

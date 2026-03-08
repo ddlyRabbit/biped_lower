@@ -454,8 +454,8 @@ class CommandsCfg:
         rel_standing_envs=0.02,
         rel_heading_envs=1.0,
         ranges=base_mdp.UniformVelocityCommandCfg.Ranges(
-            lin_vel_x=(-1.0, 1.0),
-            lin_vel_y=(-1.0, 1.0),
+            lin_vel_x=(-0.5, 0.5),      # lateral (small)
+            lin_vel_y=(-1.5, 0.5),      # forward=-Y (biased negative)
             ang_vel_z=(-1.0, 1.0),
             heading=(-math.pi, math.pi),
         ),
