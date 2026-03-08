@@ -1,10 +1,13 @@
 # Biped Student Config — G1-style teacher-student distillation
 #
 # Student obs: No base_lin_vel (not available on real hardware).
-#   Flat: 45-dim | Rough: 45-dim (terrain-blind)
+#   Flat: 45-dim | Rough: 232-dim (with height_scan, no base_lin_vel)
 # Teacher obs: Full privileged observations.
 #   Flat: 48-dim (includes base_lin_vel)
 #   Rough: 235-dim (includes base_lin_vel + height_scan)
+#
+# Student is NOT terrain-blind — has height_scan (real sensor).
+# Only base_lin_vel is removed (not available on real hardware).
 #
 # Flow:
 #   1. Train teacher: biped_train_rsl.py (standard PPO, with base_lin_vel + height_scan)
@@ -161,7 +164,14 @@ class RoughStudentObservationsCfg:
 
     @configclass
     class StudentPolicyCfg(ObsGroup):
-        """Student: 45-dim (no base_lin_vel, no height_scan — terrain blind)."""
+        """Student: 232-dim (no base_lin_vel, WITH height_scan)."""
+
+        height_scan = ObsTerm(
+            func=base_mdp.height_scan,
+            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+            clip=(-1.0, 1.0),
+        )
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -278,16 +288,12 @@ class BipedStudentFlatEnvCfg_PLAY(BipedStudentFlatEnvCfg):
 
 @configclass
 class BipedStudentRoughEnvCfg(BipedRoughEnvCfg):
-    """Rough env for student distillation — adds height_scan to teacher only."""
+    """Rough env for student distillation.
+    
+    Student keeps height_scan (real sensor), only base_lin_vel is removed.
+    BipedRoughEnvCfg.__post_init__ adds height_scan to policy/critic — we keep it.
+    """
     observations: RoughStudentObservationsCfg = RoughStudentObservationsCfg()
-
-    def __post_init__(self):
-        super().__post_init__()
-        # Remove height_scan that BipedRoughEnvCfg adds to policy/critic
-        # (we handle it ourselves in teacher obs group)
-        
-            self.observations.policy.height_scan = None
-        # Critic already has height_scan defined in RoughStudentObservationsCfg.CriticCfg
 
 
 @configclass
