@@ -1,26 +1,17 @@
 """Biped Teacher-Student Distillation — G1-style.
 
-Two modes:
-  1. Distillation (default):
-     - Loads teacher checkpoint (PPO-trained flat policy with base_lin_vel)
-     - Trains student MLP via MSE loss on teacher actions
-     - Student obs: 45-dim (no base_lin_vel)
-     - Teacher obs: 48-dim (includes base_lin_vel)
-     - Uses rsl_rl DistillationRunner natively
-
-  2. Fine-tune (--finetune):
-     - Standard PPO training using student obs only (no base_lin_vel)
-     - Initialize from distilled student checkpoint
-     - NOT YET IMPLEMENTED — placeholder for Phase 3
+Supports both flat and rough terrain distillation.
 
 Usage:
-  # Phase 2: Distill student from teacher
-  python biped_distill_rsl.py --teacher_checkpoint /results/winners/v57_model_2899.pt \\
-      --num_envs 16384 --max_iterations 3000
+  # Flat distillation
+  python biped_distill_rsl.py --teacher_checkpoint /results/winners/flat_teacher.pt
 
-  # Resume distillation
-  python biped_distill_rsl.py --teacher_checkpoint /results/winners/v57_model_2899.pt \\
-      --resume /results/logs/rsl_rl/biped_distill_v57/model_1000.pt --max_iterations 3000
+  # Rough distillation
+  python biped_distill_rsl.py --rough --teacher_checkpoint /results/logs/rsl_rl/biped_rough_v57/model_19200.pt
+
+  # Resume
+  python biped_distill_rsl.py --rough --resume /results/logs/rsl_rl/biped_distill_rough/model_1000.pt \\
+      --teacher_checkpoint /results/logs/rsl_rl/biped_rough_v57/model_19200.pt
 """
 
 import argparse
@@ -35,8 +26,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--num_envs", type=int, default=16384)
 parser.add_argument("--max_iterations", type=int, default=3000)
 parser.add_argument("--seed", type=int, default=42)
+parser.add_argument("--rough", action="store_true", help="Use rough terrain env")
 parser.add_argument("--teacher_checkpoint", type=str, default=None,
-                    help="Path to teacher model checkpoint (PPO-trained). Required for fresh distillation.")
+                    help="Path to teacher model checkpoint (PPO-trained)")
 parser.add_argument("--resume", type=str, default=None,
                     help="Path to distillation checkpoint to resume from")
 AppLauncher.add_app_launcher_args(parser)
@@ -50,29 +42,38 @@ import torch
 from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 from rsl_rl.runners import DistillationRunner
 
-from biped_student_env_cfg import BipedStudentFlatEnvCfg
+if args_cli.rough:
+    from biped_student_env_cfg import BipedStudentRoughEnvCfg
+    env_cfg_class = BipedStudentRoughEnvCfg
+    env_id = "Biped-Student-Rough-v0"
+    experiment_name = "biped_distill_rough"
+else:
+    from biped_student_env_cfg import BipedStudentFlatEnvCfg
+    env_cfg_class = BipedStudentFlatEnvCfg
+    env_id = "Biped-Student-Flat-v0"
+    experiment_name = "biped_distill_flat"
 
 # Register environment
 gym.register(
-    id="Biped-Student-Flat-v0",
+    id=env_id,
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
-    kwargs={"env_cfg_entry_point": "biped_student_env_cfg:BipedStudentFlatEnvCfg"},
+    kwargs={"env_cfg_entry_point": f"biped_student_env_cfg:{env_cfg_class.__name__}"},
 )
 
-# Distillation config — matches rsl_rl DistillationRunner expectations
+# Distillation config
 DISTILL_CFG = {
     "seed": 42,
     "runner_class_name": "DistillationRunner",
     "num_steps_per_env": 24,
     "max_iterations": 3000,
     "save_interval": 200,
-    "experiment_name": "biped_distill_v57",
+    "experiment_name": experiment_name,
     "empirical_normalization": False,
     "obs_groups": {
-        "policy": ["policy"],     # student obs (45-dim, no base_lin_vel)
-        "teacher": ["teacher"],   # teacher obs (48-dim, with base_lin_vel)
-        "critic": ["critic"],     # not used in distillation but required by env
+        "policy": ["policy"],     # student obs (45-dim, no base_lin_vel/height_scan)
+        "teacher": ["teacher"],   # teacher obs (48-dim flat / 235-dim rough)
+        "critic": ["critic"],
     },
     "policy": {
         "class_name": "StudentTeacher",
@@ -95,11 +96,16 @@ DISTILL_CFG = {
 
 
 def main():
-    env_cfg = BipedStudentFlatEnvCfg()
+    env_cfg = env_cfg_class()
     env_cfg.scene.num_envs = args_cli.num_envs
     env_cfg.seed = args_cli.seed
 
-    env = gym.make("Biped-Student-Flat-v0", cfg=env_cfg)
+    # Reduce envs for rough terrain (VRAM)
+    if args_cli.rough and args_cli.num_envs > 8192:
+        env_cfg.scene.num_envs = 8192
+        print(f"[INFO] Reduced num_envs to 8192 for rough terrain")
+
+    env = gym.make(env_id, cfg=env_cfg)
     env = RslRlVecEnvWrapper(env)
 
     train_cfg = DISTILL_CFG.copy()
@@ -112,16 +118,13 @@ def main():
     runner = DistillationRunner(env, train_cfg, log_dir=log_dir, device="cuda:0")
 
     if args_cli.resume:
-        # Resume from distillation checkpoint — contains both student + teacher weights
         print(f"[INFO] Resuming distillation from: {args_cli.resume}")
         runner.load(args_cli.resume)
     elif args_cli.teacher_checkpoint:
-        # Fresh distillation — load teacher from PPO checkpoint
-        # StudentTeacher.load_state_dict detects actor.* keys → maps to teacher weights
         print(f"[INFO] Loading teacher from: {args_cli.teacher_checkpoint}")
         runner.load(args_cli.teacher_checkpoint, load_optimizer=False)
     else:
-        raise ValueError("Must provide --teacher_checkpoint for fresh distillation or --resume to continue")
+        raise ValueError("Must provide --teacher_checkpoint or --resume")
 
     runner.learn(num_learning_iterations=args_cli.max_iterations, init_at_random_ep_len=True)
 

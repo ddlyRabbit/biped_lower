@@ -1,4 +1,4 @@
-"""Play biped V52 rsl_rl policy — uses RecordVideo."""
+"""Play biped rsl_rl policy — supports teacher and student models."""
 
 import argparse
 import sys
@@ -14,6 +14,7 @@ parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--video", action="store_true")
 parser.add_argument("--video_length", type=int, default=300)
 parser.add_argument("--rough", action="store_true", help="Use rough terrain config")
+parser.add_argument("--student", action="store_true", help="Play student (distilled) policy")
 parser.add_argument("--env_index", type=int, default=0, help="Which env to follow with camera")
 parser.add_argument("--video_dir", type=str, default="/results/videos", help="Video output directory")
 AppLauncher.add_app_launcher_args(parser)
@@ -31,11 +32,18 @@ import torch.nn as nn
 
 from isaaclab_rl.skrl import SkrlVecEnvWrapper
 
-from biped_env_cfg import BipedFlatEnvCfg_PLAY
+# Import configs based on mode
+if args_cli.student:
+    if args_cli.rough:
+        from biped_student_env_cfg import BipedStudentRoughEnvCfg_PLAY
+    else:
+        from biped_student_env_cfg import BipedStudentFlatEnvCfg_PLAY
+else:
+    from biped_env_cfg import BipedFlatEnvCfg_PLAY
+    if args_cli.rough:
+        from biped_rough_env_cfg import BipedRoughEnvCfg_PLAY
 
-if args_cli.rough:
-    from biped_rough_env_cfg import BipedRoughEnvCfg_PLAY
-
+# Register environments
 gym.register(
     id="Biped-Flat-Play-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
@@ -48,19 +56,40 @@ gym.register(
     disable_env_checker=True,
     kwargs={"env_cfg_entry_point": "biped_rough_env_cfg:BipedRoughEnvCfg_PLAY"},
 )
+gym.register(
+    id="Biped-Student-Flat-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={"env_cfg_entry_point": "biped_student_env_cfg:BipedStudentFlatEnvCfg_PLAY"},
+)
+gym.register(
+    id="Biped-Student-Rough-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={"env_cfg_entry_point": "biped_student_env_cfg:BipedStudentRoughEnvCfg_PLAY"},
+)
 
 
 def main():
-    if args_cli.rough:
-        env_cfg = BipedRoughEnvCfg_PLAY()
-        env_id = "Biped-Rough-Play-v0"
+    # Select env config
+    if args_cli.student:
+        if args_cli.rough:
+            env_cfg = BipedStudentRoughEnvCfg_PLAY()
+            env_id = "Biped-Student-Rough-Play-v0"
+        else:
+            env_cfg = BipedStudentFlatEnvCfg_PLAY()
+            env_id = "Biped-Student-Flat-Play-v0"
     else:
-        env_cfg = BipedFlatEnvCfg_PLAY()
-        env_id = "Biped-Flat-Play-v0"
+        if args_cli.rough:
+            env_cfg = BipedRoughEnvCfg_PLAY()
+            env_id = "Biped-Rough-Play-v0"
+        else:
+            env_cfg = BipedFlatEnvCfg_PLAY()
+            env_id = "Biped-Flat-Play-v0"
 
     env_cfg.scene.num_envs = args_cli.num_envs
 
-    # Camera follows robot 0 — offset behind and above
+    # Camera follows robot — offset behind and above
     env_cfg.viewer.origin_type = "asset_root"
     env_cfg.viewer.asset_name = "robot"
     env_cfg.viewer.env_index = args_cli.env_index
@@ -93,9 +122,9 @@ def main():
 
     num_obs = obs.shape[-1]
     num_actions = env.action_space.shape[-1]
-    print(f"[INFO] obs_dim={num_obs}, actions={num_actions}")
+    print(f"[INFO] obs_dim={num_obs}, actions={num_actions}, student={args_cli.student}")
 
-    # Berkeley flat: [128, 128, 128] actor
+    # Build actor MLP: [128, 128, 128]
     actor = nn.Sequential(
         nn.Linear(num_obs, 128), nn.ELU(),
         nn.Linear(128, 128), nn.ELU(),
@@ -103,11 +132,25 @@ def main():
         nn.Linear(128, num_actions),
     ).to("cuda:0")
 
+    # Load weights — different key prefix for student vs teacher
     model_sd = ckpt["model_state_dict"]
-    actor_sd = {}
-    for k, v in model_sd.items():
-        if k.startswith("actor."):
-            actor_sd[k.replace("actor.", "")] = v
+    if args_cli.student:
+        # Distilled checkpoint: student.* keys
+        actor_sd = {}
+        for k, v in model_sd.items():
+            if k.startswith("student."):
+                actor_sd[k.replace("student.", "")] = v
+        if not actor_sd:
+            raise ValueError(
+                f"No student.* keys in checkpoint. Available prefixes: "
+                f"{set(k.split('.')[0] for k in model_sd.keys())}"
+            )
+    else:
+        # PPO checkpoint: actor.* keys
+        actor_sd = {}
+        for k, v in model_sd.items():
+            if k.startswith("actor."):
+                actor_sd[k.replace("actor.", "")] = v
     actor.load_state_dict(actor_sd)
     actor.eval()
     print("[INFO] Actor loaded successfully")

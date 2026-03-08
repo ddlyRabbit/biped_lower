@@ -14,6 +14,7 @@ parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--video_length", type=int, default=500)
 parser.add_argument("--rough", action="store_true")
 parser.add_argument("--output_dir", type=str, default="/results/record")
+parser.add_argument("--student", action="store_true", help="Play student (distilled) policy")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -95,10 +96,13 @@ def main():
         nn.Linear(128, num_actions),
     ).to("cuda:0")
 
-    actor_sd = {}
-    for k, v in ckpt["model_state_dict"].items():
-        if k.startswith("actor."):
-            actor_sd[k.replace("actor.", "")] = v
+    model_sd = ckpt["model_state_dict"]
+    if hasattr(args_cli, "student") and args_cli.student:
+        actor_sd = {k.replace("student.", ""): v for k, v in model_sd.items() if k.startswith("student.")}
+        if not actor_sd:
+            raise ValueError("No student.* keys in checkpoint")
+    else:
+        actor_sd = {k.replace("actor.", ""): v for k, v in model_sd.items() if k.startswith("actor.")}
     actor.load_state_dict(actor_sd)
     actor.eval()
 
