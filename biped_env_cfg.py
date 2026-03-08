@@ -296,12 +296,12 @@ def modify_command_velocity(
 ):
     """Adaptive command velocity curriculum — exact Berkeley.
 
-    Expands lin_vel_x range when tracking reward is good (>80% of max).
+    Expands lin_vel_y range when tracking reward is good (>80% of max). Forward is -Y.
     """
     command_cfg = env.command_manager.get_term("base_velocity").cfg
-    curr_lin_vel_x = command_cfg.ranges.lin_vel_x
+    curr_lin_vel_y = command_cfg.ranges.lin_vel_y
     if env.common_step_counter < starting_step:
-        return curr_lin_vel_x[1]
+        return curr_lin_vel_y[1]
     if env.common_step_counter % interval == 0:
         term_cfg = env.reward_manager.get_term_cfg(term_name)
         rew = env.reward_manager._episode_sums[term_name][env_ids]
@@ -309,12 +309,12 @@ def modify_command_velocity(
             torch.mean(rew) / env.max_episode_length
             > 0.8 * term_cfg.weight * env.step_dt
         ):
-            curr_lin_vel_x = (
-                np.clip(curr_lin_vel_x[0] - 0.5, max_velocity[0], 0.0),
-                np.clip(curr_lin_vel_x[1] + 0.5, 0.0, max_velocity[1]),
+            curr_lin_vel_y = (
+                np.clip(curr_lin_vel_y[0] - 0.5, max_velocity[0], 0.0),
+                np.clip(curr_lin_vel_y[1] + 0.5, 0.0, max_velocity[1]),
             )
-            command_cfg.ranges.lin_vel_x = curr_lin_vel_x
-    return curr_lin_vel_x[1]
+            command_cfg.ranges.lin_vel_y = curr_lin_vel_y
+    return curr_lin_vel_y[1]
 
 
 ###############################################################################
@@ -366,32 +366,32 @@ BIPED_CFG = ArticulationCfg(
     actuators={
         "hip_roll": ImplicitActuatorCfg(
             joint_names_expr=[".*hip_roll.*"],
-            effort_limit=78.0, velocity_limit=10.0,
+            effort_limit=50.0, velocity_limit=10.0,
             stiffness=20.0, damping=3.0, armature=0.0112,
         ),
         "hip_yaw": ImplicitActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
-            effort_limit=78.0, velocity_limit=10.0,
+            effort_limit=50.0, velocity_limit=10.0,
             stiffness=20.0, damping=3.0, armature=0.0112,
         ),
         "hip_pitch": ImplicitActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
-            effort_limit=117.0, velocity_limit=10.0,
+            effort_limit=100.0, velocity_limit=10.0,
             stiffness=30.0, damping=3.0, armature=0.0152,
         ),
         "knee": ImplicitActuatorCfg(
             joint_names_expr=[".*knee.*"],
-            effort_limit=117.0, velocity_limit=10.0,
+            effort_limit=100.0, velocity_limit=10.0,
             stiffness=30.0, damping=3.0, armature=0.024,
         ),
         "foot_pitch": ImplicitActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
-            effort_limit=20.0, velocity_limit=10.0,
+            effort_limit=15.0, velocity_limit=10.0,
             stiffness=2.0, damping=0.2, armature=0.0112,
         ),
         "foot_roll": ImplicitActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
-            effort_limit=26.0, velocity_limit=10.0,
+            effort_limit=15.0, velocity_limit=10.0,
             stiffness=2.0, damping=0.2, armature=0.001,
         ),
     },
@@ -601,7 +601,7 @@ class RewardsCfg:
         params={
             "command_name": "base_velocity",
             "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
-            "threshold_min": 0.05,
+            "threshold_min": 0.075,
             "threshold_max": 0.5,
             "height_threshold": 0.063,
         },
@@ -780,7 +780,7 @@ class EventsCfg:
 #
 # push_force_levels: after iter 1500, adaptively increase/decrease push
 #   based on base_contact vs time_out ratio
-# command_vel: after iter 5000, expand lin_vel_x when tracking > 80% of max
+# command_vel: after iter 5000, expand lin_vel_y when tracking > 80% of max (forward is -Y)
 ###############################################################################
 
 @configclass
@@ -791,16 +791,16 @@ class CurriculumsCfg:
             "term_name": "push_robot",
             "max_velocity": [3.0, 3.0],
             "interval": 200 * 24,         # check every 200 iterations
-            "starting_step": 1500 * 24,   # start after 1500 iterations
+            "starting_step": 1000 * 24,     # start after 25 iterations
         },
     )
     command_vel = CurrTerm(
         func="biped_env_cfg:modify_command_velocity",
         params={
             "term_name": "track_lin_vel_xy_exp",
-            "max_velocity": [-1.5, 3.0],
+            "max_velocity": [-3.0, 1.5],
             "interval": 200 * 24,         # check every 200 iterations
-            "starting_step": 5000 * 24,   # start after 5000 iterations
+            "starting_step": 1000 * 24,     # start after 25 iterations
         },
     )
 
