@@ -1,80 +1,115 @@
 # Biped Locomotion — RL Training (IsaacLab + rsl_rl)
 
-Bipedal robot walking via PPO in Isaac Sim / IsaacLab, using rsl_rl framework with Berkeley Humanoid-inspired configuration.
+Bipedal robot walking via PPO in Isaac Sim / IsaacLab. Berkeley Humanoid-inspired config, G1-style teacher-student distillation.
+
+## Robot
+
+- URDF: `/uploads/robot.urdf` (12 DoF, ~27.5 kg with 10kg battery_chest)
+- Forward axis: **-Y** (not +X). Asymmetric hip roll/pitch limits.
+- Parallel linkage ankle (G1-style): each PR joint = 2 × motor torque
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `biped_env_cfg.py` | Flat terrain env config (V57, self-collisions ON) |
-| `biped_rough_env_cfg.py` | Rough terrain env config (inherits flat, 7 sub-terrains, height scanner) |
-| `biped_student_env_cfg.py` | Student distillation env config (removes base_lin_vel from policy obs) |
-| `biped_train_rsl.py` | PPO training script (rsl_rl OnPolicyRunner) |
-| `biped_distill_rsl.py` | Teacher-student distillation script (rsl_rl DistillationRunner) |
-| `biped_play_rsl.py` | Inference + video recording (camera follows agent) |
-| `record_grid.sh` | Record 4 agents → 2×2 grid video |
+| `biped_env_cfg.py` | Flat env config (V57) |
+| `biped_rough_env_cfg.py` | Rough env (inherits flat + terrain + height scanner) |
+| `biped_student_env_cfg.py` | Student env — removes `base_lin_vel` from policy obs |
+| `biped_train_rsl.py` | Phase 1: PPO teacher training |
+| `biped_distill_rsl.py` | Phase 2: Teacher→student distillation (MSE) |
+| `biped_finetune_student_rsl.py` | Phase 3: PPO fine-tune of distilled student |
+| `biped_play_rsl.py` | Inference + video (`--rough`, `--student`) |
+| `biped_play_record.py` | Torque + video recording (`--rough`, `--student`) |
+| `biped_play_torques.py` | Torque-only recording (`--rough`, `--student`) |
 
-### Versioned Configs (archive)
-- `biped_env_cfg_v54_continuous.py` — continuous feet_air reward, threshold_min=0.05
-- `biped_env_cfg_v55_impact_based.py` — impact-based feet_air reward, threshold_min=0.05
-
-## Robot
-
-- URDF: `/uploads/robot.urdf` (with 10kg `battery_chest`)
-- STL meshes: `/uploads/assets/`
-- Forward axis: **-Y** (not +X)
-- Asymmetric hip roll/pitch limits (mirrored L/R)
-- Total mass: ~27.5 kg
-- 12 actuated joints (6 per leg: hip_roll, hip_yaw, hip_pitch, knee, foot_pitch, foot_roll)
-
-## Config Inheritance
+## 3-Phase Training Pipeline
 
 ```
-biped_env_cfg.py (BipedFlatEnvCfg)
-├── biped_rough_env_cfg.py (BipedRoughEnvCfg) — adds terrain, height scanner, curriculum
-└── biped_student_env_cfg.py (BipedStudentFlatEnvCfg) — adds teacher obs group, removes base_lin_vel from policy
+Phase 1: Teacher PPO        Phase 2: Distillation        Phase 3: Student PPO
+┌──────────────────┐        ┌──────────────────┐         ┌──────────────────┐
+│ Full obs (48/235)│───────▶│ Teacher: frozen   │────────▶│ Student obs only │
+│ Standard PPO     │        │ Student: MSE loss │         │ Standard PPO     │
+│ biped_train_rsl  │        │ biped_distill_rsl │         │ biped_finetune   │
+└──────────────────┘        └──────────────────┘         └──────────────────┘
 ```
 
-## Observations (48-dim teacher / 45-dim student)
+### Observation Dimensions
 
-| Term | Dims | Student | Teacher | Noise |
-|------|------|---------|---------|-------|
-| base_lin_vel | 3 | ❌ | ✅ | ±0.1 |
-| base_ang_vel | 3 | ✅ | ✅ | ±0.2 |
-| projected_gravity | 3 | ✅ | ✅ | ±0.05 |
-| velocity_commands | 3 | ✅ | ✅ | — |
-| hip_pos (6 joints) | 6 | ✅ | ✅ | ±0.03 |
-| knee_pos (2 joints) | 2 | ✅ | ✅ | ±0.05 |
-| foot_pitch_pos (2) | 2 | ✅ | ✅ | ±0.08 |
-| foot_roll_pos (2) | 2 | ✅ | ✅ | ±0.03 |
-| joint_vel (all 12) | 12 | ✅ | ✅ | ±1.5 |
-| actions (last) | 12 | ✅ | ✅ | — |
+| | Flat | Rough |
+|---|---|---|
+| **Teacher** | 48d (with base_lin_vel) | 235d (+ height_scan 187d) |
+| **Student** | 45d (no base_lin_vel) | 232d (height_scan kept, no base_lin_vel) |
 
-Rough terrain adds: height_scan (160 rays) → obs_dim = 208.
+Student keeps height_scan (real sensor on hardware). Only `base_lin_vel` is privileged.
 
-## Reward Terms (13, Berkeley flat)
+### Commands
 
-| Term | Weight | Type |
-|------|--------|------|
-| track_lin_vel_xy_exp | 1.0 | positive |
-| track_ang_vel_z_exp | 0.5 | positive |
-| lin_vel_z_l2 | -2.0 | penalty |
-| ang_vel_xy_l2 | -0.05 | penalty |
-| joint_torques_l2 | -1e-5 | penalty |
-| action_rate_l2 | -0.01 | penalty |
-| feet_air_time (impact-based) | 2.0 | positive |
-| feet_slide | -0.25 | penalty |
-| undesired_contacts | -1.0 | penalty |
-| joint_deviation_hip | -0.1 | penalty |
-| joint_deviation_knee | -0.01 | penalty |
-| flat_orientation_l2 | -0.5 | penalty |
-| dof_pos_limits | -1.0 | penalty |
+```bash
+# Phase 1: Train teacher
+python biped_train_rsl.py [--rough] --num_envs 4096 --max_iterations 15000
 
-## Docker Commands
+# Phase 2: Distill
+python biped_distill_rsl.py [--rough] \
+    --teacher_checkpoint /results/winners/v57_model_2899.pt \
+    --num_envs 16384 --max_iterations 3000
 
-All commands run inside `isaaclab:latest` container on GCP (`ubuntu@34.93.168.76`).
+# Phase 3: Fine-tune student
+python biped_finetune_student_rsl.py [--rough] \
+    --distilled /results/logs/rsl_rl/biped_distill_flat/model_3000.pt \
+    --max_iterations 5000
 
-### Container Launch Template
+# Play / record
+python biped_play_rsl.py [--rough] [--student] \
+    --checkpoint <path> --video --video_length 500
+```
+
+## Actuator Config
+
+| Joint | Kp | Kd | Effort (Nm) | Armature |
+|-------|----|----|-------------|----------|
+| hip_roll/yaw | 20 | 3.0 | 50 | 0.0112 |
+| hip_pitch | 30 | 3.0 | 100 | 0.0152 |
+| knee | 30 | 3.0 | 100 | 0.024 |
+| foot_pitch | 2.0 | 0.2 | 30 | 0.0112 |
+| foot_roll | 2.0 | 0.2 | 30 | 0.001 |
+
+Foot joints: 30Nm each via parallel linkage (2 motors × 15Nm). ImplicitActuator for training.
+
+## Reward Terms (13)
+
+| Term | Weight | | Term | Weight |
+|------|--------|-|------|--------|
+| track_lin_vel_xy_exp | 1.0 | | feet_slide | -0.25 |
+| track_ang_vel_z_exp | 0.5 | | undesired_contacts | -1.0 |
+| lin_vel_z_l2 | -2.0 | | joint_deviation_hip | -0.1 |
+| ang_vel_xy_l2 | -0.05 | | joint_deviation_knee | -0.01 |
+| joint_torques_l2 | -1e-5 | | flat_orientation_l2 | -0.5 |
+| action_rate_l2 | -0.01 | | dof_pos_limits | -1.0 |
+| feet_air_time | 2.0 | | | |
+
+Rough terrain: `flat_orientation_l2=0`, `dof_pos_limits=0`.
+
+## Command Ranges
+
+```python
+lin_vel_x = (-0.5, 0.5)    # lateral (small)
+lin_vel_y = (-1.5, 0.5)    # forward=-Y (biased)
+ang_vel_z = (-1.0, 1.0)
+```
+
+Curriculum expands `lin_vel_y` toward (-3.0, 1.5) based on tracking reward.
+
+## Winners
+
+| Checkpoint | Terrain | Reward | TrackVel | Notes |
+|------------|---------|--------|----------|-------|
+| `v57_model_2899.pt` | Flat | 19.1 | 0.84 | Teacher for distillation |
+| `v57_rough_model_6498.pt` | Rough | ~16.5 | ~0.75 | Pre torque-limit fix |
+| `model_19200.pt` (rough_v57) | Rough | **18.0** | **0.83** | Peak with 30Nm ankle |
+
+## Docker
+
+All on GCP L4 (`ubuntu@34.93.168.76`), image `isaaclab:latest`.
 
 ```bash
 docker run --gpus all -d --name <name> \
@@ -84,156 +119,29 @@ docker run --gpus all -d --name <name> \
   isaaclab:latest /isaac-sim/python.sh /workspace/biped_locomotion/<script> <args> --headless
 ```
 
-### Train — Flat Terrain
+Video requires Xvfb: `Xvfb :99 -screen 0 1920x1080x24 &` + `-e DISPLAY=:99 -v /tmp/.X11-unix:/tmp/.X11-unix`.
 
-```bash
-# From scratch (16384 envs, ~9.5 GB VRAM on L4)
-docker run --gpus all -d --name biped_train_flat \
-  -v /home/ubuntu/workspace:/workspace \
-  -v /home/ubuntu/results:/results \
-  -v /home/ubuntu/uploads:/uploads \
-  isaaclab:latest /isaac-sim/python.sh \
-  /workspace/biped_locomotion/biped_train_rsl.py \
-  --num_envs 16384 --max_iterations 3000 --headless
+| Config | Envs | VRAM | Iter Time |
+|--------|------|------|-----------|
+| Flat | 16384 | 9.5 GB | ~2.5s |
+| Rough | 8192 | 8.0 GB | ~5.2s |
 
-# Resume from checkpoint
-docker run --gpus all -d --name biped_train_flat \
-  -v /home/ubuntu/workspace:/workspace \
-  -v /home/ubuntu/results:/results \
-  -v /home/ubuntu/uploads:/uploads \
-  isaaclab:latest /isaac-sim/python.sh \
-  /workspace/biped_locomotion/biped_train_rsl.py \
-  --num_envs 16384 --max_iterations 3000 \
-  --resume /results/logs/rsl_rl/biped_flat_v52/model_2899.pt --headless
-```
+## Key Lessons
 
-### Train — Rough Terrain
-
-```bash
-# 8192 envs is sweet spot for rough on L4 (~8 GB VRAM, 5.23s/iter)
-docker run --gpus all -d --name biped_train_rough \
-  -v /home/ubuntu/workspace:/workspace \
-  -v /home/ubuntu/results:/results \
-  -v /home/ubuntu/uploads:/uploads \
-  isaaclab:latest /isaac-sim/python.sh \
-  /workspace/biped_locomotion/biped_train_rsl.py \
-  --rough --num_envs 8192 --max_iterations 6000 --headless
-```
-
-### Distill — Teacher-Student (G1-style)
-
-```bash
-# Phase 2: Distill student from teacher (flat terrain, 16384 envs)
-docker run --gpus all -d --name biped_distill \
-  -v /home/ubuntu/workspace:/workspace \
-  -v /home/ubuntu/results:/results \
-  -v /home/ubuntu/uploads:/uploads \
-  isaaclab:latest /isaac-sim/python.sh \
-  /workspace/biped_locomotion/biped_distill_rsl.py \
-  --teacher_checkpoint /results/winners/v57_model_2899.pt \
-  --num_envs 16384 --max_iterations 3000 --headless
-```
-
-### Record Video
-
-**IMPORTANT**: Video recording on L4 requires Xvfb (virtual framebuffer). Start it on the host before launching Docker:
-
-```bash
-# Start Xvfb on host (run once)
-pkill Xvfb; Xvfb :99 -screen 0 1920x1080x24 &>/dev/null &
-
-# Single agent, camera following
-docker run --gpus all -d --name biped_play \
-  -e DISPLAY=:99 \
-  -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v /home/ubuntu/workspace:/workspace \
-  -v /home/ubuntu/results:/results \
-  -v /home/ubuntu/uploads:/uploads \
-  isaaclab:latest /isaac-sim/python.sh \
-  /workspace/biped_locomotion/biped_play_rsl.py \
-  --checkpoint /results/winners/v57_rough_model_6498.pt \
-  --rough --video --video_length 500 --num_envs 8 \
-  --env_index 0 --video_dir /results/videos \
-  --headless
-```
-
-**Note**: First run takes ~6 min for shader compilation. Subsequent runs ~3 min.
-
-### Record 2×2 Grid Video (4 agents)
-
-```bash
-# Start Xvfb first
-pkill Xvfb; Xvfb :99 -screen 0 1920x1080x24 &>/dev/null &
-
-# Record all 4 agents (runs sequentially, ~20 min total)
-docker run --gpus all -d --name biped_grid \
-  -e DISPLAY=:99 \
-  -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v /home/ubuntu/workspace:/workspace \
-  -v /home/ubuntu/results:/results \
-  -v /home/ubuntu/uploads:/uploads \
-  isaaclab:latest bash /workspace/biped_locomotion/record_grid.sh \
-  /results/winners/v57_rough_model_6498.pt 500 --rough
-
-# ffmpeg merge runs on host (not in Docker — ffmpeg not installed in container)
-# record_grid.sh will fail at the merge step; run manually:
-ffmpeg -y \
-  -i /home/ubuntu/results/videos/grid/agent_0/rl-video-step-0.mp4 \
-  -i /home/ubuntu/results/videos/grid/agent_1/rl-video-step-0.mp4 \
-  -i /home/ubuntu/results/videos/grid/agent_2/rl-video-step-0.mp4 \
-  -i /home/ubuntu/results/videos/grid/agent_3/rl-video-step-0.mp4 \
-  -filter_complex \
-    "[0:v]scale=640:360[v0];[1:v]scale=640:360[v1];[2:v]scale=640:360[v2];[3:v]scale=640:360[v3]; \
-     [v0][v1]hstack=inputs=2[top];[v2][v3]hstack=inputs=2[bottom]; \
-     [top][bottom]vstack=inputs=2[out]" \
-  -map "[out]" -c:v libx264 -crf 23 -preset fast \
-  /home/ubuntu/results/videos/grid/v57_rough_grid.mp4
-```
-
-## GPU Benchmarks (NVIDIA L4, 23 GB)
-
-| Config | Envs | VRAM | GPU% | Iter Time | Notes |
-|--------|------|------|------|-----------|-------|
-| Flat | 16384 | 9.5 GB (41%) | 88-89% | ~2.5s | Standard |
-| Rough | 8192 | 8.0 GB (35%) | 67% | 5.23s | Sweet spot for L4 |
-| Rough | 16384 | 12.6 GB (55%) | — | 9.82s | Works but slower |
-
-## Winners (Checkpoints)
-
-| File | Config | Reward | track_lin | ep_len | Notes |
-|------|--------|--------|-----------|--------|-------|
-| `winners/v55b/model_5997.pt` | Flat, no self-collisions | 21.5 | 0.899 | 1000 | Best pre-self-collision |
-| `winners/v57_model_2899.pt` | Flat, self-collisions ON | 19.1 | 0.843 | 955 | Teacher for distillation |
-| `winners/v57_rough_model_6498.pt` | Rough, self-collisions ON | ~16.5 | ~0.75 | ~920 | Best rough terrain |
-
-## Distillation Pipeline (G1-style)
-
-Three-phase approach following NVIDIA's G1 implementation:
-
-1. **Teacher** (done): Standard PPO with `base_lin_vel` in obs → `v57_model_2899.pt`
-2. **Distill**: rsl_rl `DistillationRunner` — MSE loss between student and teacher actions. Student obs = 45-dim (no `base_lin_vel`), teacher obs = 48-dim.
-3. **Fine-tune**: Standard PPO using student obs only (not yet implemented)
-
-Uses rsl_rl built-in: `DistillationRunner`, `Distillation` algorithm, `StudentTeacher` module.
+1. **Forward is -Y**: Commands, curriculum, and play scripts must use lin_vel_y for forward
+2. **ImplicitActuator >> DCMotor**: DCMotor saturation kills exploration
+3. **10kg battery mass**: Prevents sliding exploits, improves feet_air_time 5×
+4. **Impact-based feet_air_time**: Prevents sliding exploits vs continuous reward
+5. **Joint mapping**: Isaac runtime order ≠ URDF order — always verify via `robot.joint_names`
+6. **Parallel ankle**: Set PR effort = 2 × motor torque, don't model coupling in sim (G1 approach)
+7. **Reward over-engineering kills performance**: Keep terms minimal, use terminations over penalties
+8. **Knees dominate power** (56% of 229W avg) — upright stance reduces load but knee_deviation too weak at -0.01
 
 ## Directories
 
 ```
-/home/ubuntu/workspace/biped_locomotion/  — source code
-/home/ubuntu/results/logs/rsl_rl/         — training logs + checkpoints
+/home/ubuntu/workspace/biped_locomotion/  — source
+/home/ubuntu/results/logs/rsl_rl/         — logs + checkpoints
 /home/ubuntu/results/winners/             — best checkpoints
-/home/ubuntu/results/videos/              — recorded videos
-/home/ubuntu/uploads/robot.urdf           — robot URDF
+/home/ubuntu/uploads/robot.urdf           — URDF
 ```
-
-## Key Lessons
-
-- **Xvfb required for video on L4**: `enable_cameras` hangs without virtual framebuffer. Always start `Xvfb :99` before recording.
-- **8192 envs for rough terrain**: 16384 works but ~2× slower per iter with marginal throughput gain.
-- **rsl_rl `--resume` adds to max_iterations**: `--max_iterations 6000 --resume model_200.pt` runs to iter 6200.
-- **Impact-based feet_air_time**: Key breakthrough over continuous — prevents sliding exploits.
-- **10kg battery mass**: Prevents sliding exploits by raising center of mass.
-- **Height-based contact detection**: Replaces force-based (force-based breaks with self-collisions ON).
-- **ImplicitActuator >> DCMotor for training**: DCMotor saturation kills exploration.
-
-See `CHECKPOINTS.md` for full version history.
