@@ -85,7 +85,7 @@ TRAIN_CFG = {
     },
     "policy": {
         "class_name": "ActorCritic",
-        "init_noise_std": 0.5,   # lower than teacher (1.0) — student is pre-trained
+        "init_noise_std": 0.5,   # overwritten by distilled std (~0.1)
         "actor_hidden_dims": [128, 128, 128],
         "critic_hidden_dims": [128, 128, 128],
         "activation": "elu",
@@ -94,11 +94,11 @@ TRAIN_CFG = {
         "class_name": "PPO",
         "value_loss_coef": 1.0,
         "use_clipped_value_loss": True,
-        "clip_param": 0.2,
-        "entropy_coef": 0.005,
+        "clip_param": 0.1,        # conservative — protect pre-trained actor
+        "entropy_coef": 0.001,     # low — student already knows what to do
         "num_learning_epochs": 5,
         "num_mini_batches": 4,
-        "learning_rate": 1.0e-3,
+        "learning_rate": 3.0e-4,   # 3x lower than teacher — gentle fine-tuning
         "schedule": "adaptive",
         "gamma": 0.99,
         "lam": 0.95,
@@ -113,31 +113,36 @@ def remap_distilled_to_actor_critic(distilled_path, runner):
 
     Distilled checkpoint has:
       - student.0.weight, student.0.bias, ... (MLP layers)
-    ActorCritic expects:
+      - std (action noise)
+    ActorCritic (rsl_rl) has:
       - actor.0.weight, actor.0.bias, ...
+      - critic.0.weight, ...
+      - std
 
-    Critic is left at its random initialization.
+    Student → actor. Critic left at random init. std is copied.
     """
     ckpt = torch.load(distilled_path, map_location="cuda:0")
     model_sd = ckpt["model_state_dict"]
 
     # Remap student.* → actor.*
-    actor_sd = {}
+    remap_sd = {}
     for k, v in model_sd.items():
         if k.startswith("student."):
-            new_key = k.replace("student.", "actor.", 1)
-            actor_sd[new_key] = v
+            remap_sd[k.replace("student.", "actor.", 1)] = v
+        elif k == "std":
+            remap_sd["std"] = v
 
-    if not actor_sd:
+    if not any(k.startswith("actor.") for k in remap_sd):
         raise ValueError(
             f"No student.* keys in checkpoint. "
             f"Available prefixes: {set(k.split('.')[0] for k in model_sd.keys())}"
         )
 
-    # Get current model state dict and update only actor weights
-    current_sd = runner.alg.actor_critic.state_dict()
+    # Get current model state dict and update actor + std
+    policy = runner.alg.policy
+    current_sd = policy.state_dict()
     matched = 0
-    for k, v in actor_sd.items():
+    for k, v in remap_sd.items():
         if k in current_sd:
             if current_sd[k].shape == v.shape:
                 current_sd[k] = v
@@ -147,8 +152,8 @@ def remap_distilled_to_actor_critic(distilled_path, runner):
         else:
             print(f"[WARN] Key {k} not found in ActorCritic")
 
-    runner.alg.actor_critic.load_state_dict(current_sd)
-    print(f"[INFO] Loaded {matched} actor weight tensors from distilled checkpoint")
+    policy.load_state_dict(current_sd)
+    print(f"[INFO] Loaded {matched} weight tensors from distilled checkpoint")
     print(f"[INFO] Critic initialized fresh (random)")
 
 
