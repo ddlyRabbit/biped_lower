@@ -242,7 +242,7 @@ Curriculum expands `lin_vel_y` toward (-3.0, 1.5) based on tracking reward.
 | Checkpoint | Terrain | Phase | Reward | Notes |
 |------------|---------|-------|--------|-------|
 | `v57_model_2899.pt` | Flat | Teacher | 19.1 | 15Nm ankle |
-| `v57_rough_model_6498.pt` | Rough | Teacher | ~16.5 | Pre torque-limit fix |
+| `v57_rough_model_19200.pt` | Rough | Teacher | 18.0 | 30Nm ankle, peak at iter 19200 |
 | `model_19200.pt` (rough_v57) | Rough | Teacher | 18.0 | 30Nm ankle, peak |
 | `model_2400.pt` (distill_flat) | Flat | Distill | 12.2 | Best distill (loss 0.20) |
 | `model_3400.pt` (student_flat) | Flat | Fine-tune | **19.0** | Student ≈ teacher |
