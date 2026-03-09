@@ -135,15 +135,20 @@ def main():
     # Load weights — different key prefix for student vs teacher
     model_sd = ckpt["model_state_dict"]
     if args_cli.student:
-        # Distilled checkpoint: student.* keys
+        # Try student.* (distilled) first, fall back to actor.* (fine-tuned)
         actor_sd = {}
         for k, v in model_sd.items():
             if k.startswith("student."):
                 actor_sd[k.replace("student.", "")] = v
         if not actor_sd:
+            for k, v in model_sd.items():
+                if k.startswith("actor."):
+                    actor_sd[k.replace("actor.", "")] = v
+            print("[INFO] No student.* keys, using actor.* (Phase 3 fine-tuned checkpoint)")
+        if not actor_sd:
             raise ValueError(
-                f"No student.* keys in checkpoint. Available prefixes: "
-                f"{set(k.split('.')[0] for k in model_sd.keys())}"
+                f"No student.* or actor.* keys in checkpoint. "
+                f"Available prefixes: {set(k.split('.')[0] for k in model_sd.keys())}"
             )
     else:
         # PPO checkpoint: actor.* keys
