@@ -1,0 +1,1144 @@
+<?xml version="1.0" ?>
+<!-- Generated using onshape-to-robot -->
+<!-- Onshape document_id: 025ce480a0f994712390eb2a / workspace_id: 947a8d3a9721d8f7f3a913d3 -->
+<robot name="biped">
+  <!-- Link assy_formfg___kd_b_102b_torso_btm -->
+  <link name="assy_formfg___kd_b_102b_torso_btm">
+    <inertial>
+      <origin xyz="0.000537258 0.000627404 -0.0648322" rpy="0 0 0"/>
+      <mass value="4.31925"/>
+      <inertia ixx="0.0113947" ixy="-2.07006e-05" ixz="-6.2346e-06" iyy="0.011234" iyz="-1.55136e-06" izz="0.0105519"/>
+    </inertial>
+    <!-- Part rs04 -->
+    <visual>
+      <origin xyz="0.0174228 0.161638 0.372777" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/rs04.stl"/>
+      </geometry>
+      <material name="rs04_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0174228 0.161638 0.372777" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/rs04.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part assy_formfg___kd_b_102b_torso_btm -->
+    <visual>
+      <origin xyz="0.000422801 0.00063775 -0.0112232" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/assy_formfg___kd_b_102b_torso_btm.stl"/>
+      </geometry>
+      <material name="assy_formfg___kd_b_102b_torso_btm_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.000422801 0.00063775 -0.0112232" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/assy_formfg___kd_b_102b_torso_btm.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs04_2 -->
+    <visual>
+      <origin xyz="-0.0165772 -0.160362 0.372777" rpy="-1.5708 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/rs04.stl"/>
+      </geometry>
+      <material name="rs04_2_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.0165772 -0.160362 0.372777" rpy="-1.5708 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/rs04.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_101l_6061 -->
+    <visual>
+      <origin xyz="0.000422801 0.00063775 -0.0112232" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_101l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_101l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.000422801 0.00063775 -0.0112232" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_101l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_101r_6061 -->
+    <visual>
+      <origin xyz="0.000422801 0.00063775 -0.0112232" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_101r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_101r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.000422801 0.00063775 -0.0112232" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_101r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part assy_formfg___kc_d_107r_r_cover -->
+    <visual>
+      <origin xyz="0.000422801 0.00063775 -0.0112232" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/assy_formfg___kc_d_107r_r_cover.stl"/>
+      </geometry>
+      <material name="assy_formfg___kc_d_107r_r_cover_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.000422801 0.00063775 -0.0112232" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/assy_formfg___kc_d_107r_r_cover.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_104r_sus304 -->
+    <visual>
+      <origin xyz="0.0644228 0.00063775 -0.0752232" rpy="-0 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_104r_sus304.stl"/>
+      </geometry>
+      <material name="kd_d_104r_sus304_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0644228 0.00063775 -0.0752232" rpy="-0 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_104r_sus304.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_104l_sus304 -->
+    <visual>
+      <origin xyz="0.0644228 0.00063775 -0.0752232" rpy="-0 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_104l_sus304.stl"/>
+      </geometry>
+      <material name="kd_d_104l_sus304_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0644228 0.00063775 -0.0752232" rpy="-0 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_104l_sus304.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part assy_formfg___kc_d_107l_l_cover -->
+    <visual>
+      <origin xyz="0.000422801 0.00063775 -0.0112232" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/assy_formfg___kc_d_107l_l_cover.stl"/>
+      </geometry>
+      <material name="assy_formfg___kc_d_107l_l_cover_material">
+        <color rgba="0.717647 0.717647 0.717647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.000422801 0.00063775 -0.0112232" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/assy_formfg___kc_d_107l_l_cover.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link kd_d_102r_6061 -->
+  <link name="kd_d_102r_6061">
+    <inertial>
+      <origin xyz="-0.00547037 -0.00477853 -0.0395434" rpy="0 0 0"/>
+      <mass value="0.523694"/>
+      <inertia ixx="0.000883986" ixy="-8.13997e-05" ixz="-7.78777e-05" iyy="0.00116871" iyz="-0.000164372" izz="0.00125922"/>
+    </inertial>
+    <!-- Part kd_d_105_sus304 -->
+    <visual>
+      <origin xyz="-0 0.064 0.054" rpy="-3.14159 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_105_sus304.stl"/>
+      </geometry>
+      <material name="kd_d_105_sus304_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0 0.064 0.054" rpy="-3.14159 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_105_sus304.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_103r_6061 -->
+    <visual>
+      <origin xyz="0 0.064 0.055" rpy="-3.14159 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_103r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_103r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0.064 0.055" rpy="-3.14159 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_103r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_102r_6061 -->
+    <visual>
+      <origin xyz="0 0.064 0.055" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_102r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_102r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0.064 0.055" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_102r_6061.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link kd_d_201r_6061 -->
+  <link name="kd_d_201r_6061">
+    <inertial>
+      <origin xyz="-0.000145033 -0.0585966 -0.0266073" rpy="0 0 0"/>
+      <mass value="2.43396"/>
+      <inertia ixx="0.0105345" ixy="-4.06249e-07" ixz="4.61482e-07" iyy="0.00328764" iyz="0.000384579" izz="0.0109014"/>
+    </inertial>
+    <!-- Part kd_d_201r_6061 -->
+    <visual>
+      <origin xyz="0.126 0.094 -0.02925" rpy="-3.14159 0 -0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_201r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_201r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.094 -0.02925" rpy="-3.14159 0 -0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_201r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_203_sus304 -->
+    <visual>
+      <origin xyz="0.126 0.094 -0.02125" rpy="-0 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_203_sus304.stl"/>
+      </geometry>
+      <material name="kd_d_203_sus304_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.094 -0.02125" rpy="-0 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_203_sus304.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs03 -->
+    <visual>
+      <origin xyz="0.126 -0.11275 0.06875" rpy="-1.5708 0 -0"/>
+      <geometry>
+        <mesh filename="package://assets/rs03.stl"/>
+      </geometry>
+      <material name="rs03_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.11275 0.06875" rpy="-1.5708 0 -0"/>
+      <geometry>
+        <mesh filename="package://assets/rs03.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs03_2 -->
+    <visual>
+      <origin xyz="0.126 0.094 -0.02925" rpy="3.14159 0 -0"/>
+      <geometry>
+        <mesh filename="package://assets/rs03.stl"/>
+      </geometry>
+      <material name="rs03_2_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.094 -0.02925" rpy="3.14159 0 -0"/>
+      <geometry>
+        <mesh filename="package://assets/rs03.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_202r_6061 -->
+    <visual>
+      <origin xyz="0.126 0.094 -0.02925" rpy="-3.14159 0 -0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_202r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_202r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.094 -0.02925" rpy="-3.14159 0 -0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_202r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part ball_bearing_37x25x7 -->
+    <visual>
+      <origin xyz="0 -0 -0.0716" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/ball_bearing_37x25x7.stl"/>
+      </geometry>
+      <material name="ball_bearing_37x25x7_material">
+        <color rgba="0.717647 0.709804 0.701961 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 -0 -0.0716" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/ball_bearing_37x25x7.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link kd_d_301r_6061 -->
+  <link name="kd_d_301r_6061">
+    <inertial>
+      <origin xyz="-0.00178881 0.0135092 -0.173426" rpy="0 0 0"/>
+      <mass value="2.3872"/>
+      <inertia ixx="0.0154687" ixy="0.00019296" ixz="-0.00113935" iyy="0.0140272" iyz="0.00150683" izz="0.00405939"/>
+    </inertial>
+    <!-- Part rs04_3 -->
+    <visual>
+      <origin xyz="0.126 0.004 0.236" rpy="-1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://assets/rs04.stl"/>
+      </geometry>
+      <material name="rs04_3_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.004 0.236" rpy="-1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://assets/rs04.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_302r_6061 -->
+    <visual>
+      <origin xyz="0.126 0.004 0.236" rpy="-1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_302r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_302r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.004 0.236" rpy="-1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_302r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_301r_6061 -->
+    <visual>
+      <origin xyz="0.126 0.004 0.236" rpy="-1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_301r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_301r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.004 0.236" rpy="-1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_301r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part ball_bearing_37x25x7_2 -->
+    <visual>
+      <origin xyz="-0.04445 0.021 -0.212" rpy="-0.628319 0 0"/>
+      <geometry>
+        <mesh filename="package://assets/ball_bearing_37x25x7.stl"/>
+      </geometry>
+      <material name="ball_bearing_37x25x7_2_material">
+        <color rgba="0.717647 0.709804 0.701961 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.04445 0.021 -0.212" rpy="-0.628319 0 0"/>
+      <geometry>
+        <mesh filename="package://assets/ball_bearing_37x25x7.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_403_6061 -->
+    <visual>
+      <origin xyz="0.126 -0.331447 0.0650811" rpy="-2.51327 -0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_403_6061.stl"/>
+      </geometry>
+      <material name="kd_d_403_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.331447 0.0650811" rpy="-2.51327 -0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_403_6061.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link kd_d_401r_6061 -->
+  <link name="kd_d_401r_6061">
+    <inertial>
+      <origin xyz="0.123964 -0.0317009 -0.0201806" rpy="0 0 0"/>
+      <mass value="2.09836"/>
+      <inertia ixx="0.00342873" ixy="0.000744894" ixz="0.000680562" iyy="0.0173705" iyz="-3.04465e-05" izz="0.0172835"/>
+    </inertial>
+    <!-- Part kd_d_401r_6061 -->
+    <visual>
+      <origin xyz="-0.448 -0.017 0.104" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_401r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_401r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.448 -0.017 0.104" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_401r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part r_end_stop_ankle_6061 -->
+    <visual>
+      <origin xyz="0.105552 -0.062872 -0.022" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/r_end_stop_ankle_6061.stl"/>
+      </geometry>
+      <material name="r_end_stop_ankle_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.105552 -0.062872 -0.022" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/r_end_stop_ankle_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part r_end_stop_ankle_6061_2 -->
+    <visual>
+      <origin xyz="0.194052 -0.062872 -0.022" rpy="-0 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/r_end_stop_ankle_6061.stl"/>
+      </geometry>
+      <material name="r_end_stop_ankle_6061_2_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.194052 -0.062872 -0.022" rpy="-0 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/r_end_stop_ankle_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_502_6061 -->
+    <visual>
+      <origin xyz="-0.447447 -0.176632 -0.019" rpy="-0 -0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_502_6061.stl"/>
+      </geometry>
+      <material name="kd_d_502_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.447447 -0.176632 -0.019" rpy="-0 -0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_502_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_502_6061_2 -->
+    <visual>
+      <origin xyz="0.747053 -0.176632 -0.025" rpy="3.14159 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_502_6061.stl"/>
+      </geometry>
+      <material name="kd_d_502_6061_2_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.747053 -0.176632 -0.025" rpy="3.14159 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_502_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs02 -->
+    <visual>
+      <origin xyz="0.191052 -0.176632 -0.575" rpy="1.5708 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/rs02.stl"/>
+      </geometry>
+      <material name="rs02_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.191052 -0.176632 -0.575" rpy="1.5708 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/rs02.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_402r_6061 -->
+    <visual>
+      <origin xyz="-0.448 -0.017 0.104" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_402r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_402r_6061_material">
+        <color rgba="0.882353 0.882353 0.882353 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.448 -0.017 0.104" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_402r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs02_2 -->
+    <visual>
+      <origin xyz="0.102553 -0.176632 -0.575" rpy="1.5708 -0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/rs02.stl"/>
+      </geometry>
+      <material name="rs02_2_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.102553 -0.176632 -0.575" rpy="1.5708 -0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/rs02.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link arb_uj111_cross_bearing -->
+  <link name="arb_uj111_cross_bearing">
+    <inertial>
+      <origin xyz="8.901e-09 -1.5576e-08 -0.03" rpy="0 0 0"/>
+      <mass value="0.317576"/>
+      <inertia ixx="0.000131465" ixy="4e-11" ixz="3e-12" iyy="7.61572e-05" iyz="-1.2e-11" izz="7.61572e-05"/>
+    </inertial>
+    <!-- Part arb_uj111_cross_bearing -->
+    <visual>
+      <origin xyz="-0 -0 -0.03" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/arb_uj111_cross_bearing.stl"/>
+      </geometry>
+      <material name="arb_uj111_cross_bearing_material">
+        <color rgba="0.72549 0.733333 0.717647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0 -0 -0.03" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/arb_uj111_cross_bearing.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link foot_6061 -->
+  <link name="foot_6061">
+    <inertial>
+      <origin xyz="-9.04e-10 0.0327815 -0.069626" rpy="0 0 0"/>
+      <mass value="0.427779"/>
+      <inertia ixx="0.0014449" ixy="-9e-12" ixz="-0" iyy="0.00161841" iyz="5.78063e-05" izz="0.00028165"/>
+    </inertial>
+    <!-- Part foot_6061 -->
+    <visual>
+      <origin xyz="-0.0425 0.043 0.02" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/foot_6061.stl"/>
+      </geometry>
+      <material name="foot_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.0425 0.043 0.02" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/foot_6061.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Joint from arb_uj111_cross_bearing to foot_6061 -->
+  <joint name="right_foot_roll_02" type="revolute">
+    <origin xyz="-0 0.03 -0.03" rpy="-1.5708 -1.5708 0"/>
+    <parent link="arb_uj111_cross_bearing"/>
+    <child link="foot_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="30" velocity="10" lower="-0.261799" upper="0.261799"/>
+  </joint>
+  <!-- Joint from kd_d_401r_6061 to arb_uj111_cross_bearing -->
+  <joint name="right_foot_pitch_02" type="revolute">
+    <origin xyz="0.288552 -0.0326806 0.008" rpy="-0 -0 -0"/>
+    <parent link="kd_d_401r_6061"/>
+    <child link="arb_uj111_cross_bearing"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="30" velocity="10" lower="-0.872665" upper="0.523599"/>
+  </joint>
+  <!-- Joint from kd_d_301r_6061 to kd_d_401r_6061 -->
+  <joint name="right_knee_04" type="revolute">
+    <origin xyz="0.022 0.021 -0.212" rpy="0 1.5708 0"/>
+    <parent link="kd_d_301r_6061"/>
+    <child link="kd_d_401r_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="100" velocity="10" lower="0" upper="2.70526"/>
+  </joint>
+  <!-- Joint from kd_d_201r_6061 to kd_d_301r_6061 -->
+  <joint name="right_hip_yaw_03" type="revolute">
+    <origin xyz="-0 -0.142 -0.02525" rpy="-1.5708 -1e-12 -0"/>
+    <parent link="kd_d_201r_6061"/>
+    <child link="kd_d_301r_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" velocity="10" lower="-1.5708" upper="1.5708"/>
+  </joint>
+  <!-- Joint from kd_d_102r_6061 to kd_d_201r_6061 -->
+  <joint name="right_hip_roll_03" type="revolute">
+    <origin xyz="-0.02925 -0.03 -0.071" rpy="-0 -1.5708 0"/>
+    <parent link="kd_d_102r_6061"/>
+    <child link="kd_d_201r_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" velocity="10" lower="-2.26893" upper="0.20944"/>
+  </joint>
+  <!-- Joint from assy_formfg___kd_b_102b_torso_btm to kd_d_102r_6061 -->
+  <joint name="right_hip_pitch_04" type="revolute">
+    <origin xyz="0.000422801 -0.0543622 -0.0752232" rpy="1.5708 0 3.14159"/>
+    <parent link="assy_formfg___kd_b_102b_torso_btm"/>
+    <child link="kd_d_102r_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="100" velocity="10" lower="-2.21657" upper="1.0472"/>
+  </joint>
+  <!-- Link kd_d_102l_6061 -->
+  <link name="kd_d_102l_6061">
+    <inertial>
+      <origin xyz="0.00547051 -0.00478043 -0.0395434" rpy="0 0 0"/>
+      <mass value="0.523694"/>
+      <inertia ixx="0.000883977" ixy="8.14427e-05" ixz="7.7879e-05" iyy="0.00116871" iyz="-0.000164342" izz="0.0012592"/>
+    </inertial>
+    <!-- Part kd_d_102l_6061 -->
+    <visual>
+      <origin xyz="0 0.064 0.055" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_102l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_102l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0.064 0.055" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_102l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_105_sus304_2 -->
+    <visual>
+      <origin xyz="0 -0.0607264 0.054" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_105_sus304.stl"/>
+      </geometry>
+      <material name="kd_d_105_sus304_2_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 -0.0607264 0.054" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_105_sus304.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_103l_6061 -->
+    <visual>
+      <origin xyz="0 0.064 0.055" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_103l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_103l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0.064 0.055" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_103l_6061.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link rs03 -->
+  <link name="rs03">
+    <inertial>
+      <origin xyz="-0.000144775 0.0585805 -0.026592" rpy="0 0 0"/>
+      <mass value="2.43395"/>
+      <inertia ixx="0.0105388" ixy="4.98609e-06" ixz="-4.15171e-06" iyy="0.0032877" iyz="-0.000386693" izz="0.0109056"/>
+    </inertial>
+    <!-- Part ball_bearing_37x25x7_3 -->
+    <visual>
+      <origin xyz="0 0 -0.0646" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/ball_bearing_37x25x7.stl"/>
+      </geometry>
+      <material name="ball_bearing_37x25x7_3_material">
+        <color rgba="0.717647 0.709804 0.701961 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.0646" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/ball_bearing_37x25x7.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs03_3 -->
+    <visual>
+      <origin xyz="0.126 0.094 -0.02925" rpy="3.14159 -0 0"/>
+      <geometry>
+        <mesh filename="package://assets/rs03.stl"/>
+      </geometry>
+      <material name="rs03_3_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.094 -0.02925" rpy="3.14159 -0 0"/>
+      <geometry>
+        <mesh filename="package://assets/rs03.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_201l_6061 -->
+    <visual>
+      <origin xyz="0.126 -0.094 -0.02925" rpy="3.14159 0 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_201l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_201l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.094 -0.02925" rpy="3.14159 0 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_201l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_202l_6061 -->
+    <visual>
+      <origin xyz="0.126 -0.094 -0.02925" rpy="3.14159 0 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_202l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_202l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.094 -0.02925" rpy="3.14159 0 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_202l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_203_sus304_2 -->
+    <visual>
+      <origin xyz="0.126 -0.094 -0.02925" rpy="-3.14159 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_203_sus304.stl"/>
+      </geometry>
+      <material name="kd_d_203_sus304_2_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.094 -0.02925" rpy="-3.14159 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_203_sus304.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs03_4 -->
+    <visual>
+      <origin xyz="0.126 0.11275 -0.11925" rpy="1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://assets/rs03.stl"/>
+      </geometry>
+      <material name="rs03_4_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.11275 -0.11925" rpy="1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://assets/rs03.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link kd_d_301l_6061 -->
+  <link name="kd_d_301l_6061">
+    <inertial>
+      <origin xyz="-0.0017883 -0.013508 -0.173323" rpy="0 0 0"/>
+      <mass value="2.38733"/>
+      <inertia ixx="0.0154522" ixy="-0.000193064" ixz="-0.00115262" iyy="0.0140108" iyz="-0.00153943" izz="0.00405975"/>
+    </inertial>
+    <!-- Part kd_d_302l_6061 -->
+    <visual>
+      <origin xyz="0.126 -0.004 0.236" rpy="1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_302l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_302l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.004 0.236" rpy="1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_302l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part ball_bearing_37x25x7_4 -->
+    <visual>
+      <origin xyz="-0.03745 -0.021 -0.212" rpy="0.628319 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://assets/ball_bearing_37x25x7.stl"/>
+      </geometry>
+      <material name="ball_bearing_37x25x7_4_material">
+        <color rgba="0.717647 0.709804 0.701961 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.03745 -0.021 -0.212" rpy="0.628319 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://assets/ball_bearing_37x25x7.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs04_4 -->
+    <visual>
+      <origin xyz="0.126 -0.004 -0.66" rpy="1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://assets/rs04.stl"/>
+      </geometry>
+      <material name="rs04_4_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.004 -0.66" rpy="1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://assets/rs04.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_301l_6061 -->
+    <visual>
+      <origin xyz="0.126 -0.004 0.236" rpy="1.5708 -0 -0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_301l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_301l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.004 0.236" rpy="1.5708 -0 -0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_301l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_403_6061_2 -->
+    <visual>
+      <origin xyz="0.126 0.331447 -0.489081" rpy="0.628319 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_403_6061.stl"/>
+      </geometry>
+      <material name="kd_d_403_6061_2_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.331447 -0.489081" rpy="0.628319 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_403_6061.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link kd_d_401l_6061 -->
+  <link name="kd_d_401l_6061">
+    <inertial>
+      <origin xyz="-0.123967 0.0317008 0.0185003" rpy="0 0 0"/>
+      <mass value="2.09831"/>
+      <inertia ixx="0.00343085" ixy="0.000744958" ixz="0.000683521" iyy="0.0173864" iyz="-4.0942e-05" izz="0.0172971"/>
+    </inertial>
+    <!-- Part rs02_3 -->
+    <visual>
+      <origin xyz="-0.102553 0.176632 -0.533" rpy="1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/rs02.stl"/>
+      </geometry>
+      <material name="rs02_3_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.102553 0.176632 -0.533" rpy="1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/rs02.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_402l_6061 -->
+    <visual>
+      <origin xyz="0.448 0.017 -0.106" rpy="1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_402l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_402l_6061_material">
+        <color rgba="0.882353 0.882353 0.882353 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.448 0.017 -0.106" rpy="1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_402l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_401l_6061 -->
+    <visual>
+      <origin xyz="0.448 0.017 -0.106" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_401l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_401l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.448 0.017 -0.106" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_401l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part l_end_stop_ankle_6061 -->
+    <visual>
+      <origin xyz="-0.194052 0.062872 0.02" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/l_end_stop_ankle_6061.stl"/>
+      </geometry>
+      <material name="l_end_stop_ankle_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.194052 0.062872 0.02" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/l_end_stop_ankle_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_502_6061_3 -->
+    <visual>
+      <origin xyz="-0.658552 0.176632 0.017" rpy="3.14159 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_502_6061.stl"/>
+      </geometry>
+      <material name="kd_d_502_6061_3_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.658552 0.176632 0.017" rpy="3.14159 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_502_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs02_4 -->
+    <visual>
+      <origin xyz="-0.191052 0.176632 -0.533" rpy="1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/rs02.stl"/>
+      </geometry>
+      <material name="rs02_4_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.191052 0.176632 -0.533" rpy="1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/rs02.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_502_6061_4 -->
+    <visual>
+      <origin xyz="0.358947 0.176632 0.023" rpy="-0 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_502_6061.stl"/>
+      </geometry>
+      <material name="kd_d_502_6061_4_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.358947 0.176632 0.023" rpy="-0 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://assets/kd_d_502_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part l_end_stop_ankle_6061_2 -->
+    <visual>
+      <origin xyz="-0.105552 0.062872 0.02" rpy="0 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/l_end_stop_ankle_6061.stl"/>
+      </geometry>
+      <material name="l_end_stop_ankle_6061_2_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.105552 0.062872 0.02" rpy="0 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/l_end_stop_ankle_6061.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link arb_uj111_cross_bearing_2 -->
+  <link name="arb_uj111_cross_bearing_2">
+    <inertial>
+      <origin xyz="8.901e-09 -1.5576e-08 -0.03" rpy="0 0 0"/>
+      <mass value="0.317576"/>
+      <inertia ixx="0.000131465" ixy="4e-11" ixz="3e-12" iyy="7.61572e-05" iyz="-1.2e-11" izz="7.61572e-05"/>
+    </inertial>
+    <!-- Part arb_uj111_cross_bearing_2 -->
+    <visual>
+      <origin xyz="0 -0 -0.03" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/arb_uj111_cross_bearing.stl"/>
+      </geometry>
+      <material name="arb_uj111_cross_bearing_2_material">
+        <color rgba="0.72549 0.733333 0.717647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 -0 -0.03" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/arb_uj111_cross_bearing.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link foot_6061_2 -->
+  <link name="foot_6061_2">
+    <inertial>
+      <origin xyz="-9.04e-10 0.0327815 -0.069626" rpy="0 0 0"/>
+      <mass value="0.427779"/>
+      <inertia ixx="0.0014449" ixy="-9e-12" ixz="-0" iyy="0.00161841" iyz="5.78063e-05" izz="0.00028165"/>
+    </inertial>
+    <!-- Part foot_6061_2 -->
+    <visual>
+      <origin xyz="-0.0425 0.043 0.02" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/foot_6061.stl"/>
+      </geometry>
+      <material name="foot_6061_2_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.0425 0.043 0.02" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://assets/foot_6061.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Joint from arb_uj111_cross_bearing_2 to foot_6061_2 -->
+  <joint name="left_foot_roll_02" type="revolute">
+    <origin xyz="0 0.03 -0.03" rpy="-1.5708 -1.5708 0"/>
+    <parent link="arb_uj111_cross_bearing_2"/>
+    <child link="foot_6061_2"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="30" velocity="10" lower="-0.261799" upper="0.261799"/>
+  </joint>
+  <!-- Joint from kd_d_401l_6061 to arb_uj111_cross_bearing_2 -->
+  <joint name="left_foot_pitch_02" type="revolute">
+    <origin xyz="-0.288552 0.0325676 0.05" rpy="-0 0 3.14159"/>
+    <parent link="kd_d_401l_6061"/>
+    <child link="arb_uj111_cross_bearing_2"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="30" velocity="10" lower="-0.872665" upper="0.523599"/>
+  </joint>
+  <!-- Joint from kd_d_301l_6061 to kd_d_401l_6061 -->
+  <joint name="left_knee_04" type="revolute">
+    <origin xyz="0.02 -0.021 -0.212" rpy="0 -1.5708 0"/>
+    <parent link="kd_d_301l_6061"/>
+    <child link="kd_d_401l_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="100" velocity="10" lower="0" upper="2.70526"/>
+  </joint>
+  <!-- Joint from rs03 to kd_d_301l_6061 -->
+  <joint name="left_hip_yaw_03" type="revolute">
+    <origin xyz="-0 0.142 -0.02525" rpy="1.5708 0 -0"/>
+    <parent link="rs03"/>
+    <child link="kd_d_301l_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" velocity="10" lower="-1.5708" upper="1.5708"/>
+  </joint>
+  <!-- Joint from kd_d_102l_6061 to rs03 -->
+  <joint name="left_hip_roll_03" type="revolute">
+    <origin xyz="0.02925 -0.03 -0.071" rpy="3.14159 -1.5708 0"/>
+    <parent link="kd_d_102l_6061"/>
+    <child link="rs03"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" velocity="10" lower="-0.20944" upper="2.26893"/>
+  </joint>
+  <!-- Joint from assy_formfg___kd_b_102b_torso_btm to kd_d_102l_6061 -->
+  <joint name="left_hip_pitch_04" type="revolute">
+    <origin xyz="0.000422801 0.0556378 -0.0752232" rpy="1.5708 0 -0"/>
+    <parent link="assy_formfg___kd_b_102b_torso_btm"/>
+    <child link="kd_d_102l_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="100" velocity="10" lower="-1.0472" upper="2.21657"/>
+  </joint>
+
+  <link name="battery_chest">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <mass value="10.0" />
+      <inertia ixx="0.051097" ixy="0" ixz="0" iyy="0.046563" iyz="0" izz="0.030994" />
+    </inertial>
+    <visual>
+      <geometry>
+        <box size="0.1260 0.1460 0.2" />
+      </geometry>
+      <material name="battery_material">
+        <color rgba="0.2 0.2 0.2 1" />
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.1260 0.1460 0.2" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="torso_to_battery" type="fixed">
+    <origin xyz="0.0004 0.0006 0.1263" rpy="0 0 0" />
+    <parent link="assy_formfg___kd_b_102b_torso_btm" />
+    <child link="battery_chest" />
+  </joint>
+</robot>

@@ -1,4 +1,4 @@
-# Biped V52 — Exact Berkeley Humanoid (original) everything except actuators
+# Biped V58 — +X forward axis, dual URDF support (heavy/light)
 # Source: https://github.com/HybridRobotics/isaac_berkeley_humanoid
 # Our actuators (2× Berkeley ImplicitActuator) retained. Everything else matched.
 #
@@ -19,6 +19,14 @@
 #   DECIMATION:   4 (was 8, matching Berkeley 50Hz control)
 #
 # NOTE: action_scale=0.25 retained (Berkeley uses 0.5)
+
+###############################################################################
+# URDF selection — use --urdf heavy|light flag in training scripts
+# Both URDFs use +X forward axis. Heavy=original material (~30.7kg), Light=~15.6kg
+###############################################################################
+URDF_HEAVY = "/uploads/heavy/robot.urdf"
+URDF_LIGHT = "/uploads/light/robot.urdf"
+URDF_DEFAULT = URDF_HEAVY
 
 import math
 import torch
@@ -110,6 +118,30 @@ def feet_air_time(
             )
 
     return reward
+
+
+def feet_air_time_adaptive(
+    env: "ManagerBasedRLEnv",
+    command_name: str,
+    asset_cfg: SceneEntityCfg,
+    threshold_min: float = 0.05,
+    threshold_max: float = 0.5,
+    height_threshold: float = 0.058,
+    switch_step: int = 500 * 24,  # switch from continuous to impact after 500 iters
+) -> torch.Tensor:
+    """Adaptive feet air time: continuous for first N steps, then impact-based.
+
+    Continuous reward bootstraps stepping behavior early in training.
+    Impact-based reward refines gait quality once basic walking is established.
+    switch_step = 500 iters * 24 steps/env = 12000 steps.
+    """
+    if env.common_step_counter < switch_step:
+        return feet_air_time(env, command_name, asset_cfg, height_threshold)
+    else:
+        return feet_air_time_impact(
+            env, command_name, asset_cfg,
+            threshold_min, threshold_max, height_threshold,
+        )
 
 
 def feet_air_time_impact(
@@ -296,12 +328,12 @@ def modify_command_velocity(
 ):
     """Adaptive command velocity curriculum — exact Berkeley.
 
-    Expands lin_vel_y range when tracking reward is good (>80% of max). Forward is -Y.
+    Expands lin_vel_x range when tracking reward is good (>80% of max). Forward is +X.
     """
     command_cfg = env.command_manager.get_term("base_velocity").cfg
-    curr_lin_vel_y = command_cfg.ranges.lin_vel_y
+    curr_lin_vel_x = command_cfg.ranges.lin_vel_x
     if env.common_step_counter < starting_step:
-        return curr_lin_vel_y[1]
+        return curr_lin_vel_x[1]
     if env.common_step_counter % interval == 0:
         term_cfg = env.reward_manager.get_term_cfg(term_name)
         rew = env.reward_manager._episode_sums[term_name][env_ids]
@@ -309,12 +341,12 @@ def modify_command_velocity(
             torch.mean(rew) / env.max_episode_length
             > 0.8 * term_cfg.weight * env.step_dt
         ):
-            curr_lin_vel_y = (
-                np.clip(curr_lin_vel_y[0] - 0.5, max_velocity[0], 0.0),
-                np.clip(curr_lin_vel_y[1] + 0.5, 0.0, max_velocity[1]),
+            curr_lin_vel_x = (
+                np.clip(curr_lin_vel_x[0] - 0.5, max_velocity[0], 0.0),
+                np.clip(curr_lin_vel_x[1] + 0.5, 0.0, max_velocity[1]),
             )
-            command_cfg.ranges.lin_vel_y = curr_lin_vel_y
-    return curr_lin_vel_y[1]
+            command_cfg.ranges.lin_vel_x = curr_lin_vel_x
+    return curr_lin_vel_x[1]
 
 
 ###############################################################################
@@ -323,7 +355,7 @@ def modify_command_velocity(
 
 BIPED_CFG = ArticulationCfg(
     spawn=sim_utils.UrdfFileCfg(
-        asset_path="/uploads/robot.urdf",
+        asset_path=URDF_DEFAULT,
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -352,8 +384,8 @@ BIPED_CFG = ArticulationCfg(
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.0, 0.0, 0.80),
         joint_pos={
-            "right_hip_pitch.*": -0.2,
-            "left_hip_pitch.*": 0.2,
+            "right_hip_pitch.*": 0.2,
+            "left_hip_pitch.*": -0.2,
             ".*hip_roll.*": 0.0,
             ".*hip_yaw.*": 0.0,
             ".*knee.*": 0.4,
@@ -382,17 +414,17 @@ BIPED_CFG = ArticulationCfg(
         "knee": ImplicitActuatorCfg(
             joint_names_expr=[".*knee.*"],
             effort_limit=100.0, velocity_limit=10.0,
-            stiffness=30.0, damping=3.0, armature=0.024,
+            stiffness=15.0, damping=3.0, armature=0.024,
         ),
         "foot_pitch": ImplicitActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
-            effort_limit=15.0, velocity_limit=10.0,
-            stiffness=2.0, damping=0.2, armature=0.0112,
+            effort_limit=30.0, velocity_limit=10.0,
+            stiffness=1.0, damping=0.2, armature=0.0112,
         ),
         "foot_roll": ImplicitActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
-            effort_limit=15.0, velocity_limit=10.0,
-            stiffness=2.0, damping=0.2, armature=0.001,
+            effort_limit=30.0, velocity_limit=10.0,
+            stiffness=1.0, damping=0.2, armature=0.001,
         ),
     },
 )
@@ -454,8 +486,8 @@ class CommandsCfg:
         rel_standing_envs=0.02,
         rel_heading_envs=1.0,
         ranges=base_mdp.UniformVelocityCommandCfg.Ranges(
-            lin_vel_x=(-0.5, 0.5),      # lateral (small)
-            lin_vel_y=(-1.5, 0.5),      # forward=-Y (biased negative)
+            lin_vel_x=(-1.5, 0.5),      # forward=+X (biased positive)
+            lin_vel_y=(-0.5, 0.5),      # lateral (small)
             ang_vel_z=(-1.0, 1.0),
             heading=(-math.pi, math.pi),
         ),
@@ -596,7 +628,7 @@ class RewardsCfg:
     )
     action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.01)
     feet_air_time = RewTerm(
-        func="biped_env_cfg:feet_air_time_impact",
+        func="biped_env_cfg:feet_air_time_adaptive",
         weight=2.0,
         params={
             "command_name": "base_velocity",
@@ -604,6 +636,7 @@ class RewardsCfg:
             "threshold_min": 0.075,
             "threshold_max": 0.5,
             "height_threshold": 0.063,
+            "switch_step": 500 * 24,  # continuous → impact after 500 iters
         },
     )
     feet_slide = RewTerm(
@@ -780,7 +813,7 @@ class EventsCfg:
 #
 # push_force_levels: after iter 1500, adaptively increase/decrease push
 #   based on base_contact vs time_out ratio
-# command_vel: after iter 5000, expand lin_vel_y when tracking > 80% of max (forward is -Y)
+# command_vel: after iter 1000, expand lin_vel_x when tracking > 80% of max (forward is +X)
 ###############################################################################
 
 @configclass
@@ -798,7 +831,7 @@ class CurriculumsCfg:
         func="biped_env_cfg:modify_command_velocity",
         params={
             "term_name": "track_lin_vel_xy_exp",
-            "max_velocity": [-3.0, 1.5],
+            "max_velocity": [-0.5, 3.0],  # expand +X forward range
             "interval": 200 * 24,         # check every 200 iterations
             "starting_step": 1000 * 24,     # start after 25 iterations
         },

@@ -17,6 +17,7 @@ parser.add_argument("--rough", action="store_true", help="Use rough terrain conf
 parser.add_argument("--student", action="store_true", help="Play student (distilled) policy")
 parser.add_argument("--env_index", type=int, default=0, help="Which env to follow with camera")
 parser.add_argument("--video_dir", type=str, default="/results/videos", help="Video output directory")
+parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"], help="URDF variant")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -27,6 +28,16 @@ app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 import gymnasium as gym
+def apply_urdf_selection(env_cfg, urdf_choice):
+    """Override URDF path based on --urdf flag."""
+    from biped_env_cfg import URDF_HEAVY, URDF_LIGHT
+    if urdf_choice == "light":
+        env_cfg.scene.robot.spawn.asset_path = URDF_LIGHT
+        print(f"[INFO] Using light URDF: {URDF_LIGHT}")
+    else:
+        env_cfg.scene.robot.spawn.asset_path = URDF_HEAVY
+        print(f"[INFO] Using heavy URDF: {URDF_HEAVY}")
+
 import torch
 import torch.nn as nn
 
@@ -88,6 +99,7 @@ def main():
             env_id = "Biped-Flat-Play-v0"
 
     env_cfg.scene.num_envs = args_cli.num_envs
+    apply_urdf_selection(env_cfg, args_cli.urdf)
 
     # Camera follows robot — offset behind and above
     env_cfg.viewer.origin_type = "asset_root"

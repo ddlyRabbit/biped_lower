@@ -40,12 +40,23 @@ parser.add_argument("--distilled", type=str, default=None,
                     help="Path to distilled student checkpoint (Phase 2 output)")
 parser.add_argument("--resume", type=str, default=None,
                     help="Path to PPO fine-tune checkpoint to resume from")
+parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"], help="URDF variant")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 import gymnasium as gym
+def apply_urdf_selection(env_cfg, urdf_choice):
+    """Override URDF path based on --urdf flag."""
+    from biped_env_cfg import URDF_HEAVY, URDF_LIGHT
+    if urdf_choice == "light":
+        env_cfg.scene.robot.spawn.asset_path = URDF_LIGHT
+        print(f"[INFO] Using light URDF: {URDF_LIGHT}")
+    else:
+        env_cfg.scene.robot.spawn.asset_path = URDF_HEAVY
+        print(f"[INFO] Using heavy URDF: {URDF_HEAVY}")
+
 import torch
 
 from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper

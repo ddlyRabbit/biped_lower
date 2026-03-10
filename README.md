@@ -33,8 +33,12 @@ biped_locomotion/
 └── __init__.py
 
 urdf/
-├── robot.urdf                        ← Robot URDF (12 DoF, ~30.3kg with 10kg battery)
-└── assets/                           ← 35 STL meshes
+├── heavy/                            ← Original material (~30.7kg with 10kg battery)
+│   ├── robot.urdf
+│   └── assets/                       ← 35 STL meshes
+└── light/                            ← Lighter material (~15.6kg with 0.5kg battery)
+    ├── robot.urdf
+    └── assets/                       ← 35 STL meshes
 
 winners/
 ├── README.md                         ← Checkpoint descriptions
@@ -73,8 +77,8 @@ biped_play_rsl.py ──imports──► all env configs (based on --rough/--stu
 
 ## Robot
 
-- URDF: `urdf/robot.urdf` (12 DoF, ~30.3 kg with 10kg battery_chest)
-- Forward axis: **-Y** (not +X). Asymmetric hip roll/pitch limits.
+- URDFs: `urdf/heavy/robot.urdf` (~30.7 kg) and `urdf/light/robot.urdf` (~15.6 kg)
+- Forward axis: **+X**. Asymmetric hip roll/pitch limits.
 - Parallel linkage ankle (G1-style): each PR joint = 2 × motor torque
 
 ## 3-Phase Training Pipeline
@@ -109,7 +113,7 @@ All commands inside `isaaclab:latest` on GCP. Docker template:
 docker run --gpus all -d --name <NAME> \
   -v /home/ubuntu/workspace:/workspace \
   -v /home/ubuntu/results:/results \
-  -v /home/ubuntu/uploads:/uploads \
+  -v /home/ubuntu/uploads:/uploads  # URDFs mounted here \
   isaaclab:latest /isaac-sim/python.sh /workspace/biped_locomotion/<SCRIPT> <ARGS> --headless
 ```
 
@@ -120,7 +124,7 @@ docker run --gpus all -d --name <NAME> \
 docker run --gpus all -d --name biped_train_flat \
   ... isaaclab:latest /isaac-sim/python.sh \
   /workspace/biped_locomotion/biped_train_rsl.py \
-  --num_envs 16384 --max_iterations 3000 --headless
+  --num_envs 16384 --max_iterations 3000 --urdf heavy --headless
 
 # Monitor
 docker logs -f biped_train_flat 2>&1 | grep "Mean reward"
@@ -214,9 +218,9 @@ docker run --gpus all -d --name biped_play \
 |-------|----|----|-------------|----------|
 | hip_roll/yaw | 20 | 3.0 | 50 | 0.0112 |
 | hip_pitch | 30 | 3.0 | 100 | 0.0152 |
-| knee | 30 | 3.0 | 100 | 0.024 |
-| foot_pitch | 2.0 | 0.2 | 30 | 0.0112 |
-| foot_roll | 2.0 | 0.2 | 30 | 0.001 |
+| knee | 15 | 3.0 | 100 | 0.024 |
+| foot_pitch | 1.0 | 0.2 | 30 | 0.0112 |
+| foot_roll | 1.0 | 0.2 | 30 | 0.001 |
 
 Foot: 30Nm each via parallel linkage (2 motors × 15Nm). ImplicitActuator for training.
 
@@ -237,12 +241,12 @@ Rough terrain: `flat_orientation_l2=0`, `dof_pos_limits=0`.
 ## Command Ranges
 
 ```python
-lin_vel_x = (-0.5, 0.5)    # lateral (small)
-lin_vel_y = (-1.5, 0.5)    # forward=-Y (biased)
+lin_vel_x = (-1.5, 0.5)    # forward=+X (biased)
+lin_vel_y = (-0.5, 0.5)    # lateral (small)
 ang_vel_z = (-1.0, 1.0)
 ```
 
-Curriculum expands `lin_vel_y` toward (-3.0, 1.5) based on tracking reward.
+Curriculum expands `lin_vel_x` toward (-0.5, 3.0) based on tracking reward.
 
 ## Winners (in `winners/`)
 
@@ -255,7 +259,7 @@ Curriculum expands `lin_vel_y` toward (-3.0, 1.5) based on tracking reward.
 
 ## Key Lessons
 
-1. **Forward is -Y**: Commands, curriculum, play scripts must use lin_vel_y for forward
+1. **Forward is +X**: Commands, curriculum use lin_vel_x for forward
 2. **ImplicitActuator >> DCMotor**: DCMotor saturation kills exploration
 3. **10kg battery mass**: Prevents sliding exploits, improves feet_air_time 5×
 4. **Impact-based feet_air_time**: Prevents sliding exploits vs continuous reward
