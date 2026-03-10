@@ -152,7 +152,7 @@ def feet_air_time_impact(
     threshold_max: float = 0.5,
     height_threshold: float = 0.058,
 ) -> torch.Tensor:
-    """Impact-based feet air time reward — height detection, V55 thresholds.
+    """Impact-based feet air time reward — height detection.
 
     Rewards at landing proportional to air time. Penalizes short steps
     (< threshold_min). Caps at threshold_max. Uses foot Z for contact.
@@ -827,11 +827,12 @@ class EventsCfg:
 
 
 ###############################################################################
-# Curriculum — EXACT Berkeley (push_force + command_vel)
+# Curriculum — Berkeley-style (push_force + command_vel)
 #
-# push_force_levels: after iter 1500, adaptively increase/decrease push
-#   based on base_contact vs time_out ratio
-# command_vel: after iter 1000, expand lin_vel_x when tracking > 80% of max (forward is +X)
+# push_force_levels: after iter 1000, adaptively increase/decrease push
+#   based on base_contact vs time_out ratio (Berkeley starts at 1500)
+# command_vel: after iter 1000, expand lin_vel_x when tracking > 80% of max
+#   (Berkeley starts at 5000). Forward is +X.
 ###############################################################################
 
 @configclass
@@ -842,7 +843,7 @@ class CurriculumsCfg:
             "term_name": "push_robot",
             "max_velocity": [3.0, 3.0],
             "interval": 200 * 24,         # check every 200 iterations
-            "starting_step": 1000 * 24,     # start after 25 iterations
+            "starting_step": 1000 * 24,     # start after 1000 iterations
         },
     )
     command_vel = CurrTerm(
@@ -851,7 +852,7 @@ class CurriculumsCfg:
             "term_name": "track_lin_vel_xy_exp",
             "max_velocity": [-0.5, 3.0],  # expand +X forward range
             "interval": 200 * 24,         # check every 200 iterations
-            "starting_step": 1000 * 24,     # start after 25 iterations
+            "starting_step": 1000 * 24,     # start after 1000 iterations
         },
     )
 
@@ -872,11 +873,11 @@ class BipedFlatEnvCfg(ManagerBasedRLEnvCfg):
     curriculums: CurriculumsCfg = CurriculumsCfg()
 
     def __post_init__(self):
-        self.decimation = 4  # Berkeley exact (50 Hz control, was 8)
+        self.decimation = 4  # 50 Hz control (Berkeley exact)
         self.episode_length_s = 20.0
         self.sim.dt = 0.005
         self.sim.render_interval = self.decimation
-        self.sim.disable_contact_processing = False  # V56: enable for self-collisions
+        self.sim.disable_contact_processing = False  # required for self-collisions
         self.sim.physics_material = self.scene.terrain.physics_material
         self.sim.physx.gpu_max_rigid_patch_count = 10 * 2**15
         if self.scene.contact_forces is not None:

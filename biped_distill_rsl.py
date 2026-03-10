@@ -4,14 +4,14 @@ Supports both flat and rough terrain distillation.
 
 Usage:
   # Flat distillation
-  python biped_distill_rsl.py --teacher_checkpoint /results/winners/flat_teacher.pt
+  python biped_distill_rsl.py --teacher_checkpoint /results/winners/flat_teacher.pt --urdf heavy
 
   # Rough distillation
-  python biped_distill_rsl.py --rough --teacher_checkpoint /results/logs/rsl_rl/biped_rough_v57/model_19200.pt
+  python biped_distill_rsl.py --rough --teacher_checkpoint /results/winners/rough_teacher.pt --urdf heavy
 
   # Resume
   python biped_distill_rsl.py --rough --resume /results/logs/rsl_rl/biped_distill_rough/model_1000.pt \\
-      --teacher_checkpoint /results/logs/rsl_rl/biped_rough_v57/model_19200.pt
+      --teacher_checkpoint /results/winners/rough_teacher.pt --urdf heavy
 """
 
 import argparse

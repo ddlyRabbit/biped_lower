@@ -1,11 +1,12 @@
 """Train biped V58 — +X forward, dual URDF (heavy/light).
 
-PPO differences from V51b:
-  - actor/critic: [128, 128, 128] (was [256, 128, 128])
-  - init_noise_std: 1.0 (was 1.5)
-  - entropy_coef: 0.005 (was 0.02)
-  - max_iterations: 15000 (was 6000)
-  - save_interval: 200 (was 100)
+PPO config (Berkeley-matched):
+  - actor/critic: [128, 128, 128], ELU
+  - init_noise_std: 1.0
+  - entropy_coef: 0.005
+  - LR: 1e-3 (adaptive)
+  - max_iterations: 15000
+  - save_interval: 200
 """
 
 import argparse
