@@ -831,7 +831,7 @@ class EventsCfg:
 #
 # push_force_levels: after iter 1000, adaptively increase/decrease push
 #   based on base_contact vs time_out ratio (Berkeley starts at 1500)
-# command_vel: after iter 1000, expand lin_vel_x when tracking > 80% of max
+# command_vel: after iter 3000, expand lin_vel_x when tracking > 80% of max
 #   (Berkeley starts at 5000). Forward is +X.
 ###############################################################################
 
@@ -852,7 +852,7 @@ class CurriculumsCfg:
             "term_name": "track_lin_vel_xy_exp",
             "max_velocity": [-0.5, 3.0],  # expand +X forward range
             "interval": 200 * 24,         # check every 200 iterations
-            "starting_step": 1000 * 24,     # start after 1000 iterations
+            "starting_step": 3000 * 24,     # start after 3000 iterations
         },
     )
 
