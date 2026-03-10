@@ -1,6 +1,5 @@
 __pycache__/
 *.pyc
-*.pt
 *.onnx
 *.mp4
 *.tar.gz
