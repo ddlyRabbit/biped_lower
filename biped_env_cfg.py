@@ -748,6 +748,24 @@ class EventsCfg:
         },
         mode="startup",
     )
+    scale_all_joint_armature = EventTerm(
+        func=base_mdp.randomize_joint_parameters,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
+            "armature_distribution_params": (1.0, 1.05),
+            "operation": "scale",
+        },
+        mode="startup",
+    )
+    scale_all_joint_friction = EventTerm(
+        func=base_mdp.randomize_joint_parameters,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
+            "friction_distribution_params": (0.9, 1.1),
+            "operation": "scale",
+        },
+        mode="startup",
+    )
     scale_all_actuator_gains = EventTerm(
         func=base_mdp.randomize_actuator_gains,
         params={
