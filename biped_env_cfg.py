@@ -399,17 +399,17 @@ BIPED_CFG = ArticulationCfg(
         "hip_roll": ImplicitActuatorCfg(
             joint_names_expr=[".*hip_roll.*"],
             effort_limit=50.0, velocity_limit=10.0,
-            stiffness=20.0, damping=3.0, armature=0.0112,
+            stiffness=10.0, damping=3.0, armature=0.0112,
         ),
         "hip_yaw": ImplicitActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
             effort_limit=50.0, velocity_limit=10.0,
-            stiffness=20.0, damping=3.0, armature=0.0112,
+            stiffness=10.0, damping=3.0, armature=0.0112,
         ),
         "hip_pitch": ImplicitActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
             effort_limit=100.0, velocity_limit=10.0,
-            stiffness=30.0, damping=3.0, armature=0.0152,
+            stiffness=15.0, damping=3.0, armature=0.0152,
         ),
         "knee": ImplicitActuatorCfg(
             joint_names_expr=[".*knee.*"],
