@@ -113,6 +113,7 @@ def main():
 
     env_cfg.scene.num_envs = args_cli.num_envs
     env_cfg.seed = args_cli.seed
+    apply_urdf_selection(env_cfg, args_cli.urdf)
 
     env = gym.make(env_id, cfg=env_cfg)
     env = RslRlVecEnvWrapper(env)

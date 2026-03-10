@@ -110,6 +110,7 @@ def main():
     env_cfg = env_cfg_class()
     env_cfg.scene.num_envs = args_cli.num_envs
     env_cfg.seed = args_cli.seed
+    apply_urdf_selection(env_cfg, args_cli.urdf)
 
     # Reduce envs for rough terrain (VRAM)
     if args_cli.rough and args_cli.num_envs > 8192:

@@ -8,7 +8,7 @@ Bipedal walking via PPO + teacher-student distillation. Isaac Sim / IsaacLab, rs
 biped_locomotion/
 │
 ├── Config ─────────────────────────────────────────────────────────
-│   ├── biped_env_cfg.py              ← Flat env (V57). Scene, rewards, obs, actuators
+│   ├── biped_env_cfg.py              ← Flat env (V58). Scene, rewards, obs, actuators
 │   ├── biped_rough_env_cfg.py        ← Rough env (inherits flat + terrain + height scanner)
 │   └── biped_student_env_cfg.py      ← Student env (removes base_lin_vel from policy obs)
 │       ├── FlatStudentObservationsCfg    → policy(45d) + teacher(48d) + critic(48d)
@@ -78,6 +78,7 @@ biped_play_rsl.py ──imports──► all env configs (based on --rough/--stu
 ## Robot
 
 - URDFs: `urdf/heavy/robot.urdf` (~30.7 kg) and `urdf/light/robot.urdf` (~15.6 kg)
+- Select variant with `--urdf heavy|light` in all training and inference scripts (default: heavy)
 - Forward axis: **+X**. Asymmetric hip roll/pitch limits.
 - Parallel linkage ankle (G1-style): each PR joint = 2 × motor torque
 
@@ -113,7 +114,7 @@ All commands inside `isaaclab:latest` on GCP. Docker template:
 docker run --gpus all -d --name <NAME> \
   -v /home/ubuntu/workspace:/workspace \
   -v /home/ubuntu/results:/results \
-  -v /home/ubuntu/uploads:/uploads  # URDFs mounted here \
+  -v /home/ubuntu/uploads:/uploads \
   isaaclab:latest /isaac-sim/python.sh /workspace/biped_locomotion/<SCRIPT> <ARGS> --headless
 ```
 
@@ -138,7 +139,7 @@ docker logs -f biped_train_flat 2>&1 | grep "Mean reward"
 docker run --gpus all -d --name biped_train_rough \
   ... isaaclab:latest /isaac-sim/python.sh \
   /workspace/biped_locomotion/biped_train_rsl.py \
-  --rough --num_envs 8192 --max_iterations 6000 --headless
+  --rough --num_envs 8192 --max_iterations 6000 --urdf heavy --headless
 # ~5.2s/iter, ~8.5h
 ```
 
@@ -216,12 +217,13 @@ docker run --gpus all -d --name biped_play \
 
 | Joint | Kp | Kd | Effort (Nm) | Armature |
 |-------|----|----|-------------|----------|
-| hip_roll/yaw | 20 | 3.0 | 50 | 0.0112 |
-| hip_pitch | 30 | 3.0 | 100 | 0.0152 |
+| hip_roll/yaw | 10 | 3.0 | 50 | 0.0112 |
+| hip_pitch | 15 | 3.0 | 100 | 0.0152 |
 | knee | 15 | 3.0 | 100 | 0.024 |
-| foot_pitch | 1.0 | 0.2 | 30 | 0.0112 |
-| foot_roll | 1.0 | 0.2 | 30 | 0.001 |
+| foot_pitch | 2.0 | 0.2 | 30 | 0.0112 |
+| foot_roll | 2.0 | 0.2 | 30 | 0.001 |
 
+All hip/knee stiffness halved from original Berkeley values. Foot stiffness unchanged.
 Foot: 30Nm each via parallel linkage (2 motors × 15Nm). ImplicitActuator for training.
 
 ## Reward Terms (13)
@@ -236,6 +238,8 @@ Foot: 30Nm each via parallel linkage (2 motors × 15Nm). ImplicitActuator for tr
 | action_rate_l2 | -0.01 | | dof_pos_limits | -1.0 |
 | feet_air_time | 2.0 | | | |
 
+`feet_air_time` uses adaptive mode: continuous reward for iters 0–500 (bootstraps stepping), then impact-based from iter 500+ (refines gait quality).
+
 Rough terrain: `flat_orientation_l2=0`, `dof_pos_limits=0`.
 
 ## Command Ranges
@@ -249,6 +253,8 @@ ang_vel_z = (-1.0, 1.0)
 Curriculum expands `lin_vel_x` toward (-0.5, 3.0) based on tracking reward.
 
 ## Winners (in `winners/`)
+
+⚠️ These checkpoints were trained with the **old -Y forward URDF** (tag `v1.0-neg-y-forward`). Not compatible with current +X forward configs without retraining.
 
 | Checkpoint | Terrain | Phase | Reward | Notes |
 |------------|---------|-------|--------|-------|
