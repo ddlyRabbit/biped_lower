@@ -148,7 +148,7 @@ docker run --gpus all -d --name biped_distill \
   ... isaaclab:latest /isaac-sim/python.sh \
   /workspace/biped_locomotion/biped_distill_rsl.py \
   --teacher_checkpoint /results/logs/rsl_rl/biped_flat_v52/model_2899.pt \
-  --num_envs 16384 --max_iterations 3000 --headless
+  --num_envs 16384 --max_iterations 3000 --urdf heavy --headless
 # Add --rough for rough terrain distillation
 
 # Monitor behavior loss (should drop from ~7 to ~0.2)
@@ -167,7 +167,7 @@ docker run --gpus all -d --name biped_finetune \
   ... isaaclab:latest /isaac-sim/python.sh \
   /workspace/biped_locomotion/biped_finetune_student_rsl.py \
   --distilled /results/logs/rsl_rl/biped_distill_flat/model_2400.pt \
-  --num_envs 16384 --max_iterations 5000 --headless
+  --num_envs 16384 --max_iterations 5000 --urdf heavy --headless
 # Add --rough for rough terrain
 
 # Monitor reward (should match or exceed teacher)
@@ -196,7 +196,7 @@ docker run --gpus all -d --name biped_play \
   /workspace/biped_locomotion/biped_play_rsl.py \
   --student --checkpoint /results/logs/rsl_rl/biped_student_flat/model_3400.pt \
   --video --video_length 500 --num_envs 8 --env_index 0 \
-  --video_dir /results/videos --headless
+  --video_dir /results/videos --urdf heavy --headless
 ```
 
 ### Typical Training Timeline (L4 GPU)
