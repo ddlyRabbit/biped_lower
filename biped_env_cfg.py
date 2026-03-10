@@ -419,12 +419,12 @@ BIPED_CFG = ArticulationCfg(
         "foot_pitch": ImplicitActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=1.0, damping=0.2, armature=0.0112,
+            stiffness=2.0, damping=0.2, armature=0.0112,
         ),
         "foot_roll": ImplicitActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=1.0, damping=0.2, armature=0.001,
+            stiffness=2.0, damping=0.2, armature=0.001,
         ),
     },
 )
