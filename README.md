@@ -32,11 +32,18 @@ biped_locomotion/
 │
 └── __init__.py
 
-/uploads/
-├── robot.urdf                        ← Robot URDF (12 DoF, ~27.5kg with battery)
-└── assets/                           ← STL meshes
+urdf/
+├── robot.urdf                        ← Robot URDF (12 DoF, ~30.3kg with 10kg battery)
+└── assets/                           ← 35 STL meshes
 
-/results/
+winners/
+├── README.md                         ← Checkpoint descriptions
+├── v55b/model_5997.pt                ← Flat teacher (no self-collisions)
+├── v57_model_2899.pt                 ← Flat teacher (self-collisions ON)
+├── v57_rough_model_19200.pt          ← Rough teacher
+└── v57_student_flat_model_4200.pt    ← Flat student (deployable)
+
+/results/ (GCP only)
 ├── logs/rsl_rl/                      ← Training logs + checkpoints
 │   ├── biped_flat_v52/               ← Phase 1 flat teacher
 │   ├── biped_rough_v57/              ← Phase 1 rough teacher
@@ -66,7 +73,7 @@ biped_play_rsl.py ──imports──► all env configs (based on --rough/--stu
 
 ## Robot
 
-- URDF: `/uploads/robot.urdf` (12 DoF, ~27.5 kg with 10kg battery_chest)
+- URDF: `urdf/robot.urdf` (12 DoF, ~30.3 kg with 10kg battery_chest)
 - Forward axis: **-Y** (not +X). Asymmetric hip roll/pitch limits.
 - Parallel linkage ankle (G1-style): each PR joint = 2 × motor torque
 
@@ -150,7 +157,7 @@ docker logs -f biped_distill 2>&1 | grep "behavior loss"
 # Pick checkpoint with lowest loss (not highest reward — MSE is the objective)
 ```
 
-Expected: behavior loss ~0.2, reward ~60-64% of teacher. Plateaus around iter 1000-1500.
+Expected: behavior loss ~0.2, reward ~60-70% of teacher. May need 3000-7000 iters for rough terrain.
 
 ### Step 3: Fine-tune Student (Phase 3)
 
@@ -237,15 +244,14 @@ ang_vel_z = (-1.0, 1.0)
 
 Curriculum expands `lin_vel_y` toward (-3.0, 1.5) based on tracking reward.
 
-## Winners
+## Winners (in `winners/`)
 
 | Checkpoint | Terrain | Phase | Reward | Notes |
 |------------|---------|-------|--------|-------|
-| `v57_model_2899.pt` | Flat | Teacher | 19.1 | 15Nm ankle |
-| `v57_rough_model_19200.pt` | Rough | Teacher | 18.0 | 30Nm ankle, peak at iter 19200 |
-| `model_19200.pt` (rough_v57) | Rough | Teacher | 18.0 | 30Nm ankle, peak |
-| `model_2400.pt` (distill_flat) | Flat | Distill | 12.2 | Best distill (loss 0.20) |
-| `model_3400.pt` (student_flat) | Flat | Fine-tune | **19.0** | Student ≈ teacher |
+| `v55b/model_5997.pt` | Flat | Teacher | 21.5 | No self-collisions |
+| `v57_model_2899.pt` | Flat | Teacher | 19.1 | Self-collisions ON, 15Nm ankle |
+| `v57_rough_model_19200.pt` | Rough | Teacher | 18.0 | 30Nm ankle |
+| `v57_student_flat_model_4200.pt` | Flat | Student | **19.1** | Deployable (no base_lin_vel) |
 
 ## Key Lessons
 
