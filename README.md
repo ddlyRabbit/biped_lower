@@ -41,11 +41,7 @@ urdf/
     └── assets/                       ← 35 STL meshes
 
 winners/
-├── README.md                         ← Checkpoint descriptions
-├── v55b/model_5997.pt                ← Flat teacher (no self-collisions)
-├── v57_model_2899.pt                 ← Flat teacher (self-collisions ON)
-├── v57_rough_model_19200.pt          ← Rough teacher
-└── v57_student_flat_model_4200.pt    ← Flat student (deployable)
+└── README.md                         ← Checkpoint descriptions + naming convention
 
 /results/ (GCP only)
 ├── logs/rsl_rl/                      ← Training logs + checkpoints
@@ -254,14 +250,7 @@ Curriculum expands `lin_vel_x` toward (-0.5, 3.0) based on tracking reward.
 
 ## Winners (in `winners/`)
 
-⚠️ These checkpoints were trained with the **old -Y forward URDF** (tag `v1.0-neg-y-forward`). Not compatible with current +X forward configs without retraining.
-
-| Checkpoint | Terrain | Phase | Reward | Notes |
-|------------|---------|-------|--------|-------|
-| `v55b/model_5997.pt` | Flat | Teacher | 21.5 | No self-collisions |
-| `v57_model_2899.pt` | Flat | Teacher | 19.1 | Self-collisions ON, 15Nm ankle |
-| `v57_rough_model_19200.pt` | Rough | Teacher | 18.0 | 30Nm ankle |
-| `v57_student_flat_model_4200.pt` | Flat | Student | **19.1** | Deployable (no base_lin_vel) |
+No checkpoints yet — training with +X forward URDFs in progress. Old -Y checkpoints available at tag `v1.0-neg-y-forward`.
 
 ## Key Lessons
 
