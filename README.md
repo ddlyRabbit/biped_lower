@@ -26,7 +26,7 @@ biped_locomotion/
 │   ├── record_grid.sh                ← 2×2 multi-agent grid video
 │   └── combine_torque_video.py       ← Merge torque plot + video
 │
-├── Archive ────────────────────────────────────────────────────────
+├── legacy/ ────────────────────────────────────────────────────────
 │   ├── biped_env_cfg_v54_continuous.py
 │   └── biped_env_cfg_v55_impact_based.py
 │
