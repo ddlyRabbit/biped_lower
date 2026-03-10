@@ -241,7 +241,7 @@ Rough terrain: `flat_orientation_l2=0`, `dof_pos_limits=0`.
 ## Command Ranges
 
 ```python
-lin_vel_x = (-1.5, 0.5)    # forward=+X (biased)
+lin_vel_x = (-0.5, 1.5)    # forward=+X (biased positive)
 lin_vel_y = (-0.5, 0.5)    # lateral (small)
 ang_vel_z = (-1.0, 1.0)
 ```
