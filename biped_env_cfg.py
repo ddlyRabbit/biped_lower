@@ -1,24 +1,24 @@
 # Biped V58 — +X forward axis, dual URDF support (heavy/light)
 # Source: https://github.com/HybridRobotics/isaac_berkeley_humanoid
-# Our actuators (2× Berkeley ImplicitActuator) retained. Everything else matched.
 #
 # MATCHED TO BERKELEY:
-#   REWARDS:      Exact flat config (13 terms)
-#   CURRICULUM:   push_force_levels + command_vel
+#   REWARDS:      13 terms, same weights. feet_air_time uses adaptive mode
+#                 (continuous 0-500 iters, then impact-based)
+#   CURRICULUM:   push_force_levels + command_vel (expands lin_vel_x for +X forward)
 #   PPO:          [128,128,128], init_noise_std=1.0, entropy_coef=0.005
 #   OBSERVATIONS: base_lin_vel in policy, per-joint-group noise, obs_dim=48
-#   ACTIONS:      scale=0.5 (Berkeley exact)
-#   COMMANDS:     [-1.0, 1.0] range, rel_standing_envs=0.02, heading_command=True
+#   ACTIONS:      scale=0.5
+#   COMMANDS:     lin_vel_x=(-1.5, 0.5) forward, lin_vel_y=(-0.5, 0.5) lateral
 #   TERMINATIONS: base_contact (torso, threshold=1.0), time_out
-#   EVENTS:       All Berkeley events + push_robot
+#   EVENTS:       All Berkeley events + scale_all_actuator_gains (extra)
 #   DECIMATION:   4 (50 Hz control)
 #
-# ONLY DIFFERENCE: Our actuators (ImplicitActuator 2× Berkeley values)
-#   EVENTS:       push_robot added (interval, for curriculum)
-#                 scale_all_link_masses added (startup)
-#   DECIMATION:   4 (was 8, matching Berkeley 50Hz control)
-#
-# NOTE: action_scale=0.25 retained (Berkeley uses 0.5)
+# DIFFERENCES FROM BERKELEY:
+#   ACTUATORS:    ImplicitActuator, stiffness halved from Berkeley values
+#                 (hip 10/15, knee 15, foot 2.0). Foot effort 30Nm (parallel linkage).
+#   EVENTS:       scale_all_actuator_gains added (not in Berkeley)
+#   FORWARD AXIS: +X (Berkeley uses custom joint naming, ours uses Onshape URDF)
+#   FEET_AIR:     Adaptive (continuous → impact), Berkeley uses contact-sensor based
 
 ###############################################################################
 # URDF selection — use --urdf heavy|light flag in training scripts
