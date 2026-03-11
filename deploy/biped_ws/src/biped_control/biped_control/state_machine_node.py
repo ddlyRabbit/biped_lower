@@ -19,7 +19,7 @@ from std_msgs.msg import Bool, String
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import JointState
 from biped_msgs.msg import MITCommand, MITCommandArray, RobotState
-from biped_control.obs_builder import ISAAC_JOINT_ORDER, DEFAULT_POSITIONS
+from biped_control.obs_builder import ISAAC_JOINT_ORDER, DEFAULT_POSITIONS, DEFAULT_GAINS
 
 
 class StateMachineNode(Node):
@@ -141,8 +141,6 @@ class StateMachineNode(Node):
         # Build interpolated command
         cmd_msg = MITCommandArray()
         cmd_msg.header.stamp = self.get_clock().now().to_msg()
-
-        from biped_control.policy_node import DEFAULT_GAINS
 
         for name in ISAAC_JOINT_ORDER:
             start_pos = self._stand_start_positions.get(name, DEFAULT_POSITIONS[name])

@@ -18,17 +18,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Imu, JointState
 from geometry_msgs.msg import Twist, Vector3Stamped
 from biped_msgs.msg import MITCommand, MITCommandArray
-from biped_control.obs_builder import ObsBuilder, ISAAC_JOINT_ORDER, DEFAULT_POSITIONS
-
-# Default PD gains (from training config, halved Berkeley values)
-DEFAULT_GAINS = {
-    "L_hip_pitch": (15.0, 3.0), "R_hip_pitch": (15.0, 3.0),
-    "L_hip_roll":  (10.0, 3.0), "R_hip_roll":  (10.0, 3.0),
-    "L_hip_yaw":   (10.0, 3.0), "R_hip_yaw":   (10.0, 3.0),
-    "L_knee":      (15.0, 3.0), "R_knee":      (15.0, 3.0),
-    "L_foot_pitch": (2.0, 0.2), "R_foot_pitch": (2.0, 0.2),
-    "L_foot_roll":  (2.0, 0.2), "R_foot_roll":  (2.0, 0.2),
-}
+from biped_control.obs_builder import ObsBuilder, ISAAC_JOINT_ORDER, DEFAULT_POSITIONS, DEFAULT_GAINS
 
 
 class PolicyNode(Node):
