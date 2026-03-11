@@ -43,12 +43,14 @@ class BNO085Node(Node):
         self.declare_parameter('rate_hz', 100.0)
         self.declare_parameter('frame_id', 'imu_link')
         self.declare_parameter('use_game_quaternion', False)  # True = no mag correction
+        self.declare_parameter('reset_pin', 4)  # GPIO pin for BNO085 RST (-1 = not connected)
 
         self._bus = int(self.get_parameter('i2c_bus').value)
         self._addr = int(self.get_parameter('i2c_address').value)
         self._rate = float(self.get_parameter('rate_hz').value)
         self._frame_id = str(self.get_parameter('frame_id').value)
         self._use_game_quat = bool(self.get_parameter('use_game_quaternion').value)
+        self._reset_pin = int(self.get_parameter('reset_pin').value)
 
         # QoS: best-effort for real-time sensor data
         sensor_qos = QoSProfile(
@@ -97,19 +99,27 @@ class BNO085Node(Node):
                 BNO_REPORT_GRAVITY,
             )
 
-            i2c = busio.I2C(board.SCL, board.SDA, frequency=400_000)
-            self._bno = BNO08X_I2C(i2c, address=self._addr)
+            import time
+            import digitalio
 
-            # Soft reset to clear any stale state from previous sessions
-            try:
-                self._bno.soft_reset()
-                import time
-                time.sleep(1.0)
-            except Exception:
-                pass  # reset may fail if sensor is already clean
+            i2c = busio.I2C(board.SCL, board.SDA, frequency=400_000)
+
+            # Hardware reset via RST pin if connected
+            rst_pin = None
+            if self._reset_pin >= 0:
+                try:
+                    import microcontroller
+                    pin_map = {4: board.D4, 17: board.D17, 27: board.D27, 22: board.D22}
+                    if self._reset_pin in pin_map:
+                        rst_pin = digitalio.DigitalInOut(pin_map[self._reset_pin])
+                        self.get_logger().info(f'Using hardware reset on GPIO {self._reset_pin}')
+                except Exception as e:
+                    self.get_logger().warn(f'Could not setup reset pin GPIO {self._reset_pin}: {e}')
+
+            self._bno = BNO08X_I2C(i2c, address=self._addr, reset=rst_pin)
 
             # Enable reports with retry (sensor may need time after reset)
-            import time
+
             interval_us = int(1_000_000 / self._rate)
             max_retries = 3
 
@@ -237,13 +247,20 @@ class BNO085Node(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = BNO085Node()
+    node = None
     try:
+        node = BNO085Node()
         rclpy.spin(node)
-    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
+    except KeyboardInterrupt:
         pass
+    except Exception as e:
+        if node:
+            node.get_logger().error(f'Fatal: {e}')
+        else:
+            print(f'Fatal during init: {e}')
     finally:
-        node.destroy_node()
+        if node:
+            node.destroy_node()
         try:
             rclpy.shutdown()
         except Exception:
