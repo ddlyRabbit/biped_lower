@@ -116,6 +116,22 @@ class CanBusNode(Node):
         self._offsets = {}      # {joint_name: calibration offset}
         self._last_commands = {}  # {joint_name: MITCommand}
 
+        # Joint limits (URDF, in joint-space radians)
+        self._joint_limits = {
+            "L_hip_pitch":  (-2.222, 1.047),
+            "R_hip_pitch":  (-1.047, 2.222),
+            "L_hip_roll":   (-0.209, 2.269),
+            "R_hip_roll":   (-2.269, 0.209),
+            "L_hip_yaw":    (-2.094, 2.094),
+            "R_hip_yaw":    (-2.094, 2.094),
+            "L_knee":       ( 0.000, 2.618),
+            "R_knee":       ( 0.000, 2.618),
+            "L_foot_pitch": (-1.047, 0.524),
+            "R_foot_pitch": (-1.047, 0.524),
+            "L_foot_roll":  (-0.262, 0.262),
+            "R_foot_roll":  (-0.262, 0.262),
+        }
+
         if motor_config_str:
             self._parse_motor_config(motor_config_str)
 
@@ -223,6 +239,13 @@ class CanBusNode(Node):
             if cmd.joint_name in self._motors:
                 self._last_commands[cmd.joint_name] = cmd
 
+    def _clamp_joint(self, name: str, position: float) -> float:
+        """Clamp position to URDF joint limits."""
+        limits = self._joint_limits.get(name)
+        if limits:
+            return max(limits[0], min(limits[1], position))
+        return position
+
     def _get_ankle_pair(self, name: str):
         """Check if this joint is part of an ankle pair. Returns (pitch_name, roll_name) or None."""
         for pitch, roll in ANKLE_PAIRS:
@@ -270,9 +293,12 @@ class CanBusNode(Node):
                 roll_cmd = self._last_commands.get(roll_name)
 
                 if pitch_cmd and roll_cmd:
+                    # Clamp in joint-space BEFORE linkage transform
+                    clamped_pitch = self._clamp_joint(pitch_name, pitch_cmd.position)
+                    clamped_roll = self._clamp_joint(roll_name, roll_cmd.position)
                     # Transform to motor positions
                     motor_upper_pos, motor_lower_pos = ankle_command_to_motors(
-                        pitch_cmd.position, roll_cmd.position)
+                        clamped_pitch, clamped_roll)
                     # Average gains (both ankles should have same gains)
                     kp = (pitch_cmd.kp + roll_cmd.kp) / 2.0
                     kd = (pitch_cmd.kd + roll_cmd.kd) / 2.0
@@ -336,8 +362,9 @@ class CanBusNode(Node):
             try:
                 if name in self._last_commands:
                     cmd = self._last_commands[name]
+                    clamped_pos = self._clamp_joint(name, cmd.position)
                     fb = motor.send_mit_command(
-                        position=cmd.position,
+                        position=clamped_pos,
                         velocity=cmd.velocity,
                         kp=cmd.kp,
                         kd=cmd.kd,

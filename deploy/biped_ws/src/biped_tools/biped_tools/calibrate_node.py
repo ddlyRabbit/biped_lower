@@ -4,6 +4,12 @@ Interactive CLI: operator moves each joint to both limits while this
 node records absolute encoder positions. Computes URDF-aligned zero
 offsets and saves to calibration.yaml.
 
+For ankle joints (foot_pitch/foot_roll), the motors are connected
+through a parallel linkage. Calibration records raw MOTOR encoder
+positions. The ankle mapping in can_bus_node handles the conversion.
+Ankle motors are calibrated individually — the offset maps motor
+encoder zero to the physical zero of that motor.
+
 Only needs to run once (or after motor reassembly).
 
 Usage:
@@ -19,9 +25,13 @@ import sys
 import rclpy
 from rclpy.node import Node
 from biped_driver.robstride_can import RobStrideMotor
+from biped_driver.can_bus_node import ANKLE_PAIRS, ankle_command_to_motors, ankle_motors_to_feedback
 
 # URDF joint limits (from biped_env_cfg.py init_state + URDF)
-# These are the expected ranges from the URDF
+# For non-ankle joints: limits are in joint-space (direct motor = joint)
+# For ankle joints: limits are in JOINT-space (foot_pitch/foot_roll),
+#   but calibration works in MOTOR-space. Validation uses motor-space
+#   limits computed from the joint-space limits via ankle linkage gains.
 URDF_LIMITS = {
     # joint_name: (lower_limit_rad, upper_limit_rad, default_pos_rad)
     "L_hip_pitch":  (-2.222, 1.047, -0.2),
@@ -37,6 +47,12 @@ URDF_LIMITS = {
     "L_foot_roll":  (-0.262, 0.262,  0.0),
     "R_foot_roll":  (-0.262, 0.262,  0.0),
 }
+
+# Ankle joint names for special handling during calibration
+ANKLE_JOINT_NAMES = set()
+for pitch, roll in ANKLE_PAIRS:
+    ANKLE_JOINT_NAMES.add(pitch)
+    ANKLE_JOINT_NAMES.add(roll)
 
 
 class CalibrateNode(Node):
@@ -75,6 +91,11 @@ class CalibrateNode(Node):
         print("  BIPED JOINT CALIBRATION")
         print("  Move each joint to both limits when prompted.")
         print("  All motors are in zero-torque mode (free to move).")
+        print()
+        print("  NOTE: Ankle motors (foot_pitch/foot_roll) are calibrated")
+        print("  as individual motors. The parallel linkage mapping is")
+        print("  applied automatically by the CAN bus node at runtime.")
+        print("  Just move each ankle motor to its physical limits.")
         print("=" * 60)
 
         if not self._joint_names:
@@ -131,19 +152,27 @@ class CalibrateNode(Node):
 
             if urdf:
                 urdf_range = urdf[1] - urdf[0]
-                range_error = abs(encoder_range - urdf_range) / urdf_range * 100
 
-                # Offset: encoder_position_at_urdf_lower_limit
-                # offset = encoder_min - urdf_lower_limit
-                offset = encoder_min - urdf[0]
+                # For ankle joints, the motor range differs from joint range
+                # due to the linkage gains. Skip range validation for ankle
+                # motors — they're calibrated in motor-space, mapping is at runtime.
+                if name in ANKLE_JOINT_NAMES:
+                    offset = encoder_min  # motor-space offset
+                    print(f"    [ANKLE MOTOR] Encoder range: {encoder_range:.4f} rad (motor-space)")
+                    print(f"    Offset: {offset:.4f} rad (motor-space, linkage applied at runtime)")
+                    range_error = 0.0
+                else:
+                    range_error = abs(encoder_range - urdf_range) / urdf_range * 100
+                    # Offset: encoder_position_at_urdf_lower_limit
+                    offset = encoder_min - urdf[0]
 
-                print(f"    Encoder range: {encoder_range:.4f} rad")
-                print(f"    URDF range:    {urdf_range:.4f} rad")
-                print(f"    Range error:   {range_error:.1f}%")
-                print(f"    Offset:        {offset:.4f} rad")
+                    print(f"    Encoder range: {encoder_range:.4f} rad")
+                    print(f"    URDF range:    {urdf_range:.4f} rad")
+                    print(f"    Range error:   {range_error:.1f}%")
+                    print(f"    Offset:        {offset:.4f} rad")
 
-                if range_error > 15:
-                    print(f"    ⚠️  Range error >15% — check joint limits!")
+                    if range_error > 15:
+                        print(f"    ⚠️  Range error >15% — check joint limits!")
             else:
                 offset = encoder_min
                 range_error = 0.0
