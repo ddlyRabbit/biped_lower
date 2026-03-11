@@ -20,20 +20,35 @@ from biped_driver.robstride_can import RobStrideMotor, MotorFeedback, MODE_MIT
 
 """Ankle parallel linkage mapping.
 
-Real hardware has two parallel RS02 motors per ankle. Same direction = roll.
-Policy outputs foot_pitch and foot_roll as independent joints.
+Two RS02 motors per ankle with mirrored crank arms, asymmetric rod lengths,
+connecting through a U-joint (cross-bearing) to the foot.
 
-Convention (same direction = roll):
-    motor_high = foot_roll + foot_pitch
-    motor_low  = foot_roll - foot_pitch
+Geometry (from Onshape CAD, confirmed):
+    Crank radius:     32.249 mm (both motors)
+    Upper rod:        192 mm (knee-side motor)
+    Lower rod:        98 mm (foot-side motor)
+    Motor separation: 88.5 mm vertical
+    Foot attachment:  ±31.398 mm lateral, 41.14 mm forward from U-joint
 
-    foot_roll  = (motor_high + motor_low) / 2
-    foot_pitch = (motor_high - motor_low) / 2
+Linearized mapping (verified <9% error at max pitch, <1% at typical walking):
+    Commands (foot → motors):
+        θ_upper = 1.276 × pitch + 0.974 × roll
+        θ_lower = 1.276 × pitch - 0.974 × roll
 
-Motor IDs: foot_pitch ID → high motor, foot_roll ID → low motor.
+    Feedback (motors → foot):
+        pitch = 0.392 × (θ_upper + θ_lower)
+        roll  = 0.514 × (θ_upper - θ_lower)
+
+Motor IDs: foot_pitch ID → upper motor (knee-side), foot_roll ID → lower motor (foot-side).
 """
 
-# Ankle parallel linkage pairs: (pitch_joint, roll_joint)
+# Ankle linkage gains (from CAD geometry)
+_PITCH_GAIN = 41.14 / 32.249   # 1.2757 — motor rad per foot pitch rad
+_ROLL_GAIN = 31.398 / 32.249   # 0.9736 — motor rad per foot roll rad
+_INV_PITCH = 32.249 / (2 * 41.14)   # 0.3919 — foot pitch per motor sum
+_INV_ROLL = 32.249 / (2 * 31.398)   # 0.5136 — foot roll per motor diff
+
+# Ankle parallel linkage pairs: (pitch_joint=upper_motor, roll_joint=lower_motor)
 ANKLE_PAIRS = [
     ("L_foot_pitch", "L_foot_roll"),
     ("R_foot_pitch", "R_foot_roll"),
@@ -41,25 +56,24 @@ ANKLE_PAIRS = [
 
 
 def ankle_command_to_motors(pitch_cmd: float, roll_cmd: float):
-    """Convert foot_pitch/foot_roll targets to motor_high/motor_low positions.
+    """Convert foot pitch/roll targets to upper/lower motor positions.
 
-    Same direction = roll, opposite = pitch.
-    motor_high (pitch ID) = roll + pitch
-    motor_low  (roll ID)  = roll - pitch
+    θ_upper = 1.276 × pitch + 0.974 × roll
+    θ_lower = 1.276 × pitch - 0.974 × roll
     """
-    motor_high = roll_cmd + pitch_cmd
-    motor_low = roll_cmd - pitch_cmd
-    return motor_high, motor_low
+    motor_upper = _PITCH_GAIN * pitch_cmd + _ROLL_GAIN * roll_cmd
+    motor_lower = _PITCH_GAIN * pitch_cmd - _ROLL_GAIN * roll_cmd
+    return motor_upper, motor_lower
 
 
-def ankle_motors_to_feedback(motor_high_pos: float, motor_low_pos: float):
-    """Convert motor_high/motor_low feedback to foot_pitch/foot_roll.
+def ankle_motors_to_feedback(motor_upper_pos: float, motor_lower_pos: float):
+    """Convert upper/lower motor feedback to foot pitch/roll.
 
-    foot_roll  = (high + low) / 2
-    foot_pitch = (high - low) / 2
+    pitch = 0.392 × (θ_upper + θ_lower)
+    roll  = 0.514 × (θ_upper - θ_lower)
     """
-    foot_roll = (motor_high_pos + motor_low_pos) / 2.0
-    foot_pitch = (motor_high_pos - motor_low_pos) / 2.0
+    foot_pitch = _INV_PITCH * (motor_upper_pos + motor_lower_pos)
+    foot_roll = _INV_ROLL * (motor_upper_pos - motor_lower_pos)
     return foot_pitch, foot_roll
 
 
@@ -67,7 +81,7 @@ class CanBusNode(Node):
     """ROS2 node for multi-motor CAN communication.
 
     Handles ankle parallel linkage: policy sees foot_pitch/foot_roll,
-    CAN sends to motor_high/motor_low with appropriate coupling.
+    CAN sends to motor_upper/motor_lower with appropriate coupling.
 
     Publishes:
         /joint_states    sensor_msgs/JointState     @ loop_rate
@@ -257,7 +271,7 @@ class CanBusNode(Node):
 
                 if pitch_cmd and roll_cmd:
                     # Transform to motor positions
-                    motor_high_pos, motor_low_pos = ankle_command_to_motors(
+                    motor_upper_pos, motor_lower_pos = ankle_command_to_motors(
                         pitch_cmd.position, roll_cmd.position)
                     # Average gains (both ankles should have same gains)
                     kp = (pitch_cmd.kp + roll_cmd.kp) / 2.0
@@ -265,40 +279,40 @@ class CanBusNode(Node):
 
                     # Send to high motor (pitch ID) and low motor (roll ID)
                     try:
-                        fb_high = self._motors[pitch_name].send_mit_command(
-                            position=motor_high_pos, velocity=0.0,
+                        fb_upper = self._motors[pitch_name].send_mit_command(
+                            position=motor_upper_pos, velocity=0.0,
                             kp=kp, kd=kd, torque_ff=0.0)
-                        fb_low = self._motors[roll_name].send_mit_command(
-                            position=motor_low_pos, velocity=0.0,
+                        fb_lower = self._motors[roll_name].send_mit_command(
+                            position=motor_lower_pos, velocity=0.0,
                             kp=kp, kd=kd, torque_ff=0.0)
                     except Exception as e:
                         self.get_logger().warn(
                             f'Ankle {pitch_name}/{roll_name}: CAN error: {e}',
                             throttle_duration_sec=1.0)
-                        fb_high = fb_low = None
+                        fb_upper = fb_lower = None
                 else:
                     # No commands — zero torque read
                     try:
-                        fb_high = self._motors[pitch_name].send_mit_command(
+                        fb_upper = self._motors[pitch_name].send_mit_command(
                             kp=0.0, kd=0.0, torque_ff=0.0)
-                        fb_low = self._motors[roll_name].send_mit_command(
+                        fb_lower = self._motors[roll_name].send_mit_command(
                             kp=0.0, kd=0.0, torque_ff=0.0)
                     except Exception as e:
-                        fb_high = fb_low = None
+                        fb_upper = fb_lower = None
 
                 # Reconstruct pitch/roll from motor feedback
-                if fb_high is not None and fb_low is not None:
-                    high_pos = fb_high.position - self._offsets.get(pitch_name, 0.0)
-                    low_pos = fb_low.position - self._offsets.get(roll_name, 0.0)
+                if fb_upper is not None and fb_lower is not None:
+                    upper_pos = fb_upper.position - self._offsets.get(pitch_name, 0.0)
+                    lower_pos = fb_lower.position - self._offsets.get(roll_name, 0.0)
 
-                    foot_pitch, foot_roll = ankle_motors_to_feedback(high_pos, low_pos)
+                    foot_pitch, foot_roll = ankle_motors_to_feedback(upper_pos, lower_pos)
                     foot_pitch_vel, foot_roll_vel = ankle_motors_to_feedback(
-                        fb_high.velocity, fb_low.velocity)
+                        fb_upper.velocity, fb_lower.velocity)
 
                     # Publish as foot_pitch and foot_roll (what policy expects)
                     for jname, pos, vel, fb in [
-                        (pitch_name, foot_pitch, foot_pitch_vel, fb_high),
-                        (roll_name, foot_roll, foot_roll_vel, fb_low),
+                        (pitch_name, foot_pitch, foot_pitch_vel, fb_upper),
+                        (roll_name, foot_roll, foot_roll_vel, fb_lower),
                     ]:
                         joint_msg.name.append(jname)
                         joint_msg.position.append(pos)
