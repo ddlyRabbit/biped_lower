@@ -116,10 +116,8 @@ biped_ws/src/
 │   ├── launch/
 │   │   ├── bringup.launch.py          ← Full robot (all nodes)
 │   │   ├── hardware.launch.py         ← IMU + CAN only (no policy)
-│   │   ├── teleop.launch.py           ← Keyboard/gamepad teleop
 │   │   ├── calibrate.launch.py        ← Manual homing
-│   │   ├── record.launch.py           ← Logging + Foxglove bridge
-│   │   └── policy_test.launch.py      ← Policy + hardware (suspended test)
+│   │   ├── record.launch.py           ← Foxglove bridge + rosbag recording
 │   ├── config/
 │   │   ├── robot.yaml                 ← Joint names, CAN IDs, limits
 │   │   ├── policy.yaml                ← ONNX path, obs scaling, action scale
@@ -511,13 +509,6 @@ Interactive CLI:
 # Useful with: ros2 topic echo /joint_states
 ```
 
-### teleop.launch.py (keyboard or gamepad)
-```python
-# Args: mode:=keyboard (default) or mode:=gamepad
-# keyboard: keyboard_teleop
-# gamepad: joy_node + gamepad_teleop
-# Always publishes /cmd_vel
-```
 
 ### calibrate.launch.py
 ```python
@@ -531,15 +522,6 @@ Interactive CLI:
 # 2. ros2 bag record (all topics)
 ```
 
-### policy_test.launch.py
-```python
-# Full bringup but with cmd_vel fixed to zero
-# For suspended robot testing
-# 1. All hardware nodes
-# 2. policy_node
-# 3. state_machine (auto-transitions to STAND)
-# No teleop — robot just tries to stand
-```
 
 ## Topic Graph
 

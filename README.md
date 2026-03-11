@@ -45,12 +45,16 @@ winners/
 
 deploy/
 ├── ARCHITECTURE.md                   ← Full deployment plan, obs mapping, risks
-└── biped_ws/src/                     ← ROS2 Jazzy workspace
+├── BRINGUP.md                        ← Step-by-step bringup guide
+├── scripts/setup_can.sh              ← CAN interface setup (run after boot)
+├── student_flat.onnx                 ← Exported student policy
+└── biped_ws/src/                     ← ROS2 Jazzy workspace (6 packages)
     ├── biped_msgs/                   ← Custom messages (MITCommand, MotorState, RobotState)
-    ├── biped_driver/                 ← Hardware nodes (IMU, CAN motors)
-    ├── biped_control/                ← Policy runner, state machine, safety
-    ├── biped_teleop/                 ← Keyboard + gamepad velocity commands
-    └── biped_tools/                  ← Calibration, ONNX export
+    ├── biped_driver/                 ← IMU node, CAN bus node, RobStride protocol
+    ├── biped_control/                ← Policy node, safety node, state machine
+    ├── biped_teleop/                 ← Keyboard velocity commander
+    ├── biped_tools/                  ← Calibration tool, ONNX export
+    └── biped_bringup/                ← Launch files + config
 
 /results/ (GCP only)
 ├── logs/rsl_rl/                      ← Training logs + checkpoints
