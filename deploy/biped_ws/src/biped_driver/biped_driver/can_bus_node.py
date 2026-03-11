@@ -18,8 +18,56 @@ from biped_msgs.msg import MITCommand, MITCommandArray, MotorState, MotorStateAr
 from biped_driver.robstride_can import RobStrideMotor, MotorFeedback, MODE_MIT
 
 
+"""Ankle parallel linkage mapping.
+
+Real hardware has two parallel RS02 motors per ankle. Same direction = roll.
+Policy outputs foot_pitch and foot_roll as independent joints.
+
+Convention (same direction = roll):
+    motor_high = foot_roll + foot_pitch
+    motor_low  = foot_roll - foot_pitch
+
+    foot_roll  = (motor_high + motor_low) / 2
+    foot_pitch = (motor_high - motor_low) / 2
+
+Motor IDs: foot_pitch ID → high motor, foot_roll ID → low motor.
+"""
+
+# Ankle parallel linkage pairs: (pitch_joint, roll_joint)
+ANKLE_PAIRS = [
+    ("L_foot_pitch", "L_foot_roll"),
+    ("R_foot_pitch", "R_foot_roll"),
+]
+
+
+def ankle_command_to_motors(pitch_cmd: float, roll_cmd: float):
+    """Convert foot_pitch/foot_roll targets to motor_high/motor_low positions.
+
+    Same direction = roll, opposite = pitch.
+    motor_high (pitch ID) = roll + pitch
+    motor_low  (roll ID)  = roll - pitch
+    """
+    motor_high = roll_cmd + pitch_cmd
+    motor_low = roll_cmd - pitch_cmd
+    return motor_high, motor_low
+
+
+def ankle_motors_to_feedback(motor_high_pos: float, motor_low_pos: float):
+    """Convert motor_high/motor_low feedback to foot_pitch/foot_roll.
+
+    foot_roll  = (high + low) / 2
+    foot_pitch = (high - low) / 2
+    """
+    foot_roll = (motor_high_pos + motor_low_pos) / 2.0
+    foot_pitch = (motor_high_pos - motor_low_pos) / 2.0
+    return foot_pitch, foot_roll
+
+
 class CanBusNode(Node):
     """ROS2 node for multi-motor CAN communication.
+
+    Handles ankle parallel linkage: policy sees foot_pitch/foot_roll,
+    CAN sends to motor_high/motor_low with appropriate coupling.
 
     Publishes:
         /joint_states    sensor_msgs/JointState     @ loop_rate
@@ -161,8 +209,21 @@ class CanBusNode(Node):
             if cmd.joint_name in self._motors:
                 self._last_commands[cmd.joint_name] = cmd
 
+    def _get_ankle_pair(self, name: str):
+        """Check if this joint is part of an ankle pair. Returns (pitch_name, roll_name) or None."""
+        for pitch, roll in ANKLE_PAIRS:
+            if name == pitch or name == roll:
+                if pitch in self._motors and roll in self._motors:
+                    return (pitch, roll)
+        return None
+
     def _loop(self):
-        """Main control loop: send commands, read feedback, publish."""
+        """Main control loop: send commands, read feedback, publish.
+
+        Ankle joints get parallel linkage transform:
+        - Commands: foot_pitch/roll → motor_high/low
+        - Feedback: motor_high/low → foot_pitch/roll
+        """
         now = self.get_clock().now().to_msg()
 
         joint_msg = JointState()
@@ -170,12 +231,93 @@ class CanBusNode(Node):
         motor_msg = MotorStateArray()
         motor_msg.header.stamp = now
 
+        # Track ankle motors processed (avoid double-processing)
+        ankle_processed = set()
+        # Raw motor feedback for ankle reconstruction
+        raw_feedback = {}
+
         for name in self._joint_names:
             motor = self._motors.get(name)
             if motor is None:
                 continue
 
-            # Send MIT command if available, otherwise just read
+            # --- Ankle parallel linkage: transform commands ---
+            ankle_pair = self._get_ankle_pair(name)
+            if ankle_pair and name in ankle_processed:
+                continue  # already handled as part of pair
+
+            if ankle_pair:
+                pitch_name, roll_name = ankle_pair
+                ankle_processed.add(pitch_name)
+                ankle_processed.add(roll_name)
+
+                # Get pitch/roll commands from policy
+                pitch_cmd = self._last_commands.get(pitch_name)
+                roll_cmd = self._last_commands.get(roll_name)
+
+                if pitch_cmd and roll_cmd:
+                    # Transform to motor positions
+                    motor_high_pos, motor_low_pos = ankle_command_to_motors(
+                        pitch_cmd.position, roll_cmd.position)
+                    # Average gains (both ankles should have same gains)
+                    kp = (pitch_cmd.kp + roll_cmd.kp) / 2.0
+                    kd = (pitch_cmd.kd + roll_cmd.kd) / 2.0
+
+                    # Send to high motor (pitch ID) and low motor (roll ID)
+                    try:
+                        fb_high = self._motors[pitch_name].send_mit_command(
+                            position=motor_high_pos, velocity=0.0,
+                            kp=kp, kd=kd, torque_ff=0.0)
+                        fb_low = self._motors[roll_name].send_mit_command(
+                            position=motor_low_pos, velocity=0.0,
+                            kp=kp, kd=kd, torque_ff=0.0)
+                    except Exception as e:
+                        self.get_logger().warn(
+                            f'Ankle {pitch_name}/{roll_name}: CAN error: {e}',
+                            throttle_duration_sec=1.0)
+                        fb_high = fb_low = None
+                else:
+                    # No commands — zero torque read
+                    try:
+                        fb_high = self._motors[pitch_name].send_mit_command(
+                            kp=0.0, kd=0.0, torque_ff=0.0)
+                        fb_low = self._motors[roll_name].send_mit_command(
+                            kp=0.0, kd=0.0, torque_ff=0.0)
+                    except Exception as e:
+                        fb_high = fb_low = None
+
+                # Reconstruct pitch/roll from motor feedback
+                if fb_high is not None and fb_low is not None:
+                    high_pos = fb_high.position - self._offsets.get(pitch_name, 0.0)
+                    low_pos = fb_low.position - self._offsets.get(roll_name, 0.0)
+
+                    foot_pitch, foot_roll = ankle_motors_to_feedback(high_pos, low_pos)
+                    foot_pitch_vel, foot_roll_vel = ankle_motors_to_feedback(
+                        fb_high.velocity, fb_low.velocity)
+
+                    # Publish as foot_pitch and foot_roll (what policy expects)
+                    for jname, pos, vel, fb in [
+                        (pitch_name, foot_pitch, foot_pitch_vel, fb_high),
+                        (roll_name, foot_roll, foot_roll_vel, fb_low),
+                    ]:
+                        joint_msg.name.append(jname)
+                        joint_msg.position.append(pos)
+                        joint_msg.velocity.append(vel)
+                        joint_msg.effort.append(fb.torque)
+
+                        ms = MotorState()
+                        ms.joint_name = jname
+                        ms.can_id = self._motor_ids[jname]
+                        ms.position = pos
+                        ms.velocity = vel
+                        ms.torque = fb.torque
+                        ms.temperature = fb.temperature
+                        ms.fault_code = fb.fault_code
+                        ms.mode_status = fb.mode_status
+                        motor_msg.motors.append(ms)
+                continue
+
+            # --- Normal joint (non-ankle) ---
             fb = None
             try:
                 if name in self._last_commands:
@@ -188,23 +330,19 @@ class CanBusNode(Node):
                         torque_ff=cmd.torque_ff,
                     )
                 else:
-                    # No command yet — send zero-torque read
                     fb = motor.send_mit_command(kp=0.0, kd=0.0, torque_ff=0.0)
             except Exception as e:
                 self.get_logger().warn(
                     f'{name}: CAN error: {e}', throttle_duration_sec=1.0)
 
             if fb is not None:
-                # Apply calibration offset
                 calibrated_pos = fb.position - self._offsets[name]
 
-                # JointState
                 joint_msg.name.append(name)
                 joint_msg.position.append(calibrated_pos)
                 joint_msg.velocity.append(fb.velocity)
                 joint_msg.effort.append(fb.torque)
 
-                # MotorState
                 ms = MotorState()
                 ms.joint_name = name
                 ms.can_id = self._motor_ids[name]
