@@ -16,6 +16,7 @@ parser.add_argument("--video_length", type=int, default=300)
 parser.add_argument("--rough", action="store_true", help="Use rough terrain config")
 parser.add_argument("--student", action="store_true", help="Play student (distilled) policy")
 parser.add_argument("--env_index", type=int, default=0, help="Which env to follow with camera")
+parser.add_argument("--global_camera", action="store_true", help="Fixed global camera view (for multi-env recording)")
 parser.add_argument("--video_dir", type=str, default="/results/videos", help="Video output directory")
 parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"], help="URDF variant")
 AppLauncher.add_app_launcher_args(parser)
@@ -101,12 +102,22 @@ def main():
     env_cfg.scene.num_envs = args_cli.num_envs
     apply_urdf_selection(env_cfg, args_cli.urdf)
 
-    # Camera follows robot — offset behind and above
-    env_cfg.viewer.origin_type = "asset_root"
-    env_cfg.viewer.asset_name = "robot"
-    env_cfg.viewer.env_index = args_cli.env_index
-    env_cfg.viewer.eye = (3.0, 3.0, 2.0)
-    env_cfg.viewer.lookat = (0.0, 0.0, 0.5)
+    # Camera setup
+    if args_cli.global_camera:
+        # Fixed global view — see all envs at once
+        env_cfg.viewer.origin_type = "world"
+        n = args_cli.num_envs
+        spacing = env_cfg.scene.env_spacing if hasattr(env_cfg.scene, 'env_spacing') else 2.5
+        grid_size = int(n ** 0.5 + 0.5) * spacing
+        env_cfg.viewer.eye = (grid_size * 1.2, grid_size * 1.2, grid_size * 0.8)
+        env_cfg.viewer.lookat = (grid_size * 0.3, grid_size * 0.3, 0.0)
+    else:
+        # Follow single robot
+        env_cfg.viewer.origin_type = "asset_root"
+        env_cfg.viewer.asset_name = "robot"
+        env_cfg.viewer.env_index = args_cli.env_index
+        env_cfg.viewer.eye = (3.0, 3.0, 2.0)
+        env_cfg.viewer.lookat = (0.0, 0.0, 0.5)
 
     env = gym.make(
         env_id,

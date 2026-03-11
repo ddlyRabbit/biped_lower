@@ -25,7 +25,7 @@ biped_ws/src/
 │   │   ├── __init__.py
 │   │   ├── robstride_can.py           ← RS04 CAN protocol (MIT mode)
 │   │   ├── can_bus_node.py            ← Multi-motor CAN R/W node
-│   │   ├── imu_node.py               ← BNO085 UART-RVC parser
+│   │   ├── imu_node.py               ← BNO085 UART-SHTP (gyro+quat fused)
 │   │   └── constants.py               ← CAN protocol constants
 │   ├── package.xml
 │   └── setup.py
@@ -158,25 +158,34 @@ Timer callback (50Hz):
 Node: /imu
 Params:
   serial_port: "/dev/ttyAMA0"
-  baud_rate: 115200                       # BNO085 RVC default
+  baud_rate: 3000000                      # BNO085 UART-SHTP (3Mbaud)
 
 Publishes:
   /imu/data          Imu            @ 100Hz
 
-BNO085 UART-RVC output format (19 bytes per sample):
-  - Yaw, Pitch, Roll (×100, int16)
-  - X/Y/Z accel (×100, int16, m/s²)
-  - Sequence byte + checksum
+BNO085 UART-SHTP mode (NOT RVC):
+  Uses Hillcrest SH2 protocol over UART with SHTP framing (0x7E delimiters,
+  0x7D escape bytes). Runs at 3Mbaud. Enables individual sensor reports:
 
-Parse → populate:
-  - orientation: quaternion from yaw/pitch/roll
-  - angular_velocity: derived from orientation delta / dt
-  - linear_acceleration: from accel fields
-  
-Note: RVC mode gives heading-referenced orientation,
-      no gyro raw data. For angular_velocity, may need
-      BNO085 in NDOF mode over I2C instead. 
-      Alternatively, compute from orientation differences.
+  Enabled reports:
+  - SH2_GYRO_INTEGRATED_RV (0x2A) @ 100Hz — fused quaternion + angular 
+    velocity in ONE report. Best option for RL deployment.
+    Fields: quat(i,j,k,real) + angVel(x,y,z) rad/s
+  - SH2_GRAVITY (0x06) @ 100Hz — gravity vector (for projected_gravity obs)
+
+  Why UART-SHTP over RVC:
+  - RVC only gives yaw/pitch/roll + accel. NO angular velocity vector.
+  - SHTP gives direct access to calibrated gyro (rad/s) which our policy needs.
+  - GYRO_INTEGRATED_RV provides both quaternion AND angular velocity in one
+    fused report — no need to differentiate quaternions for ang_vel.
+
+  Parse → populate sensor_msgs/Imu:
+  - orientation: quaternion directly from GYRO_INTEGRATED_RV
+  - angular_velocity: x/y/z rad/s directly from GYRO_INTEGRATED_RV
+  - linear_acceleration: not used (gravity report used for projected_gravity)
+
+  Implementation reference: Adafruit_BNO08x library (begin_UART + SHTP HAL)
+  Python port: use sh2 SHTP framing, enable reports via sh2_setSensorConfig
 ```
 
 ### 3. policy_node (biped_control)
@@ -203,8 +212,8 @@ Publishes:
 Timer callback (50Hz):
   1. Check FSM state — only compute if WALK or STAND
   2. Build observation (45d):
-     - projected_gravity (3d) ← from IMU quaternion
-     - base_ang_vel (3d) ← from IMU
+     - projected_gravity (3d) ← from SH2_GRAVITY report (or quat→gravity)
+     - base_ang_vel (3d) ← directly from GYRO_INTEGRATED_RV angVel fields
      - velocity_commands (3d) ← from /cmd_vel
      - joint_pos_rel per group (12d) ← (current - default), per-group noise
      - joint_vel (12d) ← from /joint_states
