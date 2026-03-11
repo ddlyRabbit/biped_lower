@@ -43,6 +43,15 @@ urdf/
 winners/
 └── README.md                         ← Checkpoint descriptions + naming convention
 
+deploy/
+├── ARCHITECTURE.md                   ← Full deployment plan, obs mapping, risks
+└── biped_ws/src/                     ← ROS2 Jazzy workspace
+    ├── biped_msgs/                   ← Custom messages (MITCommand, MotorState, RobotState)
+    ├── biped_driver/                 ← Hardware nodes (IMU, CAN motors)
+    ├── biped_control/                ← Policy runner, state machine, safety
+    ├── biped_teleop/                 ← Keyboard + gamepad velocity commands
+    └── biped_tools/                  ← Calibration, ONNX export
+
 /results/ (GCP only)
 ├── logs/rsl_rl/                      ← Training logs + checkpoints
 │   ├── biped_flat_v52/               ← Phase 1 flat teacher
