@@ -47,7 +47,14 @@ def load_actor_from_checkpoint(checkpoint_path: str, obs_dim: int = 45,
         student.0.weight... (from distillation)
         actor.0.weight...   (from PPO fine-tune)
     """
-    ckpt = torch.load(checkpoint_path, map_location='cpu', weights_only=True)
+    raw = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
+
+    # rsl_rl wraps weights in 'model_state_dict'
+    if 'model_state_dict' in raw:
+        ckpt = raw['model_state_dict']
+        print(f"Unwrapped model_state_dict (iter={raw.get('iter', '?')})")
+    else:
+        ckpt = raw
 
     # Detect key prefix
     if any(k.startswith('student.') for k in ckpt.keys()):
