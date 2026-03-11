@@ -20,8 +20,8 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('rate_hz', default_value='100.0',
                               description='IMU publish rate in Hz'),
-        DeclareLaunchArgument('i2c_address', default_value='74',
-                              description='BNO085 I2C address (decimal, default 74 = 0x4A)'),
+        DeclareLaunchArgument('i2c_address', default_value='75',
+                              description='BNO085 I2C address (decimal, default 75 = 0x4B)'),
         DeclareLaunchArgument('use_game_quaternion', default_value='false',
                               description='Use game quaternion (no mag correction)'),
 

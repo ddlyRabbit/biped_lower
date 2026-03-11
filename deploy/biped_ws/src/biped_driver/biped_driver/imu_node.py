@@ -39,7 +39,7 @@ class BNO085Node(Node):
 
         # Parameters
         self.declare_parameter('i2c_bus', 1)
-        self.declare_parameter('i2c_address', 0x4A)
+        self.declare_parameter('i2c_address', 0x4B)
         self.declare_parameter('rate_hz', 100.0)
         self.declare_parameter('frame_id', 'imu_link')
         self.declare_parameter('use_game_quaternion', False)  # True = no mag correction
