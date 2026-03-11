@@ -1,4 +1,112 @@
-# Biped Deployment Architecture — ROS2
+# Biped Deployment Architecture — ROS2 (V58 Light, +X Forward)
+
+## Student Policy Observation Vector (45d) — Sim to Real Mapping
+
+The obs vector must be assembled in EXACTLY this order (matches training):
+
+```
+Index  Dim  Name               Sim Source                    Real Source                         Notes
+─────  ───  ─────────────────  ────────────────────────────  ──────────────────────────────────  ─────────────────────────────────
+ 0-2    3   base_ang_vel       base_ang_vel (body frame)     BNO085 GYRO_INTEGRATED_RV angVel   rad/s, body frame
+ 3-5    3   projected_gravity  quat_rotate_inverse(q, [0,0,-1])  BNO085 GRAVITY report / |g|    MUST NORMALIZE to unit vector
+ 6-8    3   velocity_commands  generated_commands            /cmd_vel (lin_x, lin_y, ang_z)      from gamepad/keyboard
+ 9-14   6   hip_pos            joint_pos_rel (hip_roll,      CAN encoder - default_pos           order: L_roll, R_roll, L_yaw,
+                               hip_yaw, hip_pitch)                                               R_yaw, L_pitch, R_pitch
+15-16   2   knee_pos           joint_pos_rel (knee)          CAN encoder - default_pos           order: L_knee, R_knee
+17-18   2   foot_pitch_pos     joint_pos_rel (foot_pitch)    CAN encoder - default_pos           order: L, R
+19-20   2   foot_roll_pos      joint_pos_rel (foot_roll)     CAN encoder - default_pos           order: L, R
+21-32  12   joint_vel          joint_vel_rel (all joints)    CAN velocity feedback               Isaac runtime joint order
+33-44  12   last_action        last policy output            ring buffer of previous actions      dimensionless (before scaling)
+─────  ───
+Total: 45d
+```
+
+### Critical Details
+
+**projected_gravity**: In Isaac, `projected_gravity = quat_rotate_inverse(body_quat, [0, 0, -1])`.
+This is a UNIT vector. BNO085's `SH2_GRAVITY` report gives acceleration in m/s² (~9.81).
+MUST normalize: `proj_grav = gravity_report / norm(gravity_report)`.
+
+**Joint position order**: Isaac runtime order ≠ URDF order. The obs builder must use the
+same joint ordering as Isaac's `robot.joint_names`. Verify at startup by printing joint names.
+From our training, the runtime order is:
+```
+ 0: left_hip_pitch_04      6: left_knee_04
+ 1: right_hip_pitch_04     7: right_knee_04
+ 2: left_hip_roll_03       8: left_foot_pitch_02
+ 3: right_hip_roll_03      9: right_foot_pitch_02
+ 4: left_hip_yaw_03       10: left_foot_roll_02
+ 5: right_hip_yaw_03      11: right_foot_roll_02
+```
+But hip_pos obs uses regex `[".*hip_roll.*", ".*hip_yaw.*", ".*hip_pitch.*"]` which groups
+by joint TYPE, not left/right. Isaac resolves this to:
+`[L_roll, R_roll, L_yaw, R_yaw, L_pitch, R_pitch]` (6d).
+
+**joint_vel_rel**: Returns velocity relative to default (which is 0 for all joints),
+so effectively just raw joint velocity in rad/s. Maps directly to CAN velocity feedback.
+
+**Observation noise**: Training adds uniform noise. On real hardware, DO NOT add artificial
+noise — real sensor noise replaces it. Set `enable_corruption = False` equivalent.
+
+**velocity_commands**: With `heading_command=True`, the command manager internally converts
+heading error to ang_vel_z. On real robot, /cmd_vel directly provides (lin_x, lin_y, ang_z).
+No heading mode needed — just pass through.
+
+### Action → Motor Command
+
+```
+Policy output: action[12] (dimensionless, range ~ [-1, 1])
+Position target: target[i] = default_pos[i] + action[i] × 0.5  (action_scale=0.5)
+MIT command: {position=target, velocity=0, Kp=gains[i], Kd=gains[i], torque_ff=0}
+
+Motor executes: τ = Kp × (target - actual) + Kd × (0 - vel)
+This matches Isaac's ImplicitActuator PD control.
+```
+
+**Default positions** (from URDF init_state, +X forward):
+```python
+defaults = {
+    "left_hip_pitch":  -0.2,  "right_hip_pitch":  0.2,
+    "left_hip_roll":    0.0,  "right_hip_roll":   0.0,
+    "left_hip_yaw":     0.0,  "right_hip_yaw":    0.0,
+    "left_knee":        0.4,  "right_knee":       0.4,
+    "left_foot_pitch": -0.2,  "right_foot_pitch": -0.2,
+    "left_foot_roll":   0.0,  "right_foot_roll":   0.0,
+}
+```
+
+**PD Gains** (start at sim values, tune on real hardware):
+```
+hip_roll/yaw:  Kp=10,  Kd=3.0   (halved from Berkeley)
+hip_pitch:     Kp=15,  Kd=3.0
+knee:          Kp=15,  Kd=3.0
+foot_pitch:    Kp=2.0, Kd=0.2
+foot_roll:     Kp=2.0, Kd=0.2
+```
+RS04 MIT mode Kp range: 0-5000, Kd range: 0-100. Our sim values are at the
+very low end — start here and increase if tracking is poor. RS04 gear ratio is
+9:1 but MIT mode operates at output shaft level (joint-level, post-gearbox),
+so sim Kp maps roughly to real Kp.
+
+### Soft Start Sequence (STAND state)
+
+On transition IDLE → STAND:
+1. Read current joint positions from encoders
+2. Set MIT targets = current positions (hold in place), Kp=2, Kd=0.5 (very soft)
+3. Over 2 seconds, linearly interpolate targets from current → default positions
+4. Over 1 second, ramp Kp/Kd from soft → full policy gains
+5. Begin policy inference with zero velocity command
+6. Transition to WALK allowed after 2s stable standing
+
+This prevents violent motion when enabling the policy.
+
+### RS04 Motor-Side Safety (hardware level)
+
+Enable on every motor at startup:
+- `CAN_TIMEOUT` (index 0x702B): Set to 100ms. Motor enters reset if no CAN
+  command received within timeout. Hardware-level e-stop independent of RPi.
+- `limit_torque` (index 0x700B): Set per-joint max torque matching sim effort limits.
+- `limit_cur` (index 0x7018): Set current limit per actuator type.
 
 ## Package Structure
 
@@ -244,10 +352,15 @@ Publishes:
 States:
   IDLE       → all motors disabled, waiting for command
   CALIBRATE  → homing node active (manual calibration)
-  STAND      → policy runs with zero velocity command
-               transition: all joints within ±0.1 rad of default for 2s
+  STAND      → soft start sequence:
+               1. Hold current position (soft gains)
+               2. Interpolate to default pose over 2s
+               3. Ramp to full gains over 1s
+               4. Run policy with zero velocity command
+               transition: stable for 2s → ready for WALK
   WALK       → policy runs with /cmd_vel input
-  ESTOP      → immediate zero torque on all joints
+  ESTOP      → immediate zero torque on all joints, motor CAN_TIMEOUT
+               also triggers hardware e-stop
                requires manual reset (button press) to → IDLE
 
 Transitions:
@@ -465,3 +578,56 @@ Interactive CLI:
   │  (all topics)          │              (Foxglove Studio)
   └────────────────────────┘
 ```
+
+## Frame Conventions
+
+```
+Isaac Lab (training):
+  - World: Z-up, gravity = (0, 0, -9.81)
+  - Robot forward: +X
+  - projected_gravity = quat_rotate_inverse(body_quat, [0, 0, -1])
+    → unit vector, gravity direction in body frame
+
+BNO085:
+  - Default: Z-up, X-forward (matches Isaac when mounted correctly)
+  - SH2_GRAVITY report: gravity acceleration in body frame (m/s²)
+    → ~(0, 0, -9.81) when upright
+  - MUST normalize: proj_grav = gravity / |gravity|
+  - SH2_GYRO_INTEGRATED_RV angVel: body-frame angular velocity (rad/s)
+    → maps directly to base_ang_vel
+
+RS04 Motor:
+  - Position: absolute encoder, radians (output shaft / joint-level)
+  - Velocity: rad/s (output shaft)
+  - Torque: Nm (output shaft, post-gearbox)
+  - Positive direction: verify per joint against URDF convention
+```
+
+**BNO085 mounting**: The IMU X-axis must point in the robot's +X direction (forward).
+If mounted differently, apply a fixed rotation to align frames.
+
+## CAN Timing Budget (50Hz = 20ms)
+
+```
+CAN commands (12 joints, 2 buses parallel): ~1.6ms
+IMU serial read (SHTP):                     ~0.2ms
+Obs vector assembly:                        ~0.1ms
+ONNX inference (45→128→128→128→12):         ~0.5ms
+Safety checks:                              ~0.1ms
+────────────────────────────────────────────────────
+Total:                                      ~2.5ms
+Headroom:                                   17.5ms  ✅
+```
+
+## Known Risks & Mitigations
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Joint order mismatch (sim vs real) | Wrong actions to wrong joints → crash | Print joint order at startup, verify against URDF |
+| projected_gravity not normalized | Obs magnitude wrong → policy confused | Normalize in obs_builder, add assertion |
+| Action delay (CAN + compute ~3ms) | Slight phase lag vs sim | Training includes last_action (12d) which partially compensates. If severe, add 1-step action delay to training. |
+| Sim Kp/Kd → real Kp/Kd mismatch | Poor tracking, oscillation or soft | Start at sim values, tune incrementally. RS04 MIT Kp operates at joint level (post-gearbox). |
+| IMU frame misalignment | gravity/gyro axes swapped → falls | Verify IMU orientation at startup: upright robot should read gravity ≈ (0, 0, -1) normalized |
+| CAN bus failure (loose connector) | Partial joint control → crash | CAN_TIMEOUT on each motor (100ms), safety_node CAN watchdog |
+| WiFi latency for Foxglove | Choppy visualization | Foxglove is monitoring only, not in control loop. Acceptable. |
+| BNO085 UART-SHTP 3Mbaud on RPi | RPi UART may not support 3Mbaud reliably | Test. Fallback: use I2C (400kHz) or SPI (1MHz). Both supported by Adafruit library. |
