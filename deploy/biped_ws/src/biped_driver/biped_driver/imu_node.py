@@ -102,21 +102,24 @@ class BNO085Node(Node):
             import time
             import digitalio
 
-            i2c = busio.I2C(board.SCL, board.SDA, frequency=400_000)
-
-            # Hardware reset via RST pin if connected
-            rst_pin = None
+            # Hardware reset via RST pin if connected (manual toggle)
             if self._reset_pin >= 0:
                 try:
-                    import microcontroller
                     pin_map = {4: board.D4, 17: board.D17, 27: board.D27, 22: board.D22}
                     if self._reset_pin in pin_map:
-                        rst_pin = digitalio.DigitalInOut(pin_map[self._reset_pin])
-                        self.get_logger().info(f'Using hardware reset on GPIO {self._reset_pin}')
+                        rst = digitalio.DigitalInOut(pin_map[self._reset_pin])
+                        rst.direction = digitalio.Direction.OUTPUT
+                        rst.value = False
+                        time.sleep(0.1)
+                        rst.value = True
+                        time.sleep(1.0)  # BNO085 needs ~1s to boot after reset
+                        rst.deinit()
+                        self.get_logger().info(f'Hardware reset via GPIO {self._reset_pin} — OK')
                 except Exception as e:
-                    self.get_logger().warn(f'Could not setup reset pin GPIO {self._reset_pin}: {e}')
+                    self.get_logger().warn(f'Reset pin GPIO {self._reset_pin} failed: {e}')
 
-            self._bno = BNO08X_I2C(i2c, address=self._addr, reset=rst_pin)
+            i2c = busio.I2C(board.SCL, board.SDA, frequency=400_000)
+            self._bno = BNO08X_I2C(i2c, address=self._addr, debug=False)
 
             # Enable reports with retry (sensor may need time after reset)
 
