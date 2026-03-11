@@ -100,22 +100,37 @@ class BNO085Node(Node):
             i2c = busio.I2C(board.SCL, board.SDA, frequency=400_000)
             self._bno = BNO08X_I2C(i2c, address=self._addr)
 
-            # Enable reports at configured interval
+            # Soft reset to clear any stale state from previous sessions
+            try:
+                self._bno.soft_reset()
+                import time
+                time.sleep(1.0)
+            except Exception:
+                pass  # reset may fail if sensor is already clean
+
+            # Enable reports with retry (sensor may need time after reset)
+            import time
             interval_us = int(1_000_000 / self._rate)
+            max_retries = 3
 
-            # Quaternion: rotation_vector (mag-corrected) or game_rotation_vector (no mag)
-            if self._use_game_quat:
-                self._bno.enable_feature(BNO_REPORT_GAME_ROTATION_VECTOR, interval_us)
-                self.get_logger().info('Using GAME_ROTATION_VECTOR (no mag correction)')
-            else:
-                self._bno.enable_feature(BNO_REPORT_ROTATION_VECTOR, interval_us)
-                self.get_logger().info('Using ROTATION_VECTOR (mag-corrected)')
+            for attempt in range(max_retries):
+                try:
+                    if self._use_game_quat:
+                        self._bno.enable_feature(BNO_REPORT_GAME_ROTATION_VECTOR, interval_us)
+                        self.get_logger().info('Using GAME_ROTATION_VECTOR (no mag correction)')
+                    else:
+                        self._bno.enable_feature(BNO_REPORT_ROTATION_VECTOR, interval_us)
+                        self.get_logger().info('Using ROTATION_VECTOR (mag-corrected)')
 
-            # Calibrated gyroscope: direct angular velocity (rad/s)
-            self._bno.enable_feature(BNO_REPORT_GYROSCOPE, interval_us)
-
-            # Gravity vector
-            self._bno.enable_feature(BNO_REPORT_GRAVITY, interval_us)
+                    self._bno.enable_feature(BNO_REPORT_GYROSCOPE, interval_us)
+                    self._bno.enable_feature(BNO_REPORT_GRAVITY, interval_us)
+                    break  # success
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        self.get_logger().warn(f'Feature enable failed (attempt {attempt+1}): {e}, retrying...')
+                        time.sleep(0.5)
+                    else:
+                        raise
 
             self.get_logger().info(
                 f'BNO085 initialized — reports enabled at {interval_us}μs interval'
