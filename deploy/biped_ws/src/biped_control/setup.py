@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'biped_tools'
+package_name = 'biped_control'
 
 setup(
     name=package_name,
@@ -14,12 +14,13 @@ setup(
     zip_safe=True,
     maintainer='Abhinav Roy',
     maintainer_email='abhinav.roy@cleanelectric.in',
-    description='Calibration and utility tools for biped robot',
+    description='Policy inference, safety, and state machine',
     license='MIT',
     entry_points={
         'console_scripts': [
-            'calibrate_node = biped_tools.calibrate_node:main',
-            'export_onnx = biped_tools.export_onnx:main',
+            'policy_node = biped_control.policy_node:main',
+            'safety_node = biped_control.safety_node:main',
+            'state_machine_node = biped_control.state_machine_node:main',
         ],
     },
 )
