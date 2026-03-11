@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>biped_driver</name>
+  <version>0.1.0</version>
+  <description>Hardware drivers for biped robot (IMU, CAN motors)</description>
+  <maintainer email="abhinav.roy@cleanelectric.in">Abhinav Roy</maintainer>
+  <license>MIT</license>
+
+  <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>biped_msgs</depend>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+</package>

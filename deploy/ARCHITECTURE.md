@@ -7,8 +7,8 @@ The obs vector must be assembled in EXACTLY this order (matches training):
 ```
 Index  Dim  Name               Sim Source                    Real Source                         Notes
 ─────  ───  ─────────────────  ────────────────────────────  ──────────────────────────────────  ─────────────────────────────────
- 0-2    3   base_ang_vel       base_ang_vel (body frame)     BNO085 GYRO_INTEGRATED_RV angVel   rad/s, body frame
- 3-5    3   projected_gravity  quat_rotate_inverse(q, [0,0,-1])  BNO085 GRAVITY report / |g|    MUST NORMALIZE to unit vector
+ 0-2    3   base_ang_vel       base_ang_vel (body frame)     BNO085 bno.gyro (calibrated)       rad/s, body frame
+ 3-5    3   projected_gravity  quat_rotate_inverse(q, [0,0,-1])  BNO085 bno.gravity / |g|       MUST NORMALIZE to unit vector
  6-8    3   velocity_commands  generated_commands            /cmd_vel (lin_x, lin_y, ang_z)      from gamepad/keyboard
  9-14   6   hip_pos            joint_pos_rel (hip_roll,      CAN encoder - default_pos           order: L_roll, R_roll, L_yaw,
                                hip_yaw, hip_pitch)                                               R_yaw, L_pitch, R_pitch
@@ -276,17 +276,18 @@ BNO085 over I2C (SH2 protocol):
   Uses Hillcrest SH2 protocol over I2C at 400kHz. Same sensor reports as
   UART-SHTP but at a safe, native RPi 5 bus speed. No 3Mbaud risk.
 
-  Enabled reports:
-  - SH2_GYRO_INTEGRATED_RV (0x2A) @ 100Hz — fused quaternion + angular
-    velocity in ONE report. Best option for RL deployment.
-    Fields: quat(i,j,k,real) + angVel(x,y,z) rad/s
-  - SH2_GRAVITY (0x06) @ 100Hz — gravity vector (for projected_gravity obs)
+  Enabled reports (via adafruit-circuitpython-bno08x):
+  - BNO_REPORT_ROTATION_VECTOR @ 100Hz — fused quaternion (i,j,k,real)
+    Accessor: bno.quaternion → (i, j, k, real)
+    Option: BNO_REPORT_GAME_ROTATION_VECTOR for no mag correction (less drift correction)
+  - BNO_REPORT_GYROSCOPE @ 100Hz — calibrated angular velocity (rad/s, body frame)
+    Accessor: bno.gyro → (x, y, z)
+  - BNO_REPORT_GRAVITY @ 100Hz — gravity vector (m/s², body frame)
+    Accessor: bno.gravity → (x, y, z)
 
   Why I2C over UART-RVC:
   - RVC (UART 115200) only gives yaw/pitch/roll + accel. NO angular velocity.
-  - I2C uses full SH2 protocol — same as UART-SHTP but at safe 400kHz.
-  - GYRO_INTEGRATED_RV provides both quaternion AND angular velocity in one
-    fused report — no need to differentiate quaternions for ang_vel.
+  - I2C uses full SH2 protocol with access to all individual sensor reports.
 
   Why I2C over UART-SHTP:
   - UART-SHTP is fixed at 3Mbaud — not configurable, unreliable on RPi 5.
