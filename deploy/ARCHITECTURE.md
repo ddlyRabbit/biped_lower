@@ -133,7 +133,7 @@ biped_ws/src/
 │   │   ├── __init__.py
 │   │   ├── robstride_can.py           ← RS04 CAN protocol (MIT mode)
 │   │   ├── can_bus_node.py            ← Multi-motor CAN R/W node
-│   │   ├── imu_node.py               ← BNO085 UART-SHTP (gyro+quat fused)
+│   │   ├── imu_node.py               ← BNO085 I2C (SH2 protocol, gyro+quat fused)
 │   │   └── constants.py               ← CAN protocol constants
 │   ├── package.xml
 │   └── setup.py
@@ -265,35 +265,41 @@ Timer callback (50Hz):
 ```
 Node: /imu
 Params:
-  serial_port: "/dev/ttyAMA0"
-  baud_rate: 3000000                      # BNO085 UART-SHTP (3Mbaud)
+  i2c_bus: 1                              # RPi 5 I2C bus 1 (GPIO 2/3)
+  i2c_address: 0x4A                       # BNO085 default I2C address
 
 Publishes:
   /imu/data          Imu            @ 100Hz
+  /imu/gravity       Vector3Stamped @ 100Hz   (raw gravity for projected_gravity)
 
-BNO085 UART-SHTP mode (NOT RVC):
-  Uses Hillcrest SH2 protocol over UART with SHTP framing (0x7E delimiters,
-  0x7D escape bytes). Runs at 3Mbaud. Enables individual sensor reports:
+BNO085 over I2C (SH2 protocol):
+  Uses Hillcrest SH2 protocol over I2C at 400kHz. Same sensor reports as
+  UART-SHTP but at a safe, native RPi 5 bus speed. No 3Mbaud risk.
 
   Enabled reports:
-  - SH2_GYRO_INTEGRATED_RV (0x2A) @ 100Hz — fused quaternion + angular 
+  - SH2_GYRO_INTEGRATED_RV (0x2A) @ 100Hz — fused quaternion + angular
     velocity in ONE report. Best option for RL deployment.
     Fields: quat(i,j,k,real) + angVel(x,y,z) rad/s
   - SH2_GRAVITY (0x06) @ 100Hz — gravity vector (for projected_gravity obs)
 
-  Why UART-SHTP over RVC:
-  - RVC only gives yaw/pitch/roll + accel. NO angular velocity vector.
-  - SHTP gives direct access to calibrated gyro (rad/s) which our policy needs.
+  Why I2C over UART-RVC:
+  - RVC (UART 115200) only gives yaw/pitch/roll + accel. NO angular velocity.
+  - I2C uses full SH2 protocol — same as UART-SHTP but at safe 400kHz.
   - GYRO_INTEGRATED_RV provides both quaternion AND angular velocity in one
     fused report — no need to differentiate quaternions for ang_vel.
+
+  Why I2C over UART-SHTP:
+  - UART-SHTP is fixed at 3Mbaud — not configurable, unreliable on RPi 5.
+  - I2C at 400kHz is natively supported, well-tested on RPi.
+  - Bandwidth: ~3.2KB/s needed vs 400KB/s I2C capacity. Plenty of headroom.
 
   Parse → populate sensor_msgs/Imu:
   - orientation: quaternion directly from GYRO_INTEGRATED_RV
   - angular_velocity: x/y/z rad/s directly from GYRO_INTEGRATED_RV
   - linear_acceleration: not used (gravity report used for projected_gravity)
 
-  Implementation reference: Adafruit_BNO08x library (begin_UART + SHTP HAL)
-  Python port: use sh2 SHTP framing, enable reports via sh2_setSensorConfig
+  Implementation: Python port of Adafruit_BNO08x (begin_I2C + SH2 HAL)
+  using smbus2 or adafruit-circuitpython-bno08x package.
 ```
 
 ### 3. policy_node (biped_control)
@@ -590,6 +596,7 @@ Isaac Lab (training):
 
 BNO085:
   - Default: Z-up, X-forward (matches Isaac when mounted correctly)
+  - Interface: I2C at 400kHz (safe, reliable on RPi 5)
   - SH2_GRAVITY report: gravity acceleration in body frame (m/s²)
     → ~(0, 0, -9.81) when upright
   - MUST normalize: proj_grav = gravity / |gravity|
@@ -630,4 +637,4 @@ Headroom:                                   17.5ms  ✅
 | IMU frame misalignment | gravity/gyro axes swapped → falls | Verify IMU orientation at startup: upright robot should read gravity ≈ (0, 0, -1) normalized |
 | CAN bus failure (loose connector) | Partial joint control → crash | CAN_TIMEOUT on each motor (100ms), safety_node CAN watchdog |
 | WiFi latency for Foxglove | Choppy visualization | Foxglove is monitoring only, not in control loop. Acceptable. |
-| BNO085 UART-SHTP 3Mbaud on RPi | RPi UART may not support 3Mbaud reliably | Test. Fallback: use I2C (400kHz) or SPI (1MHz). Both supported by Adafruit library. |
+| BNO085 I2C bus contention | Shared I2C bus slows down if other devices present | BNO085 is the only I2C device. Dedicated bus 1. |
