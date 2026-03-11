@@ -44,11 +44,11 @@ class BNO085Node(Node):
         self.declare_parameter('frame_id', 'imu_link')
         self.declare_parameter('use_game_quaternion', False)  # True = no mag correction
 
-        self._bus = self.get_parameter('i2c_bus').value
-        self._addr = self.get_parameter('i2c_address').value
-        self._rate = self.get_parameter('rate_hz').value
-        self._frame_id = self.get_parameter('frame_id').value
-        self._use_game_quat = self.get_parameter('use_game_quaternion').value
+        self._bus = int(self.get_parameter('i2c_bus').value)
+        self._addr = int(self.get_parameter('i2c_address').value)
+        self._rate = float(self.get_parameter('rate_hz').value)
+        self._frame_id = str(self.get_parameter('frame_id').value)
+        self._use_game_quat = bool(self.get_parameter('use_game_quaternion').value)
 
         # QoS: best-effort for real-time sensor data
         sensor_qos = QoSProfile(

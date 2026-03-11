@@ -22,7 +22,7 @@ setup(
     entry_points={
         'console_scripts': [
             'imu_node = biped_driver.imu_node:main',
-            'can_bus_node = biped_driver.can_bus_node:main',
+            # 'can_bus_node = biped_driver.can_bus_node:main',  # TODO: implement
         ],
     },
 )
