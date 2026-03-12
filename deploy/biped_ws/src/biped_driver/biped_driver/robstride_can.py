@@ -90,19 +90,20 @@ class BipedMotorManager:
     """
 
     # URDF joint limits (rad)
+    # From URDF: urdf/heavy/robot.urdf joint limits (rad)
     JOINT_LIMITS = {
-        "L_hip_pitch":  (-2.222, 1.047),
-        "R_hip_pitch":  (-1.047, 2.222),
-        "L_hip_roll":   (-0.209, 2.269),
-        "R_hip_roll":   (-2.269, 0.209),
-        "L_hip_yaw":    (-2.094, 2.094),
-        "R_hip_yaw":    (-2.094, 2.094),
-        "L_knee":       ( 0.000, 2.618),
-        "R_knee":       ( 0.000, 2.618),
-        "L_foot_pitch": (-1.047, 0.524),
-        "R_foot_pitch": (-1.047, 0.524),
-        "L_foot_roll":  (-0.262, 0.262),
-        "R_foot_roll":  (-0.262, 0.262),
+        "R_hip_pitch":  (-2.21657, 1.04720),
+        "R_hip_roll":   (-2.26893, 0.20944),
+        "R_hip_yaw":    (-1.57080, 1.57080),
+        "R_knee":       ( 0.00000, 2.70526),
+        "R_foot_pitch": (-0.87267, 0.52360),
+        "R_foot_roll":  (-0.26180, 0.26180),
+        "L_hip_pitch":  (-1.04720, 2.21657),
+        "L_hip_roll":   (-0.20944, 2.26893),
+        "L_hip_yaw":    (-1.57080, 1.57080),
+        "L_knee":       ( 0.00000, 2.70526),
+        "L_foot_pitch": (-0.87267, 0.52360),
+        "L_foot_roll":  (-0.26180, 0.26180),
     }
 
     def __init__(self, joints: list[JointConfig], backend: str = "socketcan"):

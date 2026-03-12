@@ -26,19 +26,21 @@ from biped_driver.robstride_can import (
 
 # URDF joint limits: (lower_rad, upper_rad, default_pos_rad)
 # These are all in JOINT-SPACE (what the policy sees)
+# From URDF: urdf/heavy/robot.urdf joint limits (rad)
+# Format: (lower_rad, upper_rad, default_pos_rad)
 URDF_LIMITS = {
-    "R_hip_pitch":  (-1.047, 2.222,  0.2),
-    "R_hip_roll":   (-2.269, 0.209,  0.0),
-    "R_hip_yaw":    (-2.094, 2.094,  0.0),
-    "R_knee":       ( 0.000, 2.618,  0.4),
-    "R_foot_pitch": (-1.047, 0.524, -0.2),
-    "R_foot_roll":  (-0.262, 0.262,  0.0),
-    "L_hip_pitch":  (-2.222, 1.047, -0.2),
-    "L_hip_roll":   (-0.209, 2.269,  0.0),
-    "L_hip_yaw":    (-2.094, 2.094,  0.0),
-    "L_knee":       ( 0.000, 2.618,  0.4),
-    "L_foot_pitch": (-1.047, 0.524, -0.2),
-    "L_foot_roll":  (-0.262, 0.262,  0.0),
+    "R_hip_pitch":  (-2.21657, 1.04720,  0.2),
+    "R_hip_roll":   (-2.26893, 0.20944,  0.0),
+    "R_hip_yaw":    (-1.57080, 1.57080,  0.0),
+    "R_knee":       ( 0.00000, 2.70526,  0.4),
+    "R_foot_pitch": (-0.87267, 0.52360, -0.2),
+    "R_foot_roll":  (-0.26180, 0.26180,  0.0),
+    "L_hip_pitch":  (-1.04720, 2.21657, -0.2),
+    "L_hip_roll":   (-0.20944, 2.26893,  0.0),
+    "L_hip_yaw":    (-1.57080, 1.57080,  0.0),
+    "L_knee":       ( 0.00000, 2.70526,  0.4),
+    "L_foot_pitch": (-0.87267, 0.52360, -0.2),
+    "L_foot_roll":  (-0.26180, 0.26180,  0.0),
 }
 
 # Motor list (CAN order)
