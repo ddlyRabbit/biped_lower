@@ -35,7 +35,7 @@ sudo slcand -o -c -s8 "$DEVICE" can0
 
 # Bring up interface
 sudo ip link set up can0
-sudo ifconfig can0 txqueuelen 1000
+sudo ip link set can0 txqueuelen 1000
 
 echo "CAN0: $(ip -details link show can0 | grep can | head -1)"
 echo "Device: $DEVICE → can0 (1Mbps, all 12 motors)"
