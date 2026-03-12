@@ -29,9 +29,19 @@ Reboot. Verify: `ls /sys/class/net/ | grep can`
 
 ## Step 1: Setup CAN (every boot)
 
+**Option A: Dual bus (MCP2515 CAN HAT)**
 ```bash
 cd ~/biped_lower/deploy
 ./scripts/setup_can.sh
+# Creates can0 (right leg) + can1 (left leg)
+```
+
+**Option B: Single bus (RobStride USB-CAN / CANable)**
+```bash
+cd ~/biped_lower/deploy
+./scripts/setup_can_usb.sh          # default: /dev/ttyACM0
+./scripts/setup_can_usb.sh /dev/ttyACM1   # if different port
+# Creates can0 with all 12 motors
 ```
 
 Verify: `candump can0` (shows nothing if no motors powered, frames if powered)
@@ -49,7 +59,11 @@ Saves `calibration.yaml` (all 12 joints, both legs).
 ## Step 3: Test hardware (no policy)
 
 ```bash
+# Dual bus (MCP2515 HAT):
 ros2 launch biped_bringup hardware.launch.py
+
+# Single bus (USB-CAN):
+ros2 launch biped_bringup hardware.launch.py bus_mode:=single
 
 # In another terminal:
 ros2 topic echo /joint_states     # motor positions + velocities

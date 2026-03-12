@@ -1,32 +1,52 @@
 """Full robot bringup — all nodes.
 
-Usage:
+Dual bus (MCP2515 HAT):
     ros2 launch biped_bringup bringup.launch.py
-    ros2 launch biped_bringup bringup.launch.py gain_scale:=0.5
+
+Single bus (USB-CAN adapter):
+    ros2 launch biped_bringup bringup.launch.py bus_mode:=single
+
+Low gains for first test:
+    ros2 launch biped_bringup bringup.launch.py bus_mode:=single gain_scale:=0.3
 """
 
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
-# Motor config strings (fallback if no robot_config YAML)
 CAN0_MOTORS = "R_hip_pitch:1:RS04,R_hip_roll:2:RS03,R_hip_yaw:3:RS03,R_knee:4:RS04,R_foot_pitch:5:RS02,R_foot_roll:6:RS02"
 CAN1_MOTORS = "L_hip_pitch:7:RS04,L_hip_roll:8:RS03,L_hip_yaw:9:RS03,L_knee:10:RS04,L_foot_pitch:11:RS02,L_foot_roll:12:RS02"
+ALL_MOTORS = CAN0_MOTORS + "," + CAN1_MOTORS
 
 
-def generate_launch_description():
+def launch_setup(context):
     bringup_dir = get_package_share_directory('biped_bringup')
-    default_robot_config = os.path.join(bringup_dir, 'config', 'robot.yaml')
+    bus_mode = LaunchConfiguration('bus_mode').perform(context)
+    cal_file = LaunchConfiguration('calibration_file').perform(context)
 
-    return LaunchDescription([
-        DeclareLaunchArgument('onnx_model', default_value='student_flat.onnx'),
-        DeclareLaunchArgument('gain_scale', default_value='1.0'),
-        DeclareLaunchArgument('calibration_file', default_value=''),
-        DeclareLaunchArgument('robot_config', default_value=default_robot_config),
+    if bus_mode == 'single':
+        robot_config = os.path.join(bringup_dir, 'config', 'robot_single_bus.yaml')
+        motor_params = {
+            'robot_config': robot_config,
+            'calibration_file': cal_file,
+            'loop_rate': 50.0,
+            'motor_config_can0': ALL_MOTORS,
+        }
+    else:
+        robot_config_override = LaunchConfiguration('robot_config').perform(context)
+        robot_config = robot_config_override or os.path.join(bringup_dir, 'config', 'robot.yaml')
+        motor_params = {
+            'robot_config': robot_config,
+            'calibration_file': cal_file,
+            'loop_rate': 50.0,
+            'motor_config_can0': CAN0_MOTORS,
+            'motor_config_can1': CAN1_MOTORS,
+        }
 
+    return [
         # IMU
         Node(
             package='biped_driver', executable='imu_node',
@@ -34,21 +54,14 @@ def generate_launch_description():
             parameters=[{'rate_hz': 100.0, 'i2c_address': 75, 'reset_pin': 4}],
         ),
 
-        # CAN bus — single node managing both buses (can0=right, can1=left)
+        # CAN bus — single or dual depending on bus_mode
         Node(
             package='biped_driver', executable='can_bus_node',
             name='can_bus_node', output='screen',
-            parameters=[{
-                'robot_config': LaunchConfiguration('robot_config'),
-                'calibration_file': LaunchConfiguration('calibration_file'),
-                'loop_rate': 50.0,
-                # Fallback if no robot_config:
-                'motor_config_can0': CAN0_MOTORS,
-                'motor_config_can1': CAN1_MOTORS,
-            }],
+            parameters=[motor_params],
         ),
 
-        # Safety monitor
+        # Safety
         Node(
             package='biped_control', executable='safety_node',
             name='safety_node', output='screen',
@@ -60,7 +73,7 @@ def generate_launch_description():
             name='state_machine_node', output='screen',
         ),
 
-        # Policy inference
+        # Policy
         Node(
             package='biped_control', executable='policy_node',
             name='policy_node', output='screen',
@@ -70,4 +83,16 @@ def generate_launch_description():
                 'loop_rate': 50.0,
             }],
         ),
+    ]
+
+
+def generate_launch_description():
+    return LaunchDescription([
+        DeclareLaunchArgument('bus_mode', default_value='dual',
+                              description='CAN bus mode: dual (MCP2515 HAT) or single (USB-CAN)'),
+        DeclareLaunchArgument('onnx_model', default_value='student_flat.onnx'),
+        DeclareLaunchArgument('gain_scale', default_value='1.0'),
+        DeclareLaunchArgument('calibration_file', default_value=''),
+        DeclareLaunchArgument('robot_config', default_value=''),
+        OpaqueFunction(function=launch_setup),
     ])

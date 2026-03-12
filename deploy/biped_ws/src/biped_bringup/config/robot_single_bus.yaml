@@ -1,0 +1,24 @@
+# Biped Robot Motor Configuration — Single CAN bus (USB-CAN adapter)
+# All 12 motors on can0 via RobStride USB-CAN / CANable (slcand)
+#
+# Setup:
+#   sudo slcand -o -c -s8 /dev/ttyACM0 can0   # s8 = 1Mbps
+#   sudo ip link set up can0
+#   sudo ifconfig can0 txqueuelen 1000
+
+can0:
+  interface: can0
+  side: all
+  motors:
+    R_hip_pitch:   {id: 1,  type: RS04}
+    R_hip_roll:    {id: 2,  type: RS03}
+    R_hip_yaw:     {id: 3,  type: RS03}
+    R_knee:        {id: 4,  type: RS04}
+    R_foot_pitch:  {id: 5,  type: RS02}
+    R_foot_roll:   {id: 6,  type: RS02}
+    L_hip_pitch:   {id: 7,  type: RS04}
+    L_hip_roll:    {id: 8,  type: RS03}
+    L_hip_yaw:     {id: 9,  type: RS03}
+    L_knee:        {id: 10, type: RS04}
+    L_foot_pitch:  {id: 11, type: RS02}
+    L_foot_roll:   {id: 12, type: RS02}
