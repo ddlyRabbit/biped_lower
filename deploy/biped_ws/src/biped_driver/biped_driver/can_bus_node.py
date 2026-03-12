@@ -76,6 +76,7 @@ class CanBusNode(Node):
         self._last_commands: dict[str, MITCommand] = {}
         self._last_positions: dict[str, float] = {}  # last known motor positions (normal joints)
         self._last_joint_positions: dict[str, float] = {}  # joint-space positions (for ankle soft stops)
+        self._motors_enabled = False
 
         # Pre-compute bus-grouped joint ordering for the control loop.
         # Within each bus, ankle pairs are grouped together.
@@ -192,6 +193,11 @@ class CanBusNode(Node):
     # ── Command callback ────────────────────────────────────────────
 
     def _cmd_callback(self, msg: MITCommandArray):
+        # Auto-enable motors on first command (triggered by state_machine STAND)
+        if not self._motors_enabled and len(msg.commands) > 0:
+            self.enable_all()
+            self._motors_enabled = True
+
         for cmd in msg.commands:
             if cmd.joint_name in self._mgr.joints:
                 self._last_commands[cmd.joint_name] = cmd
@@ -404,7 +410,9 @@ def main(args=None):
     rclpy.init(args=args)
     node = CanBusNode()
     try:
-        node.enable_all()
+        # Don't enable motors on startup — state_machine_node will
+        # request enable via /joint_commands when transitioning to STAND.
+        # Motors stay disabled until first MIT command arrives.
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
