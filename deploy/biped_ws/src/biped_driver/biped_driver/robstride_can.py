@@ -246,9 +246,7 @@ class BipedMotorManager:
 
     def enable_all(self):
         for bus in self._buses.values():
-            bus.enable_all()
-            bus.set_mode_all(0)
-            bus.flush_rx()
+            bus.enable_and_set_mit_all()
 
     def disable_all(self, clear_fault: bool = False):
         for bus in self._buses.values():
