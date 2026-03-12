@@ -1,10 +1,12 @@
 """Live joint calibration — LeRobot-style real-time display.
 
 Continuously reads all motor positions and tracks min/max.
-Ankle joints (foot_pitch/foot_roll) use the parallel linkage inverse
-to display and validate in joint-space, matching what the policy sees.
+Joints auto-mark ✅ DONE when observed range matches expected within 20%.
 
-Joints auto-mark ✅ DONE when observed range matches URDF within 20%.
+Ankle motors (foot_pitch/foot_roll) are shown in raw motor-space since
+joint-space conversion requires offsets we don't have yet. The expected
+motor range is computed from URDF joint limits through the linkage forward.
+
 Press Ctrl+C when all joints are done (or early) to save calibration.yaml.
 
 Usage:
@@ -19,13 +21,8 @@ import rclpy
 from rclpy.node import Node
 
 from biped_driver.robstride_dynamics import RobstrideBus, Motor
-from biped_driver.robstride_can import (
-    ankle_motors_to_feedback,
-    ANKLE_PAIRS,
-)
+from biped_driver.robstride_can import ANKLE_PAIRS, _PITCH_GAIN, _ROLL_GAIN
 
-# URDF joint limits: (lower_rad, upper_rad, default_pos_rad)
-# These are all in JOINT-SPACE (what the policy sees)
 # From URDF: urdf/heavy/robot.urdf joint limits (rad)
 # Format: (lower_rad, upper_rad, default_pos_rad)
 URDF_LIMITS = {
@@ -43,7 +40,6 @@ URDF_LIMITS = {
     "L_foot_roll":  (-0.26180, 0.26180,  0.0),
 }
 
-# Motor list (CAN order)
 MOTOR_LIST = [
     ("R_hip_pitch",   1, "rs-04"),
     ("R_hip_roll",    2, "rs-03"),
@@ -59,11 +55,34 @@ MOTOR_LIST = [
     ("L_foot_roll",  12, "rs-02"),
 ]
 
-# Display order: all joints the policy sees (12 joints)
-# Same as MOTOR_LIST — ankle joints show joint-space values via linkage inverse
 DISPLAY_JOINTS = [name for name, _, _ in MOTOR_LIST]
 
-RANGE_MATCH_THRESHOLD = 0.20  # 20%
+# Ankle motor names (these are in ANKLE_PAIRS.keys() or .values())
+ANKLE_PITCH_MOTORS = set(ANKLE_PAIRS.keys())       # foot_pitch = upper motor
+ANKLE_ROLL_MOTORS = set(ANKLE_PAIRS.values())       # foot_roll = lower motor
+ANKLE_ALL = ANKLE_PITCH_MOTORS | ANKLE_ROLL_MOTORS
+
+# Expected motor range for each ankle motor:
+# motor_upper = pitch_gain * pitch + roll_gain * roll
+# motor_lower = pitch_gain * pitch - roll_gain * roll
+# Max motor excursion = pitch_gain * pitch_range + roll_gain * roll_range
+# (both motors see the same total range when exercising full pitch + roll)
+def _ankle_expected_motor_range(side_prefix):
+    """Compute expected motor range for ankle motors from URDF joint limits."""
+    pitch_urdf = URDF_LIMITS[f"{side_prefix}_foot_pitch"]
+    roll_urdf = URDF_LIMITS[f"{side_prefix}_foot_roll"]
+    pitch_range = pitch_urdf[1] - pitch_urdf[0]
+    roll_range = roll_urdf[1] - roll_urdf[0]
+    return _PITCH_GAIN * pitch_range + _ROLL_GAIN * roll_range
+
+ANKLE_EXPECTED_RANGE = {
+    "R_foot_pitch": _ankle_expected_motor_range("R"),
+    "R_foot_roll":  _ankle_expected_motor_range("R"),
+    "L_foot_pitch": _ankle_expected_motor_range("L"),
+    "L_foot_roll":  _ankle_expected_motor_range("L"),
+}
+
+RANGE_MATCH_THRESHOLD = 0.20
 
 
 class CalibrateNode(Node):
@@ -90,7 +109,6 @@ class CalibrateNode(Node):
         )
         bus.connect()
 
-        # Enable all in zero-torque MIT mode
         print(f"\nEnabling {len(MOTOR_LIST)} motors (zero torque)...")
         for name, mid, _ in MOTOR_LIST:
             try:
@@ -105,24 +123,27 @@ class CalibrateNode(Node):
         bus.flush_rx()
         print("All motors enabled. Move each joint to both limits.\n")
 
-        # Raw motor encoder positions (always tracked)
-        motor_cur = {n: 0.0 for n, _, _ in MOTOR_LIST}
-        motor_min = {n: float('inf') for n, _, _ in MOTOR_LIST}
-        motor_max = {n: float('-inf') for n, _, _ in MOTOR_LIST}
-
-        # Joint-space tracking (for display + done check)
-        # For normal joints: same as motor. For ankle: computed via linkage.
-        joint_cur = {n: 0.0 for n in DISPLAY_JOINTS}
-        joint_min = {n: float('inf') for n in DISPLAY_JOINTS}
-        joint_max = {n: float('-inf') for n in DISPLAY_JOINTS}
+        # Track raw motor encoder positions for ALL joints
+        motor_cur = {n: 0.0 for n in DISPLAY_JOINTS}
+        motor_min = {n: float('inf') for n in DISPLAY_JOINTS}
+        motor_max = {n: float('-inf') for n in DISPLAY_JOINTS}
         done = {n: False for n in DISPLAY_JOINTS}
 
         n_joints = len(DISPLAY_JOINTS)
 
+        # Compute expected ranges
+        expected_range = {}
+        for name in DISPLAY_JOINTS:
+            if name in ANKLE_ALL:
+                expected_range[name] = ANKLE_EXPECTED_RANGE[name]
+            else:
+                urdf = URDF_LIMITS.get(name)
+                expected_range[name] = (urdf[1] - urdf[0]) if urdf else 0.0
+
         # Header
         print("=" * 95)
         print(f"  {'Joint':<16} {'Cur':>7}  {'Min':>7}  {'Max':>7}  "
-              f"{'Range':>7}  {'URDF':>7}  {'Err%':>5}  Status")
+              f"{'Range':>7}  {'Expct':>7}  {'Err%':>5}  Status")
         print("-" * 95)
         for _ in range(n_joints + 2):
             print()
@@ -143,51 +164,20 @@ class CalibrateNode(Node):
                     except Exception:
                         pass
 
-                # Compute joint-space positions
-                for name, _, _ in MOTOR_LIST:
-                    pair = ANKLE_PAIRS.get(name)
-                    if pair:
-                        # This is a pitch joint — compute both pitch and roll
-                        roll_name = pair
-                        pitch_pos, roll_pos = ankle_motors_to_feedback(
-                            motor_cur[name], motor_cur[roll_name])
-                        joint_cur[name] = pitch_pos
-                        joint_cur[roll_name] = roll_pos
-
-                        # Track joint-space min/max for pitch
-                        if pitch_pos < joint_min[name]:
-                            joint_min[name] = pitch_pos
-                        if pitch_pos > joint_max[name]:
-                            joint_max[name] = pitch_pos
-                        # Track joint-space min/max for roll
-                        if roll_pos < joint_min[roll_name]:
-                            joint_min[roll_name] = roll_pos
-                        if roll_pos > joint_max[roll_name]:
-                            joint_max[roll_name] = roll_pos
-                    elif name not in ANKLE_PAIRS.values():
-                        # Normal joint — motor = joint
-                        joint_cur[name] = motor_cur[name]
-                        joint_min[name] = motor_min[name]
-                        joint_max[name] = motor_max[name]
-                    # else: roll joint — already handled by its pitch pair above
-
                 # Check done
                 n_done = 0
                 for name in DISPLAY_JOINTS:
                     if done[name]:
                         n_done += 1
                         continue
-                    urdf = URDF_LIMITS.get(name)
-                    if not urdf:
+                    mn = motor_min[name]
+                    mx = motor_max[name]
+                    if mn == float('inf') or mx == float('-inf'):
                         continue
-                    jmin = joint_min[name]
-                    jmax = joint_max[name]
-                    if jmin == float('inf') or jmax == float('-inf'):
-                        continue
-                    observed = jmax - jmin
-                    urdf_range = urdf[1] - urdf[0]
-                    if urdf_range > 0 and observed > 0.05:
-                        err = abs(observed - urdf_range) / urdf_range
+                    observed = mx - mn
+                    exp = expected_range[name]
+                    if exp > 0 and observed > 0.05:
+                        err = abs(observed - exp) / exp
                         if err <= RANGE_MATCH_THRESHOLD:
                             done[name] = True
                             n_done += 1
@@ -196,23 +186,19 @@ class CalibrateNode(Node):
                 sys.stdout.write(f"\033[{n_joints + 2}A")
 
                 for name in DISPLAY_JOINTS:
-                    cur = joint_cur[name]
-                    mn = joint_min[name] if joint_min[name] != float('inf') else 0.0
-                    mx = joint_max[name] if joint_max[name] != float('-inf') else 0.0
+                    cur = motor_cur[name]
+                    mn = motor_min[name] if motor_min[name] != float('inf') else 0.0
+                    mx = motor_max[name] if motor_max[name] != float('-inf') else 0.0
                     observed = mx - mn
+                    exp = expected_range[name]
 
-                    urdf = URDF_LIMITS.get(name)
-                    if urdf:
-                        urdf_range = urdf[1] - urdf[0]
-                        err_pct = (abs(observed - urdf_range) / urdf_range * 100
-                                   if urdf_range > 0 and observed > 0.01 else 999.9)
-                        urdf_str = f"{urdf_range:6.3f}"
+                    if exp > 0 and observed > 0.01:
+                        err_pct = abs(observed - exp) / exp * 100
                     else:
-                        err_pct = 0.0
-                        urdf_str = "  —   "
+                        err_pct = 999.9
 
-                    is_ankle = name in ANKLE_PAIRS or name in ANKLE_PAIRS.values()
-                    tag = " [L]" if is_ankle else "    "
+                    is_ankle = name in ANKLE_ALL
+                    tag = " [M]" if is_ankle else "    "
 
                     if done[name]:
                         status = "✅ DONE"
@@ -222,13 +208,13 @@ class CalibrateNode(Node):
                         status = "⏳ waiting"
 
                     line = (f"  {name:<16}{cur:+7.3f}  {mn:+7.3f}  {mx:+7.3f}  "
-                            f"{observed:6.3f}  {urdf_str}  {err_pct:5.1f}  {status}{tag}")
+                            f"{observed:6.3f}  {exp:6.3f}  {err_pct:5.1f}  {status}{tag}")
                     sys.stdout.write(f"\033[2K{line}\n")
 
                 sys.stdout.write(f"\033[2K\n")
                 sys.stdout.write(
-                    f"\033[2K  {n_done}/{n_joints} joints done. "
-                    f"[L]=linkage joint-space. "
+                    f"\033[2K  {n_done}/{n_joints} done. "
+                    f"[M]=motor-space (ankle linkage). "
                     f"{'Ctrl+C to save.' if n_done == n_joints else 'Keep moving...'}\n")
                 sys.stdout.flush()
 
@@ -251,32 +237,38 @@ class CalibrateNode(Node):
         bus.disconnect()
 
         # Save calibration
-        # Motor-space offsets (what the bus actually uses)
-        # Joint-space limits (for soft stops)
         calibration = {}
         for name, _, _ in MOTOR_LIST:
-            mn_motor = motor_min[name] if motor_min[name] != float('inf') else 0.0
-            mx_motor = motor_max[name] if motor_max[name] != float('-inf') else 0.0
-            mn_joint = joint_min[name] if joint_min[name] != float('inf') else 0.0
-            mx_joint = joint_max[name] if joint_max[name] != float('-inf') else 0.0
-
-            urdf = URDF_LIMITS.get(name)
-            is_ankle = name in ANKLE_PAIRS or name in ANKLE_PAIRS.values()
+            mn = motor_min[name] if motor_min[name] != float('inf') else 0.0
+            mx = motor_max[name] if motor_max[name] != float('-inf') else 0.0
 
             cal = {
-                'motor_min': round(float(mn_motor), 4),
-                'motor_max': round(float(mx_motor), 4),
-                'limit_lo': round(float(mn_joint), 4),
-                'limit_hi': round(float(mx_joint), 4),
+                'motor_min': round(float(mn), 4),
+                'motor_max': round(float(mx), 4),
             }
 
-            if urdf and not is_ankle:
-                # Normal joint: offset maps motor encoder to URDF frame
-                offset = mn_motor - urdf[0]
-                cal['offset'] = round(float(offset), 4)
+            urdf = URDF_LIMITS.get(name)
+            is_ankle = name in ANKLE_ALL
+
+            if is_ankle:
+                # Ankle: offset = motor_min (raw motor-space zero reference)
+                # Joint-space limits computed at runtime via linkage inverse
+                cal['offset'] = round(float(mn), 4)
+                # Store raw motor limits for soft stops in motor-space
+                cal['limit_lo'] = round(float(mn), 4)
+                cal['limit_hi'] = round(float(mx), 4)
             else:
-                # Ankle: offset is raw motor-space min (linkage applied at runtime)
-                cal['offset'] = round(float(mn_motor), 4)
+                # Normal joint: offset maps encoder → URDF frame
+                if urdf:
+                    offset = mn - urdf[0]
+                    cal['offset'] = round(float(offset), 4)
+                    # Joint-space limits from URDF (validated by range check)
+                    cal['limit_lo'] = round(float(urdf[0]), 4)
+                    cal['limit_hi'] = round(float(urdf[1]), 4)
+                else:
+                    cal['offset'] = round(float(mn), 4)
+                    cal['limit_lo'] = round(float(mn), 4)
+                    cal['limit_hi'] = round(float(mx), 4)
 
             if urdf:
                 cal['urdf_lower'] = round(urdf[0], 4)
