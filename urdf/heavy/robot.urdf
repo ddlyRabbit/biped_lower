@@ -1118,8 +1118,8 @@
   <link name="battery_chest">
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0" />
-      <mass value="10.0" />
-      <inertia ixx="0.051097" ixy="0" ixz="0" iyy="0.046563" iyz="0" izz="0.030994" />
+      <mass value="1.0" />
+      <inertia ixx="0.005110" ixy="0" ixz="0" iyy="0.004656" iyz="0" izz="0.003099" />
     </inertial>
     <visual>
       <geometry>
