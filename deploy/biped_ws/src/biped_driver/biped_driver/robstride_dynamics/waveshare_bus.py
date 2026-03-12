@@ -183,7 +183,7 @@ class WaveshareCANBus:
             else:
                 if timeout is None:
                     return None
-                time.sleep(0.0001)  # 0.1ms between polls
+                time.sleep(0.0005)  # 0.5ms between polls
 
     def _try_parse(self, buf: bytearray) -> Optional[Message]:
         """Try to parse a complete frame from the buffer. Consumes parsed bytes."""

@@ -222,7 +222,7 @@ class RobstrideBus:
         self.transmit(CommunicationType.OPERATION_CONTROL, trq_u16, m.id, data)
 
     def read_operation_frame(
-        self, motor_name: str, timeout: float = 0.003
+        self, motor_name: str, timeout: float = 0.01
     ) -> Optional[MotorFeedback]:
         """Read one MIT status frame (call after write_operation_frame)."""
         return self._receive_feedback(motor_name, timeout)
@@ -289,7 +289,7 @@ class RobstrideBus:
     # ── Feedback decoding ───────────────────────────────────────────
 
     def _receive_feedback(
-        self, motor_name: str, timeout: float = 0.003
+        self, motor_name: str, timeout: float = 0.01
     ) -> Optional[MotorFeedback]:
         """Receive and decode a motor feedback frame."""
         resp = self.receive(timeout)
