@@ -1,0 +1,92 @@
+{
+  "configById": {
+    "plot-gravity": {
+      "title": "Gravity Vector (m/s²)",
+      "paths": [
+        { "value": "/imu/gravity.vector.x", "label": "X", "color": "#ff4444" },
+        { "value": "/imu/gravity.vector.y", "label": "Y", "color": "#44ff44" },
+        { "value": "/imu/gravity.vector.z", "label": "Z", "color": "#4444ff" }
+      ],
+      "yAxisMin": -12,
+      "yAxisMax": 12,
+      "xAxisDuration": 10
+    },
+    "plot-gyro": {
+      "title": "Angular Velocity (rad/s)",
+      "paths": [
+        { "value": "/imu/data.angular_velocity.x", "label": "ωx", "color": "#ff4444" },
+        { "value": "/imu/data.angular_velocity.y", "label": "ωy", "color": "#44ff44" },
+        { "value": "/imu/data.angular_velocity.z", "label": "ωz", "color": "#4444ff" }
+      ],
+      "yAxisMin": -5,
+      "yAxisMax": 5,
+      "xAxisDuration": 10
+    },
+    "plot-joint-pos-right": {
+      "title": "Right Leg Positions (rad)",
+      "paths": [
+        { "value": "/joint_states.position[0]", "label": "R_hip_pitch", "color": "#ff4444" },
+        { "value": "/joint_states.position[1]", "label": "R_hip_roll", "color": "#ff8844" },
+        { "value": "/joint_states.position[2]", "label": "R_hip_yaw", "color": "#ffcc44" },
+        { "value": "/joint_states.position[3]", "label": "R_knee", "color": "#44ff44" },
+        { "value": "/joint_states.position[4]", "label": "R_foot_pitch", "color": "#44ccff" },
+        { "value": "/joint_states.position[5]", "label": "R_foot_roll", "color": "#8844ff" }
+      ],
+      "yAxisMin": -3,
+      "yAxisMax": 3,
+      "xAxisDuration": 10
+    },
+    "plot-joint-pos-left": {
+      "title": "Left Leg Positions (rad)",
+      "paths": [
+        { "value": "/joint_states.position[6]", "label": "L_hip_pitch", "color": "#ff4444" },
+        { "value": "/joint_states.position[7]", "label": "L_hip_roll", "color": "#ff8844" },
+        { "value": "/joint_states.position[8]", "label": "L_hip_yaw", "color": "#ffcc44" },
+        { "value": "/joint_states.position[9]", "label": "L_knee", "color": "#44ff44" },
+        { "value": "/joint_states.position[10]", "label": "L_foot_pitch", "color": "#44ccff" },
+        { "value": "/joint_states.position[11]", "label": "L_foot_roll", "color": "#8844ff" }
+      ],
+      "yAxisMin": -3,
+      "yAxisMax": 3,
+      "xAxisDuration": 10
+    },
+    "plot-motor-temps": {
+      "title": "Motor Temperatures (°C)",
+      "paths": [
+        { "value": "/motor_states.motors[0].temperature", "label": "R_hip_pitch" },
+        { "value": "/motor_states.motors[3].temperature", "label": "R_knee" },
+        { "value": "/motor_states.motors[6].temperature", "label": "L_hip_pitch" },
+        { "value": "/motor_states.motors[9].temperature", "label": "L_knee" }
+      ],
+      "yAxisMin": 20,
+      "yAxisMax": 80,
+      "xAxisDuration": 60
+    }
+  },
+  "layout": {
+    "direction": "row",
+    "first": {
+      "direction": "column",
+      "first": {
+        "direction": "row",
+        "first": "3D!imu",
+        "second": "plot-gravity",
+        "splitPercentage": 40
+      },
+      "second": "plot-gyro",
+      "splitPercentage": 65
+    },
+    "second": {
+      "direction": "column",
+      "first": "plot-joint-pos-right",
+      "second": {
+        "direction": "column",
+        "first": "plot-joint-pos-left",
+        "second": "plot-motor-temps",
+        "splitPercentage": 55
+      },
+      "splitPercentage": 35
+    },
+    "splitPercentage": 45
+  }
+}
