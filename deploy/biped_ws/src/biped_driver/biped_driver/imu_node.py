@@ -10,6 +10,9 @@ Hardware: BNO085 on I2C bus 1, address 0x4A (default).
   RPi 5 GPIO 2 (SDA) / GPIO 3 (SCL), 400kHz.
 """
 
+import warnings
+warnings.filterwarnings("ignore", message="I2C frequency is not settable")
+
 import numpy as np
 import rclpy
 from rclpy.node import Node
