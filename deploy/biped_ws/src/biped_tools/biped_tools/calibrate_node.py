@@ -1,20 +1,19 @@
-"""Manual joint calibration tool.
+"""Live joint calibration — LeRobot-style real-time display.
 
-Interactive CLI: move each joint to both mechanical limits,
-records encoder positions, computes offsets, saves calibration.yaml.
-
-Supports socketcan and waveshare backends.
+Continuously reads all motor positions and tracks min/max as you move them.
+Joints auto-mark as ✅ DONE when their observed range matches URDF within 20%.
+Press Ctrl+C when all joints are done to save calibration.yaml.
 
 Usage:
     ros2 run biped_tools calibrate_node --ros-args \
         -p can_backend:=waveshare -p can_channel:=/dev/ttyUSB0
-
-    ros2 run biped_tools calibrate_node --ros-args \
-        -p can_backend:=socketcan -p can_channel:=can0
 """
 
 import yaml
 import time
+import math
+import sys
+import os
 import rclpy
 from rclpy.node import Node
 
@@ -36,7 +35,6 @@ URDF_LIMITS = {
     "L_foot_roll":  (-0.262, 0.262,  0.0),
 }
 
-# Motor list in calibration order (right leg first, then left)
 MOTOR_LIST = [
     ("R_hip_pitch",   1, "rs-04"),
     ("R_hip_roll",    2, "rs-03"),
@@ -53,6 +51,7 @@ MOTOR_LIST = [
 ]
 
 ANKLE_JOINTS = {"L_foot_pitch", "L_foot_roll", "R_foot_pitch", "R_foot_roll"}
+RANGE_MATCH_THRESHOLD = 0.20  # 20% tolerance
 
 
 class CalibrateNode(Node):
@@ -68,13 +67,7 @@ class CalibrateNode(Node):
         self._output = str(self.get_parameter('output_file').value)
 
     def run_calibration(self):
-        print("\n" + "=" * 60)
-        print("  BIPED JOINT CALIBRATION")
-        print("  Move each joint to both limits when prompted.")
-        print(f"  Backend: {self._backend}, Channel: {self._channel}")
-        print("=" * 60)
-
-        # Build motor dict for the bus
+        # Build bus
         motors = {}
         for name, mid, model in MOTOR_LIST:
             motors[name] = Motor(id=mid, model=model)
@@ -86,89 +79,135 @@ class CalibrateNode(Node):
         )
         bus.connect()
 
-        # Enable all motors in zero-torque mode (free to move by hand)
-        print(f"\nEnabling {len(MOTOR_LIST)} motors (zero torque — free to move)...")
+        # Enable all in zero-torque MIT mode
+        print(f"\nEnabling {len(MOTOR_LIST)} motors (zero torque)...")
         for name, mid, model in MOTOR_LIST:
             try:
                 bus.enable(name)
                 time.sleep(0.02)
-                bus.set_mode(name, 0)  # MIT mode
+                bus.set_mode(name, 0)
                 time.sleep(0.02)
-                print(f"  ✓ {name} (ID={mid})")
             except Exception as e:
                 print(f"  ✗ {name}: {e}")
                 bus.disconnect()
                 return
-
         bus.flush_rx()
-        print("\nAll motors enabled. Joints are free to move.\n")
+        print("All motors enabled. Move each joint to both limits.\n")
 
-        calibration = {}
+        # Tracking state
+        pos_min = {}
+        pos_max = {}
+        pos_cur = {}
+        done = {}
+        for name, _, _ in MOTOR_LIST:
+            pos_min[name] = float('inf')
+            pos_max[name] = float('-inf')
+            pos_cur[name] = 0.0
+            done[name] = False
 
-        for name, mid, model in MOTOR_LIST:
-            urdf = URDF_LIMITS.get(name)
+        n_joints = len(MOTOR_LIST)
+        # Header height: 3 lines header + n_joints lines + 2 lines footer
+        display_lines = n_joints + 5
 
-            print(f"--- {name} (ID={mid}, {model}) ---")
-            if urdf:
-                print(f"  URDF range: [{urdf[0]:.3f}, {urdf[1]:.3f}] rad")
-
-            # Read current position
-            current = self._read_pos(bus, name)
-            print(f"  Current position: {current:.4f} rad")
-
-            # Limit A
-            input(f"  → Move {name} to LIMIT A (one end), press Enter...")
-            limit_a = self._read_pos(bus, name)
-            print(f"    Limit A: {limit_a:.4f} rad")
-
-            # Limit B
-            input(f"  → Move {name} to LIMIT B (other end), press Enter...")
-            limit_b = self._read_pos(bus, name)
-            print(f"    Limit B: {limit_b:.4f} rad")
-
-            # Compute
-            lo = min(limit_a, limit_b)
-            hi = max(limit_a, limit_b)
-            encoder_range = hi - lo
-
-            cal_entry = {
-                'encoder_limit_a': round(float(limit_a), 4),
-                'encoder_limit_b': round(float(limit_b), 4),
-                'limit_lo': round(float(lo), 4),
-                'limit_hi': round(float(hi), 4),
-            }
-
-            if urdf and name not in ANKLE_JOINTS:
-                urdf_range = urdf[1] - urdf[0]
-                range_error = abs(encoder_range - urdf_range) / urdf_range * 100
-                offset = lo - urdf[0]
-
-                cal_entry['offset'] = round(float(offset), 4)
-                cal_entry['range_error_pct'] = round(float(range_error), 1)
-                cal_entry['urdf_lower'] = round(urdf[0], 4)
-                cal_entry['urdf_upper'] = round(urdf[1], 4)
-                cal_entry['default_pos'] = round(urdf[2], 4)
-
-                print(f"    Range: {encoder_range:.3f} rad (URDF: {urdf_range:.3f}, err: {range_error:.1f}%)")
-                print(f"    Offset: {offset:.4f} rad")
-                if range_error > 15:
-                    print(f"    ⚠️  Range error >15%!")
-            elif name in ANKLE_JOINTS:
-                # Ankle motors: offset is motor-space, linkage at runtime
-                offset = lo
-                cal_entry['offset'] = round(float(offset), 4)
-                print(f"    [ANKLE] Motor range: {encoder_range:.3f} rad")
-                print(f"    Offset: {offset:.4f} rad (motor-space)")
-            else:
-                offset = lo
-                cal_entry['offset'] = round(float(offset), 4)
-                print(f"    Range: {encoder_range:.3f} rad, offset: {offset:.4f}")
-
-            calibration[name] = cal_entry
+        # Print static header
+        print("=" * 90)
+        print(f"  {'Joint':<16} {'Cur':>7}  {'Min':>7}  {'Max':>7}  "
+              f"{'Range':>7}  {'URDF':>7}  {'Err%':>5}  Status")
+        print("-" * 90)
+        # Reserve lines for each joint + footer
+        for _ in range(n_joints + 2):
             print()
 
-        # Disable all motors
-        print("Disabling motors...")
+        try:
+            while True:
+                # Read all positions via zero-torque MIT
+                for name, mid, model in MOTOR_LIST:
+                    try:
+                        bus.write_operation_frame(name, 0.0, 0.0, 0.0, 0.0, 0.0)
+                        fb = bus.read_operation_frame(name, timeout=0.01)
+                        if fb:
+                            p = fb.position
+                            pos_cur[name] = p
+                            if p < pos_min[name]:
+                                pos_min[name] = p
+                            if p > pos_max[name]:
+                                pos_max[name] = p
+                    except Exception:
+                        pass
+
+                # Check done status
+                n_done = 0
+                for name, _, _ in MOTOR_LIST:
+                    if done[name]:
+                        n_done += 1
+                        continue
+                    urdf = URDF_LIMITS.get(name)
+                    if not urdf:
+                        continue
+                    observed = pos_max[name] - pos_min[name]
+                    if name in ANKLE_JOINTS:
+                        # Ankle: just check that we've seen meaningful range (>0.3 rad)
+                        if observed > 0.3:
+                            done[name] = True
+                            n_done += 1
+                    else:
+                        urdf_range = urdf[1] - urdf[0]
+                        if urdf_range > 0:
+                            err = abs(observed - urdf_range) / urdf_range
+                            if err <= RANGE_MATCH_THRESHOLD:
+                                done[name] = True
+                                n_done += 1
+
+                # Move cursor up to overwrite
+                sys.stdout.write(f"\033[{n_joints + 2}A")
+
+                for name, mid, model in MOTOR_LIST:
+                    cur = pos_cur[name]
+                    mn = pos_min[name] if pos_min[name] != float('inf') else 0.0
+                    mx = pos_max[name] if pos_max[name] != float('-inf') else 0.0
+                    observed = mx - mn
+
+                    urdf = URDF_LIMITS.get(name)
+                    if urdf:
+                        urdf_range = urdf[1] - urdf[0]
+                        if urdf_range > 0 and observed > 0.01:
+                            err_pct = abs(observed - urdf_range) / urdf_range * 100
+                        else:
+                            err_pct = 999.9
+                        urdf_str = f"{urdf_range:6.2f}"
+                    else:
+                        err_pct = 0.0
+                        urdf_str = "  —   "
+
+                    if done[name]:
+                        status = "✅ DONE"
+                    elif observed > 0.1:
+                        status = "🔄 moving..."
+                    else:
+                        status = "⏳ waiting"
+
+                    line = (f"  {name:<16} {cur:+7.3f}  {mn:+7.3f}  {mx:+7.3f}  "
+                            f"{observed:6.3f}  {urdf_str}  {err_pct:5.1f}  {status}")
+                    # Clear line and write
+                    sys.stdout.write(f"\033[2K{line}\n")
+
+                # Footer
+                sys.stdout.write(f"\033[2K\n")
+                sys.stdout.write(f"\033[2K  {n_done}/{n_joints} joints done. "
+                                 f"{'Press Ctrl+C to save.' if n_done == n_joints else 'Keep moving joints...'}\n")
+                sys.stdout.flush()
+
+                if n_done == n_joints:
+                    time.sleep(0.5)
+                    break
+
+                time.sleep(0.05)  # ~20Hz display update
+
+        except KeyboardInterrupt:
+            print("\n\nStopped by user.")
+
+        # Disable motors
+        print("\nDisabling motors...")
         for name, _, _ in MOTOR_LIST:
             try:
                 bus.disable(name)
@@ -176,31 +215,38 @@ class CalibrateNode(Node):
                 pass
         bus.disconnect()
 
-        # Save
+        # Build and save calibration
+        calibration = {}
+        for name, mid, model in MOTOR_LIST:
+            mn = pos_min[name] if pos_min[name] != float('inf') else 0.0
+            mx = pos_max[name] if pos_max[name] != float('-inf') else 0.0
+
+            cal = {
+                'encoder_limit_a': round(float(mn), 4),
+                'encoder_limit_b': round(float(mx), 4),
+                'limit_lo': round(float(mn), 4),
+                'limit_hi': round(float(mx), 4),
+            }
+
+            urdf = URDF_LIMITS.get(name)
+            if urdf and name not in ANKLE_JOINTS:
+                offset = mn - urdf[0]
+                cal['offset'] = round(float(offset), 4)
+                cal['urdf_lower'] = round(urdf[0], 4)
+                cal['urdf_upper'] = round(urdf[1], 4)
+                cal['default_pos'] = round(urdf[2], 4)
+            else:
+                cal['offset'] = round(float(mn), 4)
+
+            calibration[name] = cal
+
         print(f"\nSaving to {self._output}...")
         with open(self._output, 'w') as f:
             yaml.dump(calibration, f, default_flow_style=False, sort_keys=False)
 
-        print(f"\n✅ Calibration complete! ({len(calibration)} joints)")
+        done_count = sum(1 for v in done.values() if v)
+        print(f"\n✅ Calibration saved! ({done_count}/{n_joints} joints fully calibrated)")
         print(f"   File: {self._output}")
-        print(f"   Use: ros2 launch biped_bringup hardware.launch.py "
-              f"calibration_file:={self._output} bus_mode:=waveshare")
-
-    def _read_pos(self, bus: RobstrideBus, name: str, samples: int = 10) -> float:
-        """Read position averaged over samples using zero-torque MIT frames."""
-        positions = []
-        for _ in range(samples):
-            try:
-                bus.write_operation_frame(name, 0.0, 0.0, 0.0, 0.0, 0.0)
-                fb = bus.read_operation_frame(name, timeout=0.02)
-                if fb:
-                    positions.append(fb.position)
-            except Exception:
-                pass
-            time.sleep(0.01)
-        if not positions:
-            return 0.0
-        return sum(positions) / len(positions)
 
 
 def main(args=None):
