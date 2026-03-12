@@ -3,12 +3,18 @@
 Subscribes to IMU, joint states, and cmd_vel. Builds 45d observation,
 runs ONNX inference, converts actions to MIT commands, publishes.
 
+Safety features:
+  - Only publishes commands when state machine is STAND or WALK
+  - Soft start: interpolates from current position to policy target over 2s
+  - Ramps gains from 10% to full over 1s after soft start completes
+
 Usage:
     ros2 run biped_control policy_node --ros-args \
         -p onnx_model:=student_flat.onnx \
-        -p gains_file:=gains.yaml
+        -p gain_scale:=0.3
 """
 
+import time
 import numpy as np
 import yaml
 import onnxruntime as ort
@@ -17,24 +23,18 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Imu, JointState
 from geometry_msgs.msg import Twist, Vector3Stamped
+from std_msgs.msg import String
 from biped_msgs.msg import MITCommand, MITCommandArray
 from biped_control.obs_builder import ObsBuilder, ISAAC_JOINT_ORDER, DEFAULT_POSITIONS, DEFAULT_GAINS
 
 
+# Soft start timing
+SOFT_START_POSITION_SECS = 2.0  # interpolate current → target over this
+SOFT_START_GAIN_SECS = 1.0       # ramp gains from 10% → 100% after position interp
+
+
 class PolicyNode(Node):
-    """50Hz RL policy inference node.
-
-    Publishes:
-        /joint_commands   MITCommandArray  @ 50Hz
-        /policy/obs       Float32MultiArray (debug)
-
-    Subscribes:
-        /imu/data         Imu
-        /imu/gravity      Vector3Stamped
-        /joint_states     JointState
-        /cmd_vel          Twist
-        /state_machine    String (only runs when STAND or WALK)
-    """
+    """50Hz RL policy inference node with soft start and state machine gating."""
 
     def __init__(self):
         super().__init__('policy_node')
@@ -42,7 +42,7 @@ class PolicyNode(Node):
         self.declare_parameter('onnx_model', 'student_flat.onnx')
         self.declare_parameter('loop_rate', 50.0)
         self.declare_parameter('gains_file', '')
-        self.declare_parameter('gain_scale', 1.0)  # multiply all gains by this
+        self.declare_parameter('gain_scale', 1.0)
 
         model_path = str(self.get_parameter('onnx_model').value)
         self._rate = float(self.get_parameter('loop_rate').value)
@@ -67,12 +67,16 @@ class PolicyNode(Node):
 
         # Latest sensor data
         self._gyro = np.zeros(3, dtype=np.float32)
-        self._gravity = np.array([0.0, 0.0, -9.81], dtype=np.float32)
+        self._gravity = np.array([0.0, 0.0, 9.81], dtype=np.float32)
         self._cmd_vel = np.zeros(3, dtype=np.float32)
-        self._joint_positions = {n: DEFAULT_POSITIONS[n] for n in ISAAC_JOINT_ORDER}
-        self._joint_velocities = {n: 0.0 for n in ISAAC_JOINT_ORDER}
+        self._joint_positions = {}  # populated from /joint_states
+        self._joint_velocities = {}
         self._fsm_state = "IDLE"
-        self._enabled = False
+
+        # Soft start state
+        self._soft_start_active = False
+        self._soft_start_time = 0.0
+        self._start_positions = {}  # captured at STAND transition
 
         # QoS
         sensor_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
@@ -82,6 +86,7 @@ class PolicyNode(Node):
         self.create_subscription(Vector3Stamped, '/imu/gravity', self._gravity_cb, sensor_qos)
         self.create_subscription(JointState, '/joint_states', self._joint_cb, sensor_qos)
         self.create_subscription(Twist, '/cmd_vel', self._cmd_cb, 10)
+        self.create_subscription(String, '/state_machine', self._fsm_cb, 10)
 
         # Publisher
         self._pub_cmd = self.create_publisher(MITCommandArray, '/joint_commands', 10)
@@ -90,11 +95,11 @@ class PolicyNode(Node):
         self._timer = self.create_timer(1.0 / self._rate, self._loop)
 
         self.get_logger().info(
-            f'Policy node started — {self._rate}Hz, gain_scale={self._gain_scale}'
+            f'Policy node started — {self._rate}Hz, gain_scale={self._gain_scale}, '
+            f'waiting for STAND/WALK state'
         )
 
     def _load_gains(self, path: str):
-        """Load per-joint Kp/Kd from YAML."""
         try:
             with open(path) as f:
                 data = yaml.safe_load(f) or {}
@@ -107,7 +112,7 @@ class PolicyNode(Node):
         except Exception as e:
             self.get_logger().warn(f'Failed to load gains: {e}, using defaults')
 
-    # --- Subscriber callbacks ---
+    # --- Callbacks ---
 
     def _imu_cb(self, msg: Imu):
         self._gyro[0] = msg.angular_velocity.x
@@ -121,16 +126,63 @@ class PolicyNode(Node):
 
     def _joint_cb(self, msg: JointState):
         for i, name in enumerate(msg.name):
-            if name in self._joint_positions:
-                if i < len(msg.position):
-                    self._joint_positions[name] = msg.position[i]
-                if i < len(msg.velocity):
-                    self._joint_velocities[name] = msg.velocity[i]
+            if i < len(msg.position):
+                self._joint_positions[name] = msg.position[i]
+            if i < len(msg.velocity):
+                self._joint_velocities[name] = msg.velocity[i]
 
     def _cmd_cb(self, msg: Twist):
         self._cmd_vel[0] = msg.linear.x
         self._cmd_vel[1] = msg.linear.y
         self._cmd_vel[2] = msg.angular.z
+
+    def _fsm_cb(self, msg: String):
+        new_state = msg.data.strip().upper()
+        if new_state != self._fsm_state:
+            self.get_logger().info(f'FSM: {self._fsm_state} → {new_state}')
+            if new_state in ("STAND", "WALK") and self._fsm_state not in ("STAND", "WALK"):
+                self._begin_soft_start()
+            self._fsm_state = new_state
+
+    # --- Soft start ---
+
+    def _begin_soft_start(self):
+        """Capture current joint positions as interpolation start."""
+        self._start_positions = dict(self._joint_positions)
+        self._soft_start_time = time.monotonic()
+        self._soft_start_active = True
+        self.get_logger().info(
+            f'Soft start: interpolating to standing pose over {SOFT_START_POSITION_SECS}s')
+
+    def _soft_start_blend(self, policy_targets: dict) -> tuple:
+        """Blend between start positions and policy targets during soft start.
+
+        Returns (blended_targets, gain_multiplier).
+        """
+        elapsed = time.monotonic() - self._soft_start_time
+        total_time = SOFT_START_POSITION_SECS + SOFT_START_GAIN_SECS
+
+        if elapsed >= total_time:
+            self._soft_start_active = False
+            self.get_logger().info('Soft start complete — full policy control')
+            return policy_targets, 1.0
+
+        if elapsed < SOFT_START_POSITION_SECS:
+            # Phase 1: interpolate positions, low gains
+            alpha = elapsed / SOFT_START_POSITION_SECS
+            alpha = alpha * alpha * (3 - 2 * alpha)  # smoothstep
+            blended = {}
+            for name in ISAAC_JOINT_ORDER:
+                start = self._start_positions.get(name, DEFAULT_POSITIONS[name])
+                target = DEFAULT_POSITIONS[name]  # go to default pose first, not policy
+                blended[name] = start + alpha * (target - start)
+            return blended, 0.1  # 10% gains during position interpolation
+        else:
+            # Phase 2: at default pose, ramp gains
+            gain_elapsed = elapsed - SOFT_START_POSITION_SECS
+            gain_alpha = min(1.0, gain_elapsed / SOFT_START_GAIN_SECS)
+            gain_mult = 0.1 + 0.9 * gain_alpha  # 10% → 100%
+            return policy_targets, gain_mult
 
     # --- Main loop ---
 
@@ -138,24 +190,39 @@ class PolicyNode(Node):
         if self._session is None:
             return
 
+        # Only run when state machine says STAND or WALK
+        if self._fsm_state not in ("STAND", "WALK"):
+            return
+
+        # Need joint state data before we can build obs
+        if not self._joint_positions:
+            return
+
         # Build observation
         obs = self._obs_builder.build(
             gyro=self._gyro,
             gravity=self._gravity,
-            cmd_vel=self._cmd_vel,
+            cmd_vel=self._cmd_vel if self._fsm_state == "WALK" else np.zeros(3),
             joint_positions=self._joint_positions,
             joint_velocities=self._joint_velocities,
         )
 
         # Run inference
         obs_input = obs.reshape(1, -1).astype(np.float32)
-        actions = self._session.run(None, {'obs': obs_input})[0][0]  # (12,)
+        actions = self._session.run(None, {'obs': obs_input})[0][0]
 
-        # Update last action for next obs
+        # Update last action
         self._obs_builder.update_last_action(actions)
 
         # Convert to position targets
-        targets = ObsBuilder.action_to_positions(actions)
+        policy_targets = ObsBuilder.action_to_positions(actions)
+
+        # Apply soft start blending
+        if self._soft_start_active:
+            targets, gain_mult = self._soft_start_blend(policy_targets)
+        else:
+            targets = policy_targets
+            gain_mult = 1.0
 
         # Build MIT command array
         cmd_msg = MITCommandArray()
@@ -167,8 +234,8 @@ class PolicyNode(Node):
             cmd.position = targets[name]
             cmd.velocity = 0.0
             kp, kd = self._gains[name]
-            cmd.kp = kp * self._gain_scale
-            cmd.kd = kd * self._gain_scale
+            cmd.kp = kp * self._gain_scale * gain_mult
+            cmd.kd = kd * self._gain_scale * gain_mult
             cmd.torque_ff = 0.0
             cmd_msg.commands.append(cmd)
 
