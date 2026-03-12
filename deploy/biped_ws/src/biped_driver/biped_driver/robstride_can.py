@@ -106,6 +106,10 @@ class JointConfig:
     limit_hi: float = 12.57
     softstop_lo: float = -12.57
     softstop_hi: float = 12.57
+    # Motor-space command limits (for ankle motors, post-linkage clamping)
+    # These are in command-space: physical_encoder = command + offset
+    motor_cmd_lo: float = -12.57
+    motor_cmd_hi: float = 12.57
 
 
 class BipedMotorManager:
@@ -197,6 +201,18 @@ class BipedMotorManager:
                 softstop_lo = limit_lo + SOFTSTOP_BUFFER_RAD
                 softstop_hi = limit_hi - SOFTSTOP_BUFFER_RAD
 
+                # Motor command-space limits for ankle motors
+                # command + offset = physical encoder → command = physical - offset
+                motor_cmd_lo = -12.57
+                motor_cmd_hi = 12.57
+                if is_ankle and offsets and name in offsets:
+                    cal = offsets[name]
+                    m_min = cal.get("motor_min", -12.57)
+                    m_max = cal.get("motor_max", 12.57)
+                    # Add safety buffer in motor-space too (2°)
+                    motor_cmd_lo = (m_min + SOFTSTOP_BUFFER_RAD) - offset
+                    motor_cmd_hi = (m_max - SOFTSTOP_BUFFER_RAD) - offset
+
                 joints.append(JointConfig(
                     name=name,
                     can_bus=iface,
@@ -208,6 +224,8 @@ class BipedMotorManager:
                     limit_hi=limit_hi,
                     softstop_lo=softstop_lo,
                     softstop_hi=softstop_hi,
+                    motor_cmd_lo=motor_cmd_lo,
+                    motor_cmd_hi=motor_cmd_hi,
                 ))
         return cls(joints, backend=backend)
 
@@ -310,10 +328,13 @@ class BipedMotorManager:
     ) -> None:
         """Send MIT command for an ankle motor (motor-space, post-linkage).
 
-        No soft stop here — soft stops are applied in joint-space by the caller
-        (can_bus_node._handle_ankle) before the linkage forward transform.
-        The bus offset maps motor_position to raw encoder values.
+        Joint-space soft stops are applied by the caller (can_bus_node._handle_ankle)
+        before the linkage forward transform. Here we enforce motor-space hard limits
+        from calibration to prevent the motor exceeding its physical range.
         """
+        j = self.joints[motor_name]
+        motor_position = max(j.motor_cmd_lo, min(j.motor_cmd_hi, motor_position))
+
         bus = self._bus_for(motor_name)
         bus.write_operation_frame(motor_name, motor_position, kp, kd, velocity, torque_ff)
 
