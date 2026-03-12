@@ -72,6 +72,7 @@ class CanBusNode(Node):
             self._mgr = BipedMotorManager(joints)
 
         self._last_commands: dict[str, MITCommand] = {}
+        self._last_positions: dict[str, float] = {}  # last known joint positions for soft stops
 
         # Pre-compute bus-grouped joint ordering for the control loop.
         # Within each bus, ankle pairs are grouped together.
@@ -241,20 +242,26 @@ class CanBusNode(Node):
     def _handle_normal(self, name: str, joint_msg: JointState, motor_msg: MotorStateArray):
         """Send/receive for a normal (non-ankle) joint."""
         cmd = self._last_commands.get(name)
+        actual_pos = self._last_positions.get(name)
         fb = None
 
         try:
             if cmd:
                 pos = self._mgr.clamp(name, cmd.position)
                 self._mgr.send_mit_command(
-                    name, pos, cmd.kp, cmd.kd, cmd.velocity, cmd.torque_ff)
+                    name, pos, cmd.kp, cmd.kd, cmd.velocity, cmd.torque_ff,
+                    actual_pos=actual_pos)
             else:
-                # No command yet — zero stiffness, just read
-                self._mgr.send_mit_command(name, 0.0, 0.0, 0.0)
+                # No command yet — zero stiffness, just read (soft stop still active)
+                self._mgr.send_mit_command(name, 0.0, 0.0, 0.0,
+                                           actual_pos=actual_pos)
             fb = self._mgr.read_feedback(name)
         except Exception as e:
             self.get_logger().warn(
                 f"{name}: CAN error: {e}", throttle_duration_sec=1.0)
+
+        if fb is not None:
+            self._last_positions[name] = fb.position
 
         self._append_feedback(name, fb, joint_msg, motor_msg)
 
@@ -273,6 +280,9 @@ class CanBusNode(Node):
         pitch_name, roll_name = pair
         pitch_cmd = self._last_commands.get(pitch_name)
         roll_cmd = self._last_commands.get(roll_name)
+        # Ankle soft stops use motor-level positions (pitch_name/roll_name map to motors)
+        actual_upper = self._last_positions.get(pitch_name)
+        actual_lower = self._last_positions.get(roll_name)
 
         fb_upper = None
         fb_lower = None
@@ -293,21 +303,31 @@ class CanBusNode(Node):
                 tff = (pitch_cmd.torque_ff + roll_cmd.torque_ff) / 2.0
 
                 self._mgr.send_mit_command(
-                    pitch_name, motor_upper, kp, kd, 0.0, tff)
+                    pitch_name, motor_upper, kp, kd, 0.0, tff,
+                    actual_pos=actual_upper)
                 fb_upper = self._mgr.read_feedback(pitch_name)
                 self._mgr.send_mit_command(
-                    roll_name, motor_lower, kp, kd, 0.0, tff)
+                    roll_name, motor_lower, kp, kd, 0.0, tff,
+                    actual_pos=actual_lower)
                 fb_lower = self._mgr.read_feedback(roll_name)
             else:
-                # No commands — zero stiffness
-                self._mgr.send_mit_command(pitch_name, 0.0, 0.0, 0.0)
+                # No commands — zero stiffness (soft stop still active)
+                self._mgr.send_mit_command(pitch_name, 0.0, 0.0, 0.0,
+                                           actual_pos=actual_upper)
                 fb_upper = self._mgr.read_feedback(pitch_name)
-                self._mgr.send_mit_command(roll_name, 0.0, 0.0, 0.0)
+                self._mgr.send_mit_command(roll_name, 0.0, 0.0, 0.0,
+                                           actual_pos=actual_lower)
                 fb_lower = self._mgr.read_feedback(roll_name)
         except Exception as e:
             self.get_logger().warn(
                 f"Ankle {pitch_name}/{roll_name}: CAN error: {e}",
                 throttle_duration_sec=1.0)
+
+        # Track motor-level positions for soft stops
+        if fb_upper is not None:
+            self._last_positions[pitch_name] = fb_upper.position
+        if fb_lower is not None:
+            self._last_positions[roll_name] = fb_lower.position
 
         if fb_upper is not None and fb_lower is not None:
             # Inverse linkage: reconstruct foot pitch/roll from motor positions

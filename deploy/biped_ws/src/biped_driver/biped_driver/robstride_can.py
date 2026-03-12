@@ -8,7 +8,8 @@ Adds:
 Upstream library: biped_driver.robstride_dynamics (vendored from Seeed)
 """
 
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, field
 from typing import Optional
 
 from .robstride_dynamics import RobstrideBus, Motor, MotorFeedback
@@ -56,6 +57,15 @@ ANKLE_PAIRS = {
 
 # ── Multi-bus manager ───────────────────────────────────────────────
 
+# 2° safety buffer in radians
+SOFTSTOP_BUFFER_RAD = math.radians(2.0)  # 0.0349 rad
+
+# Soft stop spring gain: Nm/rad of penetration into buffer zone.
+# Produces restoring torque that ramps linearly as joint approaches hard limit.
+# At full 2° penetration: 20 Nm/rad × 0.035 rad ≈ 0.7 Nm restoring torque.
+SOFTSTOP_KP = 20.0
+
+
 @dataclass
 class JointConfig:
     """Per-joint configuration."""
@@ -64,8 +74,10 @@ class JointConfig:
     can_id: int
     model: str            # "rs-02", "rs-03", "rs-04"
     offset: float = 0.0   # calibration offset (rad)
-    limit_lo: float = -12.57
-    limit_hi: float = 12.57
+    limit_lo: float = -12.57   # hard limit (from URDF or calibration)
+    limit_hi: float = 12.57    # hard limit
+    softstop_lo: float = -12.57  # soft stop = hard limit + buffer (inward)
+    softstop_hi: float = 12.57   # soft stop = hard limit - buffer (inward)
 
 
 class BipedMotorManager:
@@ -144,17 +156,41 @@ class BipedMotorManager:
             iface = bus_cfg.get("interface", bus_key)
             for name, mcfg in bus_cfg["motors"].items():
                 offset = 0.0
+                cal_lo = None
+                cal_hi = None
                 if offsets and name in offsets:
-                    offset = offsets[name].get("offset", 0.0)
-                limits = cls.JOINT_LIMITS.get(name, (-12.57, 12.57))
+                    cal = offsets[name]
+                    offset = cal.get("offset", 0.0)
+                    # Calibration provides measured mechanical limits
+                    # (already in joint-space after offset correction)
+                    if "limit_lo" in cal and "limit_hi" in cal:
+                        cal_lo = cal["limit_lo"]
+                        cal_hi = cal["limit_hi"]
+                    elif "encoder_limit_a" in cal and "encoder_limit_b" in cal:
+                        a = cal["encoder_limit_a"] - offset
+                        b = cal["encoder_limit_b"] - offset
+                        cal_lo = min(a, b)
+                        cal_hi = max(a, b)
+
+                # Use calibration limits if available, else URDF defaults
+                urdf = cls.JOINT_LIMITS.get(name, (-12.57, 12.57))
+                limit_lo = cal_lo if cal_lo is not None else urdf[0]
+                limit_hi = cal_hi if cal_hi is not None else urdf[1]
+
+                # Soft stops: inset by safety buffer from hard limits
+                softstop_lo = limit_lo + SOFTSTOP_BUFFER_RAD
+                softstop_hi = limit_hi - SOFTSTOP_BUFFER_RAD
+
                 joints.append(JointConfig(
                     name=name,
                     can_bus=iface,
                     can_id=mcfg["id"],
                     model=f"rs-{mcfg['type'][2:].zfill(2)}",
                     offset=offset,
-                    limit_lo=limits[0],
-                    limit_hi=limits[1],
+                    limit_lo=limit_lo,
+                    limit_hi=limit_hi,
+                    softstop_lo=softstop_lo,
+                    softstop_hi=softstop_hi,
                 ))
         return cls(joints)
 
@@ -190,8 +226,30 @@ class BipedMotorManager:
     # ── Joint-level API ─────────────────────────────────────────────
 
     def clamp(self, name: str, position: float) -> float:
+        """Hard-clamp position to joint limits."""
         j = self.joints[name]
         return max(j.limit_lo, min(j.limit_hi, position))
+
+    def compute_softstop_torque(self, name: str, actual_pos: float) -> float:
+        """Compute restoring torque if joint is in the soft stop buffer zone.
+
+        Returns 0.0 if within safe range. Returns a torque (Nm) pushing
+        the joint away from the limit if within the 2° buffer zone.
+
+        The torque ramps linearly from 0 at the soft stop boundary to
+        SOFTSTOP_KP × SOFTSTOP_BUFFER_RAD at the hard limit.
+        """
+        j = self.joints[name]
+
+        if actual_pos < j.softstop_lo:
+            # Below low soft stop — push positive (away from limit)
+            penetration = j.softstop_lo - actual_pos
+            return SOFTSTOP_KP * min(penetration, SOFTSTOP_BUFFER_RAD)
+        elif actual_pos > j.softstop_hi:
+            # Above high soft stop — push negative (away from limit)
+            penetration = actual_pos - j.softstop_hi
+            return -SOFTSTOP_KP * min(penetration, SOFTSTOP_BUFFER_RAD)
+        return 0.0
 
     def send_mit_command(
         self,
@@ -201,8 +259,27 @@ class BipedMotorManager:
         kd: float,
         velocity: float = 0.0,
         torque_ff: float = 0.0,
+        actual_pos: float = None,
     ) -> None:
-        """Send one MIT command (handles routing to correct bus)."""
+        """Send one MIT command with soft stop protection.
+
+        If actual_pos is provided and the joint is in the soft stop zone:
+        1. Position command is clamped to the soft stop boundary (not the hard limit)
+        2. A restoring torque is added to torque_ff pushing the joint inward
+
+        Hard clamp at mechanical limits is always applied regardless.
+        """
+        j = self.joints[joint_name]
+
+        # Hard clamp — never command beyond mechanical limits
+        position = max(j.limit_lo, min(j.limit_hi, position))
+
+        # Soft stop: clamp command to soft stop zone + add restoring torque
+        position = max(j.softstop_lo, min(j.softstop_hi, position))
+
+        if actual_pos is not None:
+            torque_ff += self.compute_softstop_torque(joint_name, actual_pos)
+
         bus = self._bus_for(joint_name)
         bus.write_operation_frame(joint_name, position, kp, kd, velocity, torque_ff)
 
