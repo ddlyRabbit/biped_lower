@@ -79,11 +79,14 @@ class ObsBuilder:
         obs[0:3] = gyro
 
         # [3-5] projected_gravity — MUST normalize to unit vector
+        # BNO085 gravity: (0, 0, +9.81) upright → normalized (0, 0, +1)
+        # Isaac Lab projected_gravity: quat_rotate_inverse(q, [0,0,-1]) → (0, 0, -1) upright
+        # Must NEGATE to match Isaac convention
         g_norm = np.linalg.norm(gravity)
         if g_norm > 0.1:
-            obs[3:6] = gravity / g_norm
+            obs[3:6] = -gravity / g_norm
         else:
-            obs[3:6] = [0.0, 0.0, -1.0]  # fallback
+            obs[3:6] = [0.0, 0.0, -1.0]  # fallback (Isaac convention)
 
         # [6-8] velocity_commands
         obs[6:9] = cmd_vel
