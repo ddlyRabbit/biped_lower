@@ -3,13 +3,14 @@
 Adds:
   - Ankle parallel linkage transform (2× RS02 → foot pitch/roll)
   - Multi-bus manager (can0 + can1)
+  - Soft stop joint protection (2° buffer with restoring torque)
   - Convenience config loader from robot.yaml format
 
 Upstream library: biped_driver.robstride_dynamics (vendored from Seeed)
 """
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 from .robstride_dynamics import RobstrideBus, Motor, MotorFeedback
@@ -24,7 +25,13 @@ from .robstride_dynamics import RobstrideBus, Motor, MotorFeedback
 #   Lower rod:        98 mm  (foot-side motor = foot_roll CAN ID)
 #   Foot attachment:  ±31.398 mm lateral, 41.14 mm forward from U-joint
 #
-# Linearized mapping (<9% error at max pitch, <1% at walking range):
+# Forward (joint → motors):
+#   motor_upper = pitch_gain × pitch + roll_gain × roll
+#   motor_lower = pitch_gain × pitch - roll_gain × roll
+#
+# Inverse (motors → joint):
+#   pitch = inv_pitch × (upper + lower)
+#   roll  = inv_roll  × (upper - lower)
 
 _PITCH_GAIN = 41.14 / 32.249    # 1.2757 — motor rad per foot pitch rad
 _ROLL_GAIN  = 31.398 / 32.249   # 0.9736 — motor rad per foot roll rad
@@ -48,48 +55,68 @@ def ankle_motors_to_feedback(
     return foot_pitch, foot_roll
 
 
-# Ankle pairs: (pitch_joint=upper_motor, roll_joint=lower_motor)
+def ankle_motor_cmd_at_joint_min(is_upper: bool) -> float:
+    """Motor command value when the ankle joint is at its most negative position.
+
+    Used to compute the correct bus offset: offset = encoder_min - motor_cmd_at_min.
+    This ensures that motor_cmd=0 maps to encoder_at_joint_zero.
+
+    For upper motor: motor = PG × pitch_min + RG × roll_min
+    For lower motor: motor = PG × pitch_min - RG × roll_max  (note: -RG × roll_max is more negative)
+    """
+    pitch_min = -0.87267  # from URDF foot_pitch lower limit
+    roll_min = -0.26180
+    roll_max = 0.26180
+    if is_upper:
+        return _PITCH_GAIN * pitch_min + _ROLL_GAIN * roll_min
+    else:
+        return _PITCH_GAIN * pitch_min - _ROLL_GAIN * roll_max
+
+
+# Ankle pairs: pitch_joint → roll_joint (upper_motor → lower_motor)
 ANKLE_PAIRS = {
     "L_foot_pitch": "L_foot_roll",
     "R_foot_pitch": "R_foot_roll",
 }
 
+ANKLE_PITCH_MOTORS = set(ANKLE_PAIRS.keys())
+ANKLE_ROLL_MOTORS = set(ANKLE_PAIRS.values())
+ANKLE_ALL = ANKLE_PITCH_MOTORS | ANKLE_ROLL_MOTORS
+
+
+# ── Soft stop config ────────────────────────────────────────────────
+
+SOFTSTOP_BUFFER_RAD = math.radians(2.0)  # 0.0349 rad
+SOFTSTOP_KP = 20.0  # Nm/rad restoring spring
+
 
 # ── Multi-bus manager ───────────────────────────────────────────────
-
-# 2° safety buffer in radians
-SOFTSTOP_BUFFER_RAD = math.radians(2.0)  # 0.0349 rad
-
-# Soft stop spring gain: Nm/rad of penetration into buffer zone.
-# Produces restoring torque that ramps linearly as joint approaches hard limit.
-# At full 2° penetration: 20 Nm/rad × 0.035 rad ≈ 0.7 Nm restoring torque.
-SOFTSTOP_KP = 20.0
-
 
 @dataclass
 class JointConfig:
     """Per-joint configuration."""
     name: str
-    can_bus: str          # "can0" or "can1"
+    can_bus: str          # "can0" or "can1" or "/dev/ttyUSB0"
     can_id: int
     model: str            # "rs-02", "rs-03", "rs-04"
-    offset: float = 0.0   # calibration offset (rad)
-    limit_lo: float = -12.57   # hard limit (from URDF or calibration)
-    limit_hi: float = 12.57    # hard limit
-    softstop_lo: float = -12.57  # soft stop = hard limit + buffer (inward)
-    softstop_hi: float = 12.57   # soft stop = hard limit - buffer (inward)
+    offset: float = 0.0   # bus homing_offset (motor-space)
+    is_ankle: bool = False
+    # Joint-space limits (for clamping + soft stops)
+    limit_lo: float = -12.57
+    limit_hi: float = 12.57
+    softstop_lo: float = -12.57
+    softstop_hi: float = 12.57
 
 
 class BipedMotorManager:
     """Manages all motors across both CAN buses via RobstrideBus instances.
 
-    Provides a joint-level API that transparently handles:
-    - Routing commands to the correct CAN bus
-    - Ankle parallel linkage transforms
-    - Calibration offsets
+    For normal joints: limits, soft stops, and commands all operate in joint-space.
+    For ankle joints: limits and soft stops operate in joint-space (before linkage).
+      The linkage forward transform converts to motor-space for the CAN command.
+      The bus offset maps motor-command-space to raw encoder values.
     """
 
-    # URDF joint limits (rad)
     # From URDF: urdf/heavy/robot.urdf joint limits (rad)
     JOINT_LIMITS = {
         "R_hip_pitch":  (-2.21657, 1.04720),
@@ -107,17 +134,11 @@ class BipedMotorManager:
     }
 
     def __init__(self, joints: list[JointConfig], backend: str = "socketcan"):
-        """
-        Args:
-            joints: List of joint configurations.
-            backend: "socketcan" (SocketCAN via python-can) or "waveshare" (serial).
-        """
         self.joints = {j.name: j for j in joints}
         self.backend = backend
         self._buses: dict[str, RobstrideBus] = {}
         self._joint_to_bus: dict[str, str] = {}
 
-        # Group joints by CAN interface and build bus objects
         bus_motors: dict[str, dict[str, Motor]] = {}
         bus_calibration: dict[str, dict[str, dict]] = {}
 
@@ -128,7 +149,7 @@ class BipedMotorManager:
 
             bus_motors[j.can_bus][j.name] = Motor(
                 id=j.can_id,
-                model=j.model.lower(),  # table keys are lowercase
+                model=j.model.lower(),
             )
             bus_calibration[j.can_bus][j.name] = {
                 "direction": 1,
@@ -146,46 +167,33 @@ class BipedMotorManager:
 
     @classmethod
     def from_robot_yaml(cls, config: dict, offsets: Optional[dict] = None, backend: str = "socketcan") -> "BipedMotorManager":
-        """Build from robot.yaml config dict.
-
-        Expected format:
-            can0:
-              interface: can0
-              motors:
-                R_hip_pitch: {id: 1, type: RS04}
-                ...
-            can1:
-              ...
-        """
         joints = []
         for bus_key, bus_cfg in config.items():
             if not isinstance(bus_cfg, dict) or "motors" not in bus_cfg:
-                continue  # skip non-bus keys (comments, metadata, etc.)
+                continue
             iface = bus_cfg.get("interface", bus_key)
             for name, mcfg in bus_cfg["motors"].items():
+                is_ankle = name in ANKLE_ALL
+                urdf = cls.JOINT_LIMITS.get(name, (-12.57, 12.57))
+
+                # Always use URDF joint-space limits for clamping/soft stops
+                limit_lo = urdf[0]
+                limit_hi = urdf[1]
+
+                # Compute bus offset from calibration
                 offset = 0.0
-                cal_lo = None
-                cal_hi = None
                 if offsets and name in offsets:
                     cal = offsets[name]
-                    offset = cal.get("offset", 0.0)
-                    # Calibration provides measured mechanical limits
-                    # (already in joint-space after offset correction)
-                    if "limit_lo" in cal and "limit_hi" in cal:
-                        cal_lo = cal["limit_lo"]
-                        cal_hi = cal["limit_hi"]
-                    elif "encoder_limit_a" in cal and "encoder_limit_b" in cal:
-                        a = cal["encoder_limit_a"] - offset
-                        b = cal["encoder_limit_b"] - offset
-                        cal_lo = min(a, b)
-                        cal_hi = max(a, b)
+                    if is_ankle:
+                        # Ankle offset: encoder_at_joint_zero
+                        # = encoder_min - motor_cmd_at_joint_min
+                        motor_min = cal.get("motor_min", 0.0)
+                        is_upper = name in ANKLE_PITCH_MOTORS
+                        cmd_at_min = ankle_motor_cmd_at_joint_min(is_upper)
+                        offset = motor_min - cmd_at_min
+                    else:
+                        offset = cal.get("offset", 0.0)
 
-                # Use calibration limits if available, else URDF defaults
-                urdf = cls.JOINT_LIMITS.get(name, (-12.57, 12.57))
-                limit_lo = cal_lo if cal_lo is not None else urdf[0]
-                limit_hi = cal_hi if cal_hi is not None else urdf[1]
-
-                # Soft stops: inset by safety buffer from hard limits
                 softstop_lo = limit_lo + SOFTSTOP_BUFFER_RAD
                 softstop_hi = limit_hi - SOFTSTOP_BUFFER_RAD
 
@@ -195,6 +203,7 @@ class BipedMotorManager:
                     can_id=mcfg["id"],
                     model=f"rs-{mcfg['type'][2:].zfill(2)}",
                     offset=offset,
+                    is_ankle=is_ankle,
                     limit_lo=limit_lo,
                     limit_hi=limit_hi,
                     softstop_lo=softstop_lo,
@@ -220,7 +229,7 @@ class BipedMotorManager:
     def enable_all(self):
         for bus in self._buses.values():
             bus.enable_all()
-            bus.set_mode_all(0)  # MIT mode
+            bus.set_mode_all(0)
             bus.flush_rx()
 
     def disable_all(self, clear_fault: bool = False):
@@ -233,28 +242,32 @@ class BipedMotorManager:
 
     # ── Joint-level API ─────────────────────────────────────────────
 
-    def clamp(self, name: str, position: float) -> float:
-        """Hard-clamp position to joint limits."""
+    def clamp_joint(self, name: str, position: float) -> float:
+        """Hard-clamp position to URDF joint-space limits."""
         j = self.joints[name]
         return max(j.limit_lo, min(j.limit_hi, position))
 
+    # Keep old name for compatibility
+    def clamp(self, name: str, position: float) -> float:
+        return self.clamp_joint(name, position)
+
+    def softstop_clamp(self, name: str, position: float) -> float:
+        """Clamp position to soft stop boundaries (inside hard limits by 2°)."""
+        j = self.joints[name]
+        return max(j.softstop_lo, min(j.softstop_hi, position))
+
     def compute_softstop_torque(self, name: str, actual_pos: float) -> float:
-        """Compute restoring torque if joint is in the soft stop buffer zone.
+        """Compute restoring torque in joint-space when near limits.
 
-        Returns 0.0 if within safe range. Returns a torque (Nm) pushing
-        the joint away from the limit if within the 2° buffer zone.
-
-        The torque ramps linearly from 0 at the soft stop boundary to
-        SOFTSTOP_KP × SOFTSTOP_BUFFER_RAD at the hard limit.
+        For ankle joints: actual_pos must be in joint-space (after linkage inverse).
+        For normal joints: actual_pos is the motor feedback position (= joint-space).
         """
         j = self.joints[name]
 
         if actual_pos < j.softstop_lo:
-            # Below low soft stop — push positive (away from limit)
             penetration = j.softstop_lo - actual_pos
             return SOFTSTOP_KP * min(penetration, SOFTSTOP_BUFFER_RAD)
         elif actual_pos > j.softstop_hi:
-            # Above high soft stop — push negative (away from limit)
             penetration = actual_pos - j.softstop_hi
             return -SOFTSTOP_KP * min(penetration, SOFTSTOP_BUFFER_RAD)
         return 0.0
@@ -269,20 +282,15 @@ class BipedMotorManager:
         torque_ff: float = 0.0,
         actual_pos: float = None,
     ) -> None:
-        """Send one MIT command with soft stop protection.
+        """Send MIT command for a NORMAL (non-ankle) joint.
 
-        If actual_pos is provided and the joint is in the soft stop zone:
-        1. Position command is clamped to the soft stop boundary (not the hard limit)
-        2. A restoring torque is added to torque_ff pushing the joint inward
-
-        Hard clamp at mechanical limits is always applied regardless.
+        Applies joint-space soft stops + restoring torque.
+        For ankle joints, use send_ankle_mit_command() instead.
         """
         j = self.joints[joint_name]
 
-        # Hard clamp — never command beyond mechanical limits
+        # Hard clamp + soft stop clamp (joint-space)
         position = max(j.limit_lo, min(j.limit_hi, position))
-
-        # Soft stop: clamp command to soft stop zone + add restoring torque
         position = max(j.softstop_lo, min(j.softstop_hi, position))
 
         if actual_pos is not None:
@@ -291,10 +299,27 @@ class BipedMotorManager:
         bus = self._bus_for(joint_name)
         bus.write_operation_frame(joint_name, position, kp, kd, velocity, torque_ff)
 
+    def send_ankle_mit_command(
+        self,
+        motor_name: str,
+        motor_position: float,
+        kp: float,
+        kd: float,
+        velocity: float = 0.0,
+        torque_ff: float = 0.0,
+    ) -> None:
+        """Send MIT command for an ankle motor (motor-space, post-linkage).
+
+        No soft stop here — soft stops are applied in joint-space by the caller
+        (can_bus_node._handle_ankle) before the linkage forward transform.
+        The bus offset maps motor_position to raw encoder values.
+        """
+        bus = self._bus_for(motor_name)
+        bus.write_operation_frame(motor_name, motor_position, kp, kd, velocity, torque_ff)
+
     def read_feedback(
         self, joint_name: str, timeout: float = 0.005
     ) -> Optional[MotorFeedback]:
-        """Read one feedback frame from the motor."""
         bus = self._bus_for(joint_name)
         return bus.read_operation_frame(joint_name, timeout)
 
@@ -305,7 +330,6 @@ class BipedMotorManager:
         return name in ANKLE_PAIRS.values()
 
     def get_ankle_pair(self, name: str) -> Optional[tuple[str, str]]:
-        """If name is part of an ankle pair, return (pitch_name, roll_name)."""
         if name in ANKLE_PAIRS:
             return (name, ANKLE_PAIRS[name])
         for p, r in ANKLE_PAIRS.items():
@@ -314,14 +338,12 @@ class BipedMotorManager:
         return None
 
 
-# Re-export for convenience
 __all__ = [
-    "RobstrideBus",
-    "Motor",
-    "MotorFeedback",
-    "BipedMotorManager",
-    "JointConfig",
-    "ankle_command_to_motors",
-    "ankle_motors_to_feedback",
-    "ANKLE_PAIRS",
+    "RobstrideBus", "Motor", "MotorFeedback",
+    "BipedMotorManager", "JointConfig",
+    "ankle_command_to_motors", "ankle_motors_to_feedback",
+    "ankle_motor_cmd_at_joint_min",
+    "ANKLE_PAIRS", "ANKLE_ALL",
+    "_PITCH_GAIN", "_ROLL_GAIN",
+    "SOFTSTOP_BUFFER_RAD", "SOFTSTOP_KP",
 ]

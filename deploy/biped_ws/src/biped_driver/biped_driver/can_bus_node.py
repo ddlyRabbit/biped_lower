@@ -74,7 +74,8 @@ class CanBusNode(Node):
             self._mgr = BipedMotorManager(joints, backend=self._backend)
 
         self._last_commands: dict[str, MITCommand] = {}
-        self._last_positions: dict[str, float] = {}  # last known joint positions for soft stops
+        self._last_positions: dict[str, float] = {}  # last known motor positions (normal joints)
+        self._last_joint_positions: dict[str, float] = {}  # joint-space positions (for ankle soft stops)
 
         # Pre-compute bus-grouped joint ordering for the control loop.
         # Within each bus, ankle pairs are grouped together.
@@ -275,61 +276,67 @@ class CanBusNode(Node):
     ):
         """Send/receive for an ankle pair with parallel linkage transform.
 
-        Policy sees foot_pitch/foot_roll. CAN talks to upper/lower motors.
+        All clamping and soft stops happen in JOINT-SPACE (foot_pitch/roll)
+        BEFORE the linkage forward transform to motor-space.
+
+        Flow: policy joint-space → clamp → soft stop → linkage forward → motor CAN
+
         pitch_name → upper motor (knee-side CAN ID)
         roll_name  → lower motor (foot-side CAN ID)
         """
         pitch_name, roll_name = pair
         pitch_cmd = self._last_commands.get(pitch_name)
         roll_cmd = self._last_commands.get(roll_name)
-        # Ankle soft stops use motor-level positions (pitch_name/roll_name map to motors)
-        actual_upper = self._last_positions.get(pitch_name)
-        actual_lower = self._last_positions.get(roll_name)
+
+        # Get last known joint-space positions for soft stop torque
+        # (stored from previous cycle's linkage inverse)
+        actual_pitch = self._last_joint_positions.get(pitch_name)
+        actual_roll = self._last_joint_positions.get(roll_name)
 
         fb_upper = None
         fb_lower = None
 
         try:
             if pitch_cmd and roll_cmd:
-                # Clamp in joint-space BEFORE linkage transform
-                clamped_pitch = self._mgr.clamp(pitch_name, pitch_cmd.position)
-                clamped_roll = self._mgr.clamp(roll_name, roll_cmd.position)
+                # 1. Clamp in joint-space (URDF limits)
+                pitch_pos = self._mgr.clamp_joint(pitch_name, pitch_cmd.position)
+                roll_pos = self._mgr.clamp_joint(roll_name, roll_cmd.position)
 
-                motor_upper, motor_lower = ankle_command_to_motors(
-                    clamped_pitch, clamped_roll)
+                # 2. Soft stop clamp in joint-space (2° inside limits)
+                pitch_pos = self._mgr.softstop_clamp(pitch_name, pitch_pos)
+                roll_pos = self._mgr.softstop_clamp(roll_name, roll_pos)
 
-                # Average gains (both motors should have same gains from policy)
+                # 3. Compute soft stop restoring torque in joint-space
+                tff = (pitch_cmd.torque_ff + roll_cmd.torque_ff) / 2.0
+                if actual_pitch is not None:
+                    tff += self._mgr.compute_softstop_torque(pitch_name, actual_pitch)
+                if actual_roll is not None:
+                    tff += self._mgr.compute_softstop_torque(roll_name, actual_roll)
+
+                # 4. Linkage forward: joint-space → motor-space
+                motor_upper, motor_lower = ankle_command_to_motors(pitch_pos, roll_pos)
+
+                # Average gains
                 kp = (pitch_cmd.kp + roll_cmd.kp) / 2.0
                 kd = (pitch_cmd.kd + roll_cmd.kd) / 2.0
-                # Feedforward torque: split equally between the two motors
-                tff = (pitch_cmd.torque_ff + roll_cmd.torque_ff) / 2.0
 
-                self._mgr.send_mit_command(
-                    pitch_name, motor_upper, kp, kd, 0.0, tff,
-                    actual_pos=actual_upper)
+                # 5. Send motor commands (no additional soft stops in send_ankle_mit_command)
+                self._mgr.send_ankle_mit_command(
+                    pitch_name, motor_upper, kp, kd, 0.0, tff)
                 fb_upper = self._mgr.read_feedback(pitch_name)
-                self._mgr.send_mit_command(
-                    roll_name, motor_lower, kp, kd, 0.0, tff,
-                    actual_pos=actual_lower)
+                self._mgr.send_ankle_mit_command(
+                    roll_name, motor_lower, kp, kd, 0.0, tff)
                 fb_lower = self._mgr.read_feedback(roll_name)
             else:
-                # No commands — zero stiffness (soft stop still active)
-                self._mgr.send_mit_command(pitch_name, 0.0, 0.0, 0.0,
-                                           actual_pos=actual_upper)
+                # No commands — zero stiffness, just read
+                self._mgr.send_ankle_mit_command(pitch_name, 0.0, 0.0, 0.0)
                 fb_upper = self._mgr.read_feedback(pitch_name)
-                self._mgr.send_mit_command(roll_name, 0.0, 0.0, 0.0,
-                                           actual_pos=actual_lower)
+                self._mgr.send_ankle_mit_command(roll_name, 0.0, 0.0, 0.0)
                 fb_lower = self._mgr.read_feedback(roll_name)
         except Exception as e:
             self.get_logger().warn(
                 f"Ankle {pitch_name}/{roll_name}: CAN error: {e}",
                 throttle_duration_sec=1.0)
-
-        # Track motor-level positions for soft stops
-        if fb_upper is not None:
-            self._last_positions[pitch_name] = fb_upper.position
-        if fb_lower is not None:
-            self._last_positions[roll_name] = fb_lower.position
 
         if fb_upper is not None and fb_lower is not None:
             # Inverse linkage: reconstruct foot pitch/roll from motor positions
@@ -337,6 +344,10 @@ class CanBusNode(Node):
                 fb_upper.position, fb_lower.position)
             foot_pitch_vel, foot_roll_vel = ankle_motors_to_feedback(
                 fb_upper.velocity, fb_lower.velocity)
+
+            # Store joint-space positions for next cycle's soft stop computation
+            self._last_joint_positions[pitch_name] = foot_pitch
+            self._last_joint_positions[roll_name] = foot_roll
 
             for jname, pos, vel, fb in [
                 (pitch_name, foot_pitch, foot_pitch_vel, fb_upper),
