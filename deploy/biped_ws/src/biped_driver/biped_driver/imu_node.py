@@ -103,23 +103,26 @@ class BNO085Node(Node):
             )
 
             import time
-            import digitalio
 
-            # Hardware reset via RST pin if connected (manual toggle)
+            # Hardware reset via RST pin — uses lgpio directly to avoid
+            # "GPIO busy" errors from digitalio after unclean exits
             if self._reset_pin >= 0:
                 try:
-                    pin_map = {4: board.D4, 17: board.D17, 27: board.D27, 22: board.D22}
-                    if self._reset_pin in pin_map:
-                        rst = digitalio.DigitalInOut(pin_map[self._reset_pin])
-                        rst.direction = digitalio.Direction.OUTPUT
-                        rst.value = False
-                        time.sleep(0.1)
-                        rst.value = True
-                        time.sleep(1.0)  # BNO085 needs ~1s to boot after reset
-                        rst.deinit()
-                        self.get_logger().info(f'Hardware reset via GPIO {self._reset_pin} — OK')
+                    import lgpio
+                    h = lgpio.gpiochip_open(4)  # RPi5 GPIO chip
+                    try:
+                        lgpio.gpio_free(h, self._reset_pin)
+                    except Exception:
+                        pass
+                    lgpio.gpio_claim_output(h, self._reset_pin, 0)  # LOW = reset
+                    time.sleep(0.1)
+                    lgpio.gpio_write(h, self._reset_pin, 1)  # HIGH = run
+                    time.sleep(1.0)  # BNO085 needs ~1s to boot
+                    lgpio.gpio_free(h, self._reset_pin)
+                    lgpio.gpiochip_close(h)
+                    self.get_logger().info(f'BNO085 hardware reset via GPIO {self._reset_pin}')
                 except Exception as e:
-                    self.get_logger().warn(f'Reset pin GPIO {self._reset_pin} failed: {e}')
+                    self.get_logger().warn(f'GPIO reset failed: {e} — continuing without reset')
 
             i2c = busio.I2C(board.SCL, board.SDA, frequency=400_000)
             self._bno = BNO08X_I2C(i2c, address=self._addr, debug=False)
