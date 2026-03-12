@@ -179,8 +179,9 @@ class PolicyNode(Node):
             cmd.position = targets[name]
             cmd.velocity = 0.0
             kp, kd = self._gains[name]
-            cmd.kp = kp * self._gain_scale
-            cmd.kd = kd * self._gain_scale
+            gs = self.get_parameter('gain_scale').value
+            cmd.kp = kp * gs
+            cmd.kd = kd * gs
             cmd.torque_ff = 0.0
             cmd_msg.commands.append(cmd)
 
