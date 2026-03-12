@@ -103,9 +103,10 @@ class SafetyNode(Node):
         g_norm = np.linalg.norm(g)
         if g_norm > 0.1:
             g_unit = g / g_norm
+            # BNO085 gravity: (0, 0, +9.81) when upright (Z-up)
             # pitch = atan2(gx, gz), roll = atan2(gy, gz)
-            pitch = np.arctan2(g_unit[0], -g_unit[2])
-            roll = np.arctan2(g_unit[1], -g_unit[2])
+            pitch = np.arctan2(g_unit[0], g_unit[2])
+            roll = np.arctan2(g_unit[1], g_unit[2])
 
             if abs(pitch) > self._max_pitch:
                 ok = False
