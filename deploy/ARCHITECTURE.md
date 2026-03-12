@@ -542,53 +542,181 @@ Interactive CLI:
 ```
 
 
-## Topic Graph
+## ROS2 Graph
+
+All nodes, topics, and connections for the full bringup (`bringup.launch.py`):
 
 ```
-                    ┌──────────────┐
-                    │  BT Gamepad  │
-                    │  (joy_node)  │
-                    └──────┬───────┘
-                           │ /joy
-                           ▼
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│   Keyboard   │──▶│   Gamepad    │   │    State     │
-│   Teleop     │   │   Teleop     │   │   Machine    │
-└──────┬───────┘   └──────┬───────┘   └──────┬───────┘
-       │                  │                   │
-       └────────┬─────────┘            /state_machine
-           /cmd_vel                          │
-                │                            ▼
-                ▼                   ┌──────────────┐
-         ┌──────────────┐          │    Safety     │◀── /motor_states
-         │   Policy     │◀─────────│    Node       │◀── /imu/data
-         │   Runner     │          └──────┬───────┘
-         │   (50Hz)     │                 │
-         │              │◀── /imu/data    │ /safety/status
-         │              │◀── /joint_states│
-         └──────┬───────┘                 │
-                │                         │
-         /joint_commands                  │
-                │                         │
-                ▼                         │
-  ┌──────────────────────────┐           │
-  │      CAN Bus Node        │           │
-  │   (single node, 2 buses) │───────────┘
-  │                          │
-  │  can0 → Right leg (6×)   │
-  │  can1 → Left leg  (6×)   │
-  │  RS02 + RS03 + RS04      │
-  │  + ankle linkage xform   │
-  └──────────┬───────────────┘
-             │
-      /joint_states
-      /motor_states
-             │
-             ▼
-  ┌────────────────────────┐
-  │  Foxglove Bridge       │──── WiFi ──── Desktop
-  │  (all topics)          │              (Foxglove Studio)
-  └────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              HARDWARE LAYER                                 │
+│                                                                             │
+│  ┌─────────────────────────────────┐     ┌────────────────────────────┐    │
+│  │         /imu_node               │     │      /can_bus_node         │    │
+│  │        (biped_driver)           │     │      (biped_driver)        │    │
+│  │                                 │     │                            │    │
+│  │  BNO085 I2C (SH2 @ 400kHz)     │     │  robstride_dynamics lib    │    │
+│  │  Bus 1, addr 0x4B, RST GPIO 4  │     │  BipedMotorManager         │    │
+│  │                                 │     │                            │    │
+│  │  Publishes:                     │     │  can0 → Right leg (6×)    │    │
+│  │   /imu/data       Imu    100Hz │     │    R_hip_pitch:1:RS04     │    │
+│  │   /imu/gravity    Vec3   100Hz │     │    R_hip_roll:2:RS03      │    │
+│  │                                 │     │    R_hip_yaw:3:RS03       │    │
+│  └────────┬────────────┬───────────┘     │    R_knee:4:RS04          │    │
+│           │            │                 │    R_foot_pitch:5:RS02    │    │
+│           │            │                 │    R_foot_roll:6:RS02     │    │
+│           │            │                 │                            │    │
+│           │            │                 │  can1 → Left leg (6×)     │    │
+│           │            │                 │    L_hip_pitch:7:RS04     │    │
+│           │            │                 │    L_hip_roll:8:RS03      │    │
+│           │            │                 │    L_hip_yaw:9:RS03       │    │
+│           │            │                 │    L_knee:10:RS04         │    │
+│           │            │                 │    L_foot_pitch:11:RS02   │    │
+│           │            │                 │    L_foot_roll:12:RS02    │    │
+│           │            │                 │                            │    │
+│           │            │                 │  + ankle linkage xform    │    │
+│           │            │                 │                            │    │
+│           │            │                 │  Subscribes:               │    │
+│           │            │                 │   /joint_commands  MITArr  │    │
+│           │            │                 │  Publishes:                │    │
+│           │            │                 │   /joint_states  JS  50Hz │    │
+│           │            │                 │   /motor_states  MS  50Hz │    │
+│           │            │                 └──────┬──────────┬─────────┘    │
+│           │            │                        │          │              │
+└───────────┼────────────┼────────────────────────┼──────────┼──────────────┘
+            │            │                        │          │
+            │ /imu/data  │ /imu/gravity    /joint │   /motor │
+            │            │                _states │   _states│
+            │            │                        │          │
+┌───────────┼────────────┼────────────────────────┼──────────┼──────────────┐
+│           │        CONTROL LAYER                │          │              │
+│           │            │                        │          │              │
+│           ▼            │                        ▼          │              │
+│  ┌─────────────────────┼──────────────────────────┐       │              │
+│  │      /policy_node   │   (biped_control)        │       │              │
+│  │                     │                          │       │              │
+│  │  Subscribes:        │                          │       │              │
+│  │   /imu/data ────────┘                          │       │              │
+│  │   /imu/gravity                                 │       │              │
+│  │   /joint_states ◀──────────────────────────────┘       │              │
+│  │   /cmd_vel                                             │              │
+│  │   /state_machine                                       │              │
+│  │                                                        │              │
+│  │  ONNX inference (50Hz):                                │              │
+│  │   obs(45d) → student_flat.onnx → action(12d)          │              │
+│  │   target = default_pos + action × 0.5                  │              │
+│  │                                                        │              │
+│  │  Publishes:                                            │              │
+│  │   /joint_commands  MITCommandArray  50Hz ──────────────┼──▶ can_bus   │
+│  │   /policy/obs      Float32MultiArray (debug)           │              │
+│  │   /policy/actions  Float32MultiArray (debug)           │              │
+│  └────────────────────────────────────────────────┘       │              │
+│                                                           │              │
+│  ┌────────────────────────────────────────────────┐       │              │
+│  │      /safety_node   (biped_control)            │       │              │
+│  │                                                │       │              │
+│  │  Subscribes:                                   │       │              │
+│  │   /imu/data                                    │       │              │
+│  │   /motor_states ◀──────────────────────────────┼───────┘              │
+│  │   /joint_commands (watchdog)                   │                      │
+│  │                                                │                      │
+│  │  Checks @ 50Hz:                                │                      │
+│  │   pitch/roll limits, motor temp, fault codes,  │                      │
+│  │   policy watchdog, CAN watchdog                │                      │
+│  │                                                │                      │
+│  │  Publishes:                                    │                      │
+│  │   /safety/status   Bool          10Hz          │                      │
+│  │   /safety/faults   String        on fault      │                      │
+│  └────────────────────┬───────────────────────────┘                      │
+│                       │                                                  │
+│                       │ /safety/status                                   │
+│                       ▼                                                  │
+│  ┌────────────────────────────────────────────────┐                      │
+│  │      /state_machine_node  (biped_control)      │                      │
+│  │                                                │                      │
+│  │  Subscribes:                                   │                      │
+│  │   /motor_states, /imu/data                     │                      │
+│  │   /safety/status, /joy                         │                      │
+│  │                                                │                      │
+│  │  FSM: IDLE → STAND → WALK → ESTOP             │                      │
+│  │                                                │                      │
+│  │  Publishes:                                    │                      │
+│  │   /state_machine  String         10Hz          │                      │
+│  │   /robot_state    RobotState     10Hz          │                      │
+│  └────────────────────────────────────────────────┘                      │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│                            TELEOP LAYER                                  │
+│                                                                          │
+│  ┌────────────────────┐   ┌────────────────────┐   ┌──────────────────┐ │
+│  │  /keyboard_teleop  │   │  /gamepad_teleop   │   │    /joy_node     │ │
+│  │  (biped_teleop)    │   │  (biped_teleop)    │◀──│  (ros2 joy pkg)  │ │
+│  │                    │   │                    │   │                  │ │
+│  │  Terminal input    │   │  PS4/PS5 gamepad   │   │  BT HID → /joy  │ │
+│  │  WASD + speed 1-5  │   │  Sticks → velocity │   │                  │ │
+│  │                    │   │  Buttons → FSM     │   └──────────────────┘ │
+│  └────────┬───────────┘   └────────┬───────────┘            /joy        │
+│           │                        │                                     │
+│           └──────────┬─────────────┘                                     │
+│                      │                                                   │
+│                 /cmd_vel (Twist)                                         │
+│                      │                                                   │
+│                      ▼  ──────────────────────▶  /policy_node            │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│                          MONITORING LAYER                                │
+│                                                                          │
+│  ┌────────────────────────────────────────────────────────┐              │
+│  │  /foxglove_bridge                                      │              │
+│  │  WebSocket on port 8765                                │              │
+│  │                                                        │              │
+│  │  Bridges ALL topics to Foxglove Studio over WiFi       │              │
+│  │  /joint_states, /motor_states, /imu/data,              │              │
+│  │  /policy/obs, /policy/actions, /robot_state,           │              │
+│  │  /safety/status, /cmd_vel, /joint_commands             │              │
+│  └────────────────────────────────────────────────────────┘              │
+│                          │                                               │
+│                     WiFi / WebSocket                                     │
+│                          │                                               │
+│                          ▼                                               │
+│               ┌────────────────────┐                                     │
+│               │  Desktop Machine   │                                     │
+│               │  Foxglove Studio   │                                     │
+│               └────────────────────┘                                     │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+
+TOPIC SUMMARY
+─────────────────────────────────────────────────────────
+Topic                  Type                  Hz   Publisher        Subscribers
+/imu/data              Imu                   100  imu_node         policy, safety
+/imu/gravity           Vector3Stamped        100  imu_node         policy
+/joint_states          JointState            50   can_bus_node     policy, foxglove
+/motor_states          MotorStateArray       50   can_bus_node     safety, state_machine, foxglove
+/joint_commands        MITCommandArray       50   policy_node      can_bus_node, safety (watchdog)
+/cmd_vel               Twist                 var  teleop nodes     policy
+/state_machine         String                10   state_machine    policy
+/robot_state           RobotState            10   state_machine    foxglove
+/safety/status         Bool                  10   safety_node      state_machine
+/safety/faults         String                var  safety_node      foxglove
+/joy                   Joy                   var  joy_node         gamepad_teleop, state_machine
+/policy/obs            Float32MultiArray     50   policy_node      foxglove (debug)
+/policy/actions        Float32MultiArray     50   policy_node      foxglove (debug)
+
+NODE SUMMARY (8 nodes in bringup.launch.py)
+─────────────────────────────────────────────────────────
+Node                  Package          Function
+/imu_node             biped_driver     BNO085 I2C → IMU + gravity
+/can_bus_node         biped_driver     12× RobStride MIT control (can0+can1)
+/policy_node          biped_control    ONNX inference → joint commands (50Hz)
+/safety_node          biped_control    Watchdog + e-stop triggers
+/state_machine_node   biped_control    FSM: IDLE→STAND→WALK→ESTOP
+/keyboard_teleop      biped_teleop     Terminal → /cmd_vel
+/gamepad_teleop       biped_teleop     PS4/PS5 → /cmd_vel
+/joy_node             joy (ros2 pkg)   BT gamepad HID → /joy
 ```
 
 ## Frame Conventions
