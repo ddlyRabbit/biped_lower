@@ -47,7 +47,8 @@ class SafetyNode(Node):
         rate = float(self.get_parameter('check_rate').value)
 
         # State
-        self._gravity = np.array([0.0, 0.0, -9.81])
+        self._gravity = np.array([0.0, 0.0, 9.81])  # Z-up (BNO085 convention)
+        self._gravity_received = False
         self._motor_temps = {}
         self._motor_faults = {}
         self._last_cmd_time = time.time()
@@ -80,6 +81,7 @@ class SafetyNode(Node):
         self._gravity[0] = msg.vector.x
         self._gravity[1] = msg.vector.y
         self._gravity[2] = msg.vector.z
+        self._gravity_received = True
 
     def _imu_alive_cb(self, msg: Imu):
         self._last_imu_time = time.time()
@@ -99,9 +101,10 @@ class SafetyNode(Node):
         reason = ""
 
         # 1. IMU orientation (pitch/roll from gravity vector)
+        # Skip until first gravity message received
         g = self._gravity
         g_norm = np.linalg.norm(g)
-        if g_norm > 0.1:
+        if self._gravity_received and g_norm > 0.1:
             g_unit = g / g_norm
             # BNO085 gravity: (0, 0, +9.81) when upright (Z-up)
             # pitch = atan2(gx, gz), roll = atan2(gy, gz)
