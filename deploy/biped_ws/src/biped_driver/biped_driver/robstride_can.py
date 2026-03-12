@@ -337,7 +337,7 @@ class BipedMotorManager:
         bus.write_operation_frame(motor_name, motor_position, kp, kd, velocity, torque_ff)
 
     def read_feedback(
-        self, joint_name: str, timeout: float = 0.005
+        self, joint_name: str, timeout: float = 0.002
     ) -> Optional[MotorFeedback]:
         bus = self._bus_for(joint_name)
         return bus.read_operation_frame(joint_name, timeout)
