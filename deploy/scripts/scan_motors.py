@@ -5,8 +5,9 @@ Pings each expected motor ID, reads position/velocity/voltage.
 Use to verify wiring and CAN comms before enabling any motor.
 
 Usage:
-    python3 scan_motors.py              # scan can0 (single bus)
-    python3 scan_motors.py can0 can1    # scan both buses
+    python3 scan_motors.py                          # scan can0 (socketcan)
+    python3 scan_motors.py can0 can1                # scan both buses
+    python3 scan_motors.py --waveshare /dev/ttyUSB0 # Waveshare USB-CAN-A
 """
 
 import sys
@@ -48,13 +49,13 @@ MOTOR_MAP_SINGLE = {
 }
 
 
-def scan_bus(channel: str, motors: list):
+def scan_bus(channel: str, motors: list, backend: str = "socketcan"):
     """Ping and read from each motor on one CAN bus. Read-only — no enable, no MIT commands."""
     print(f"\n{'='*60}")
-    print(f"  Scanning {channel} — {len(motors)} expected motors")
+    print(f"  Scanning {channel} ({backend}) — {len(motors)} expected motors")
     print(f"{'='*60}")
 
-    bus = RobstrideBus(channel=channel)
+    bus = RobstrideBus(channel=channel, backend=backend)
     bus.connect()
 
     found = 0
@@ -96,25 +97,46 @@ def scan_bus(channel: str, motors: list):
 
 
 def main():
-    channels = sys.argv[1:] if len(sys.argv) > 1 else ["can0"]
+    backend = "socketcan"
+    channels = []
 
-    print("RobStride Motor Scanner — READ ONLY (no actuation)")
+    # Parse args
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] == "--waveshare":
+            backend = "waveshare"
+            i += 1
+            if i < len(args) and not args[i].startswith("-"):
+                channels.append(args[i])
+                i += 1
+            else:
+                channels.append("/dev/ttyUSB0")
+        else:
+            channels.append(args[i])
+            i += 1
+
+    if not channels:
+        channels = ["can0"]
+
+    print(f"RobStride Motor Scanner — READ ONLY (no actuation) [{backend}]")
     print("Motors will NOT be enabled. Safe to run anytime.")
 
     total_found = 0
     total_failed = 0
 
     for ch in channels:
-        # Use single-bus map for can0 if only scanning can0
-        if len(channels) == 1 and ch == "can0":
+        # All 12 motors for single-bus or waveshare modes
+        if backend == "waveshare" or (len(channels) == 1 and ch not in MOTOR_MAP):
+            motors = MOTOR_MAP_SINGLE["can0"]
+        elif len(channels) == 1 and ch == "can0":
             motors = MOTOR_MAP_SINGLE["can0"]
         elif ch in MOTOR_MAP:
             motors = MOTOR_MAP[ch]
         else:
-            # Unknown bus — scan IDs 1-12
             motors = [(f"motor_{i}", i, "rs-04") for i in range(1, 13)]
 
-        f, fail = scan_bus(ch, motors)
+        f, fail = scan_bus(ch, motors, backend=backend)
         total_found += f
         total_failed += fail
 

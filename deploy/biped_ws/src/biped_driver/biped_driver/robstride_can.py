@@ -105,8 +105,14 @@ class BipedMotorManager:
         "R_foot_roll":  (-0.262, 0.262),
     }
 
-    def __init__(self, joints: list[JointConfig]):
+    def __init__(self, joints: list[JointConfig], backend: str = "socketcan"):
+        """
+        Args:
+            joints: List of joint configurations.
+            backend: "socketcan" (SocketCAN via python-can) or "waveshare" (serial).
+        """
         self.joints = {j.name: j for j in joints}
+        self.backend = backend
         self._buses: dict[str, RobstrideBus] = {}
         self._joint_to_bus: dict[str, str] = {}
 
@@ -134,10 +140,11 @@ class BipedMotorManager:
                 channel=channel,
                 motors=motors,
                 calibration=bus_calibration[channel],
+                backend=backend,
             )
 
     @classmethod
-    def from_robot_yaml(cls, config: dict, offsets: Optional[dict] = None) -> "BipedMotorManager":
+    def from_robot_yaml(cls, config: dict, offsets: Optional[dict] = None, backend: str = "socketcan") -> "BipedMotorManager":
         """Build from robot.yaml config dict.
 
         Expected format:
@@ -192,7 +199,7 @@ class BipedMotorManager:
                     softstop_lo=softstop_lo,
                     softstop_hi=softstop_hi,
                 ))
-        return cls(joints)
+        return cls(joints, backend=backend)
 
     def _bus_for(self, joint_name: str) -> RobstrideBus:
         return self._buses[self._joint_to_bus[joint_name]]

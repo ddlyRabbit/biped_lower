@@ -1,0 +1,23 @@
+# Biped Robot Motor Configuration — Waveshare USB-CAN-A
+# All 12 motors on one serial CAN adapter (NOT SocketCAN)
+# Channel = serial port path, backend = waveshare
+#
+# Setup: plug in Waveshare USB-CAN-A, no slcand/setup_can needed
+# The adapter is configured automatically via serial protocol
+
+can0:
+  interface: /dev/ttyUSB0
+  side: all
+  motors:
+    R_hip_pitch:   {id: 1,  type: RS04}
+    R_hip_roll:    {id: 2,  type: RS03}
+    R_hip_yaw:     {id: 3,  type: RS03}
+    R_knee:        {id: 4,  type: RS04}
+    R_foot_pitch:  {id: 5,  type: RS02}
+    R_foot_roll:   {id: 6,  type: RS02}
+    L_hip_pitch:   {id: 7,  type: RS04}
+    L_hip_roll:    {id: 8,  type: RS03}
+    L_hip_yaw:     {id: 9,  type: RS03}
+    L_knee:        {id: 10, type: RS04}
+    L_foot_pitch:  {id: 11, type: RS02}
+    L_foot_roll:   {id: 12, type: RS02}

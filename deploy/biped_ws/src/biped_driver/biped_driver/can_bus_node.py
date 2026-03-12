@@ -52,6 +52,7 @@ class CanBusNode(Node):
         self.declare_parameter("robot_config", "")
         self.declare_parameter("calibration_file", "")
         self.declare_parameter("loop_rate", 50.0)
+        self.declare_parameter("can_backend", "socketcan")  # "socketcan" or "waveshare"
 
         # Motor config string fallback (comma-separated "name:id:type")
         self.declare_parameter("motor_config_can0", "")
@@ -60,16 +61,17 @@ class CanBusNode(Node):
         robot_config_path = str(self.get_parameter("robot_config").value)
         cal_file = str(self.get_parameter("calibration_file").value)
         self._rate = float(self.get_parameter("loop_rate").value)
+        self._backend = str(self.get_parameter("can_backend").value)
 
         # ── Build motor manager ─────────────────────────────────────
         offsets = self._load_calibration(cal_file)
 
         if robot_config_path:
             config = self._load_robot_yaml(robot_config_path)
-            self._mgr = BipedMotorManager.from_robot_yaml(config, offsets)
+            self._mgr = BipedMotorManager.from_robot_yaml(config, offsets, backend=self._backend)
         else:
             joints = self._parse_param_strings(offsets)
-            self._mgr = BipedMotorManager(joints)
+            self._mgr = BipedMotorManager(joints, backend=self._backend)
 
         self._last_commands: dict[str, MITCommand] = {}
         self._last_positions: dict[str, float] = {}  # last known joint positions for soft stops

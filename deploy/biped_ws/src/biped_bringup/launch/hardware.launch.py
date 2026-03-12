@@ -27,7 +27,15 @@ def launch_setup(context):
     bus_mode = LaunchConfiguration('bus_mode').perform(context)
     cal_file = LaunchConfiguration('calibration_file').perform(context)
 
-    if bus_mode == 'single':
+    if bus_mode == 'waveshare':
+        robot_config = os.path.join(bringup_dir, 'config', 'robot_waveshare.yaml')
+        motor_params = {
+            'robot_config': robot_config,
+            'calibration_file': cal_file,
+            'loop_rate': 50.0,
+            'can_backend': 'waveshare',
+        }
+    elif bus_mode == 'single':
         robot_config = os.path.join(bringup_dir, 'config', 'robot_single_bus.yaml')
         motor_params = {
             'robot_config': robot_config,
@@ -70,7 +78,7 @@ def launch_setup(context):
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('bus_mode', default_value='dual',
-                              description='CAN bus mode: dual (MCP2515 HAT) or single (USB-CAN)'),
+                              description='CAN bus mode: dual (MCP2515 HAT), single (slcand USB-CAN), or waveshare (serial USB-CAN-A)'),
         DeclareLaunchArgument('calibration_file', default_value=''),
         DeclareLaunchArgument('robot_config', default_value=''),
         OpaqueFunction(function=launch_setup),
