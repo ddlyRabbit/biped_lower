@@ -76,7 +76,6 @@ class CanBusNode(Node):
         self._last_commands: dict[str, MITCommand] = {}
         self._last_positions: dict[str, float] = {}  # last known motor positions (normal joints)
         self._last_joint_positions: dict[str, float] = {}  # joint-space positions (for ankle soft stops)
-        self._motors_enabled = False
 
         # Pre-compute bus-grouped joint ordering for the control loop.
         # Within each bus, ankle pairs are grouped together.
@@ -193,11 +192,6 @@ class CanBusNode(Node):
     # ── Command callback ────────────────────────────────────────────
 
     def _cmd_callback(self, msg: MITCommandArray):
-        # Auto-enable motors on first command (triggered by state_machine STAND)
-        if not self._motors_enabled and len(msg.commands) > 0:
-            self.enable_all()
-            self._motors_enabled = True
-
         for cmd in msg.commands:
             if cmd.joint_name in self._mgr.joints:
                 self._last_commands[cmd.joint_name] = cmd
@@ -219,10 +213,9 @@ class CanBusNode(Node):
     def _loop(self):
         """50Hz: send MIT commands, read feedback, publish.
 
-        Does nothing until motors are enabled (triggered by first /joint_commands).
+        Before motors are enabled: sends zero-torque MIT frames to get position feedback.
+        After enabled: sends actual commands from /joint_commands.
         """
-        if not self._motors_enabled:
-            return
 
         now = self.get_clock().now().to_msg()
         joint_msg = JointState()
@@ -411,9 +404,10 @@ def main(args=None):
     rclpy.init(args=args)
     node = CanBusNode()
     try:
-        # Don't enable motors on startup — state_machine_node will
-        # request enable via /joint_commands when transitioning to STAND.
-        # Motors stay disabled until first MIT command arrives.
+        # Enable motors in MIT mode (zero-torque) — they'll be free to move
+        # but we get position feedback for the state_machine's soft start.
+        # Actual stiffness only applied when /joint_commands has kp > 0.
+        node.enable_all()
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
