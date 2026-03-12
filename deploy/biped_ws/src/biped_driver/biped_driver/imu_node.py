@@ -239,12 +239,11 @@ class BNO085Node(Node):
 
         self._pub_gravity.publish(grav_msg)
 
-        # Periodic diagnostics
-        if self._read_count > 0 and self._read_count % 1000 == 0:
+        # Periodic diagnostics (every ~200s at 50Hz)
+        if self._read_count > 0 and self._read_count % 10000 == 0:
             self.get_logger().info(
-                f'IMU stats: {self._read_count} reads, {self._error_count} errors, '
-                f'gravity=({self._last_gravity[0]:.2f}, {self._last_gravity[1]:.2f}, '
-                f'{self._last_gravity[2]:.2f})'
+                f'IMU: {self._read_count} reads, {self._error_count} errs, '
+                f'g=({self._last_gravity[0]:.1f},{self._last_gravity[1]:.1f},{self._last_gravity[2]:.1f})'
             )
 
 
