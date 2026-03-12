@@ -163,6 +163,10 @@ class PolicyNode(Node):
         obs_input = obs.reshape(1, -1).astype(np.float32)
         actions = self._session.run(None, {'obs': obs_input})[0][0]
 
+        # Clamp actions to training range — prevents feedback divergence
+        # through last_action in the observation vector
+        actions = np.clip(actions, -1.0, 1.0)
+
         # Update last action
         self._obs_builder.update_last_action(actions)
 
