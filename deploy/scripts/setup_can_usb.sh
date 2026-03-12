@@ -7,7 +7,7 @@
 
 set -e
 
-DEVICE="${1:-/dev/ttyACM0}"
+DEVICE="${1:-/dev/ttyUSB0}"
 
 if [ ! -e "$DEVICE" ]; then
     echo "ERROR: $DEVICE not found. Is the USB-CAN adapter plugged in?"
