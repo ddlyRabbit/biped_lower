@@ -14,7 +14,6 @@ Usage:
         -p gain_scale:=0.3
 """
 
-import time
 import numpy as np
 import yaml
 import onnxruntime as ort
@@ -72,11 +71,6 @@ class PolicyNode(Node):
         self._joint_positions = {}  # populated from /joint_states
         self._joint_velocities = {}
         self._fsm_state = "IDLE"
-
-        # Soft start state
-        self._soft_start_active = False
-        self._soft_start_time = 0.0
-        self._start_positions = {}  # captured at STAND transition
 
         # QoS
         sensor_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
@@ -140,49 +134,7 @@ class PolicyNode(Node):
         new_state = msg.data.strip().upper()
         if new_state != self._fsm_state:
             self.get_logger().info(f'FSM: {self._fsm_state} → {new_state}')
-            if new_state in ("STAND", "WALK") and self._fsm_state not in ("STAND", "WALK"):
-                self._begin_soft_start()
             self._fsm_state = new_state
-
-    # --- Soft start ---
-
-    def _begin_soft_start(self):
-        """Capture current joint positions as interpolation start."""
-        self._start_positions = dict(self._joint_positions)
-        self._soft_start_time = time.monotonic()
-        self._soft_start_active = True
-        self.get_logger().info(
-            f'Soft start: interpolating to standing pose over {SOFT_START_POSITION_SECS}s')
-
-    def _soft_start_blend(self, policy_targets: dict) -> tuple:
-        """Blend between start positions and policy targets during soft start.
-
-        Returns (blended_targets, gain_multiplier).
-        """
-        elapsed = time.monotonic() - self._soft_start_time
-        total_time = SOFT_START_POSITION_SECS + SOFT_START_GAIN_SECS
-
-        if elapsed >= total_time:
-            self._soft_start_active = False
-            self.get_logger().info('Soft start complete — full policy control')
-            return policy_targets, 1.0
-
-        if elapsed < SOFT_START_POSITION_SECS:
-            # Phase 1: interpolate positions, low gains
-            alpha = elapsed / SOFT_START_POSITION_SECS
-            alpha = alpha * alpha * (3 - 2 * alpha)  # smoothstep
-            blended = {}
-            for name in ISAAC_JOINT_ORDER:
-                start = self._start_positions.get(name, DEFAULT_POSITIONS[name])
-                target = DEFAULT_POSITIONS[name]  # go to default pose first, not policy
-                blended[name] = start + alpha * (target - start)
-            return blended, 0.1  # 10% gains during position interpolation
-        else:
-            # Phase 2: at default pose, ramp gains
-            gain_elapsed = elapsed - SOFT_START_POSITION_SECS
-            gain_alpha = min(1.0, gain_elapsed / SOFT_START_GAIN_SECS)
-            gain_mult = 0.1 + 0.9 * gain_alpha  # 10% → 100%
-            return policy_targets, gain_mult
 
     # --- Main loop ---
 
@@ -190,8 +142,8 @@ class PolicyNode(Node):
         if self._session is None:
             return
 
-        # Only run when state machine says STAND or WALK
-        if self._fsm_state not in ("STAND", "WALK"):
+        # Only run during WALK — state_machine_node handles STAND soft start
+        if self._fsm_state != "WALK":
             return
 
         # Need joint state data before we can build obs
@@ -215,14 +167,7 @@ class PolicyNode(Node):
         self._obs_builder.update_last_action(actions)
 
         # Convert to position targets
-        policy_targets = ObsBuilder.action_to_positions(actions)
-
-        # Apply soft start blending
-        if self._soft_start_active:
-            targets, gain_mult = self._soft_start_blend(policy_targets)
-        else:
-            targets = policy_targets
-            gain_mult = 1.0
+        targets = ObsBuilder.action_to_positions(actions)
 
         # Build MIT command array
         cmd_msg = MITCommandArray()
@@ -234,8 +179,8 @@ class PolicyNode(Node):
             cmd.position = targets[name]
             cmd.velocity = 0.0
             kp, kd = self._gains[name]
-            cmd.kp = kp * self._gain_scale * gain_mult
-            cmd.kd = kd * self._gain_scale * gain_mult
+            cmd.kp = kp * self._gain_scale
+            cmd.kd = kd * self._gain_scale
             cmd.torque_ff = 0.0
             cmd_msg.commands.append(cmd)
 
