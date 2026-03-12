@@ -5,6 +5,8 @@ For testing hardware before policy integration.
     ros2 topic echo /joint_states
 """
 
+import os
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
@@ -15,30 +17,32 @@ CAN1_MOTORS = "L_hip_pitch:7:RS04,L_hip_roll:8:RS03,L_hip_yaw:9:RS03,L_knee:10:R
 
 
 def generate_launch_description():
+    bringup_dir = get_package_share_directory('biped_bringup')
+    default_robot_config = os.path.join(bringup_dir, 'config', 'robot.yaml')
+
     return LaunchDescription([
         DeclareLaunchArgument('calibration_file', default_value=''),
+        DeclareLaunchArgument('robot_config', default_value=default_robot_config),
 
         Node(
             package='biped_driver', executable='imu_node',
             name='imu_node', output='screen',
             parameters=[{'rate_hz': 50.0, 'i2c_address': 75, 'reset_pin': 4}],
         ),
+
+        # Single CAN node — both buses (can0=right, can1=left)
         Node(
             package='biped_driver', executable='can_bus_node',
-            name='can_right', output='screen',
+            name='can_bus_node', output='screen',
             parameters=[{
-                'can_interface': 'can0', 'motor_config': CAN0_MOTORS,
+                'robot_config': LaunchConfiguration('robot_config'),
                 'calibration_file': LaunchConfiguration('calibration_file'),
+                'loop_rate': 50.0,
+                'motor_config_can0': CAN0_MOTORS,
+                'motor_config_can1': CAN1_MOTORS,
             }],
         ),
-        Node(
-            package='biped_driver', executable='can_bus_node',
-            name='can_left', output='screen',
-            parameters=[{
-                'can_interface': 'can1', 'motor_config': CAN1_MOTORS,
-                'calibration_file': LaunchConfiguration('calibration_file'),
-            }],
-        ),
+
         Node(
             package='biped_control', executable='safety_node',
             name='safety_node', output='screen',

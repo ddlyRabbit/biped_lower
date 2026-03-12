@@ -138,10 +138,11 @@ class BipedMotorManager:
               ...
         """
         joints = []
-        for bus_key in config:
-            bus_cfg = config[bus_key]
+        for bus_key, bus_cfg in config.items():
+            if not isinstance(bus_cfg, dict) or "motors" not in bus_cfg:
+                continue  # skip non-bus keys (comments, metadata, etc.)
             iface = bus_cfg.get("interface", bus_key)
-            for name, mcfg in bus_cfg.get("motors", {}).items():
+            for name, mcfg in bus_cfg["motors"].items():
                 offset = 0.0
                 if offsets and name in offsets:
                     offset = offsets[name].get("offset", 0.0)

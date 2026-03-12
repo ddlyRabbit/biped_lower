@@ -129,10 +129,14 @@ biped_ws/src/
 ├── biped_driver/               ← Hardware interface nodes
 │   ├── biped_driver/
 │   │   ├── __init__.py
-│   │   ├── robstride_can.py           ← RS04 CAN protocol (MIT mode)
-│   │   ├── can_bus_node.py            ← Multi-motor CAN R/W node
-│   │   ├── imu_node.py               ← BNO085 I2C (SH2 protocol, gyro+quat fused)
-│   │   └── constants.py               ← CAN protocol constants
+│   │   ├── robstride_dynamics/        ← Vendored Seeed shared library (python-can)
+│   │   │   ├── __init__.py
+│   │   │   ├── protocol.py            ← CAN comm types + parameter IDs
+│   │   │   ├── table.py               ← Per-model MIT scaling tables
+│   │   │   └── bus.py                 ← RobstrideBus: CAN connect, MIT R/W, param R/W
+│   │   ├── robstride_can.py           ← Biped adapter: BipedMotorManager, ankle linkage
+│   │   ├── can_bus_node.py            ← Single node for all 12 motors (can0 + can1)
+│   │   └── imu_node.py               ← BNO085 I2C (SH2 protocol, gyro+quat fused)
 │   ├── package.xml
 │   └── setup.py
 │
@@ -227,17 +231,20 @@ string[] active_faults
 ## ROS2 Nodes
 
 ### 1. can_bus_node (biped_driver)
-**One instance per CAN bus (2 total: can0=left, can1=right)**
+**Single node managing all 12 motors across 2 CAN buses (can0=right, can1=left)**
+
+Uses vendored `robstride_dynamics` library (from Seeed-Projects/RobStride_Control)
+via `BipedMotorManager` which routes commands to the correct bus per joint.
 
 ```
-Node: /can_left, /can_right
+Node: /can_bus_node
 Params:
-  can_interface: "can0" / "can1"
-  motor_ids: [1, 2, 3, 4, 5, 6]         # CAN IDs per bus
-  joint_names: ["L_hip_pitch", ...]       # matching joint names
-  master_id: 253                          # host CAN ID
+  robot_config: "config/robot.yaml"       # Motor map (name→id→type→bus)
   calibration_file: "config/calibration.yaml"
   loop_rate: 50.0                         # Hz
+  # Fallback (if no robot_config):
+  motor_config_can0: "R_hip_pitch:1:RS04,R_hip_roll:2:RS03,..."
+  motor_config_can1: "L_hip_pitch:7:RS04,L_hip_roll:8:RS03,..."
 
 Subscribes:
   /joint_commands    MITCommandArray      ← from policy_node
@@ -246,17 +253,29 @@ Publishes:
   /joint_states      JointState     @ 50Hz  (position, velocity, effort)
   /motor_states      MotorStateArray @ 50Hz (raw: temp, faults, mode)
 
-Lifecycle:
-  on_configure: open CAN socket, load calibration offsets
-  on_activate: enable all motors (comm type 3), set MIT mode
-  on_deactivate: disable all motors (comm type 4)
-  on_shutdown: disable + close socket
+Architecture:
+  robstride_dynamics (vendored, no ROS)
+    └→ robstride_can.py: BipedMotorManager (multi-bus routing, ankle linkage)
+        └→ can_bus_node.py (ROS2 pub/sub/timer)
+
+Ankle parallel linkage:
+  Policy sees foot_pitch/foot_roll. Node transforms to motor_upper/motor_lower
+  using linearized linkage gains from CAD (pitch_gain=1.276, roll_gain=0.974).
+  Both ankle motors live on the same bus (same leg).
 
 Timer callback (50Hz):
-  1. Read feedback from all motors (poll or active reporting)
-  2. Apply calibration offset → publish /joint_states
-  3. Read latest /joint_commands
-  4. Send MIT command to each motor
+  For each CAN bus (grouped, not interleaved):
+    1. For each joint on this bus:
+       a. Send MIT command (write_operation_frame)
+       b. Read motor feedback (read_operation_frame)
+       c. Apply ankle inverse linkage if applicable
+    2. Ankle joints: clamp in joint-space → linkage transform → motor commands
+  3. Publish /joint_states (calibrated) and /motor_states (raw + temp + faults)
+
+Lifecycle:
+  startup: connect both buses, flush RX
+  enable_all(): enable motors → set MIT mode → flush
+  shutdown: disable all → disconnect
 ```
 
 ### 2. imu_node (biped_driver)
@@ -491,7 +510,7 @@ Interactive CLI:
 ### bringup.launch.py (full robot)
 ```python
 # Nodes launched:
-# 1. can_bus_node ×2 (can0=left, can1=right)
+# 1. can_bus_node ×1 (manages can0=right + can1=left)
 # 2. imu_node
 # 3. safety_node
 # 4. state_machine_node
@@ -503,7 +522,7 @@ Interactive CLI:
 ### hardware.launch.py (drivers only, no policy)
 ```python
 # For testing hardware before policy integration
-# 1. can_bus_node ×2
+# 1. can_bus_node ×1 (both buses)
 # 2. imu_node
 # 3. safety_node
 # Useful with: ros2 topic echo /joint_states
@@ -512,7 +531,7 @@ Interactive CLI:
 
 ### calibrate.launch.py
 ```python
-# 1. can_bus_node ×2 (no calibration loaded, raw encoder)
+# 1. can_bus_node ×1 (no calibration loaded, raw encoder)
 # 2. calibrate_node (interactive)
 ```
 
@@ -551,17 +570,21 @@ Interactive CLI:
                 │                         │
          /joint_commands                  │
                 │                         │
-         ┌──────┴──────┐                  │
-         ▼             ▼                  │
-  ┌────────────┐ ┌────────────┐          │
-  │  CAN Left  │ │  CAN Right │          │
-  │  (can0)    │ │  (can1)    │──────────┘
-  │  6× RS04   │ │  6× RS04   │
-  └────────────┘ └────────────┘
-    ▲                  ▲
-    │ /joint_states    │
-    │ /motor_states    │
-    ▼                  ▼
+                ▼                         │
+  ┌──────────────────────────┐           │
+  │      CAN Bus Node        │           │
+  │   (single node, 2 buses) │───────────┘
+  │                          │
+  │  can0 → Right leg (6×)   │
+  │  can1 → Left leg  (6×)   │
+  │  RS02 + RS03 + RS04      │
+  │  + ankle linkage xform   │
+  └──────────┬───────────────┘
+             │
+      /joint_states
+      /motor_states
+             │
+             ▼
   ┌────────────────────────┐
   │  Foxglove Bridge       │──── WiFi ──── Desktop
   │  (all topics)          │              (Foxglove Studio)
@@ -599,14 +622,23 @@ If mounted differently, apply a fixed rotation to align frames.
 ## CAN Timing Budget (50Hz = 20ms)
 
 ```
-CAN commands (12 joints, 2 buses parallel): ~1.6ms
-IMU serial read (SHTP):                     ~0.2ms
-Obs vector assembly:                        ~0.1ms
-ONNX inference (45→128→128→128→12):         ~0.5ms
-Safety checks:                              ~0.1ms
+CAN commands (12 joints, bus-grouped):
+  can0: 6 joints × ~0.2ms write+read = ~1.2ms
+  can1: 6 joints × ~0.2ms write+read = ~1.2ms
+  Total (sequential, grouped by bus):    ~2.4ms
+IMU I2C read (SH2):                      ~0.2ms
+Obs vector assembly:                     ~0.1ms
+ONNX inference (45→128→128→128→12):      ~0.5ms
+Safety checks:                           ~0.1ms
 ────────────────────────────────────────────────────
-Total:                                      ~2.5ms
-Headroom:                                   17.5ms  ✅
+Total:                                   ~3.3ms
+Headroom:                                16.7ms  ✅
+
+Note: Joints are grouped by bus in the control loop (all can0 joints
+processed before can1) to keep each bus's traffic contiguous. The two
+buses have independent sockets so no cross-bus contention. The ~0.2ms
+per motor assumes typical response time; worst case with 5ms timeout
+per motor is 60ms (only on hardware failure, triggers safety e-stop).
 ```
 
 ## Known Risks & Mitigations

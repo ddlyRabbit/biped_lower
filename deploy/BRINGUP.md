@@ -38,14 +38,13 @@ Verify: `candump can0` (shows nothing if no motors powered, frames if powered)
 
 ## Step 2: Calibrate (once per assembly)
 
-Power on motors. Run per side:
+Power on motors:
 ```bash
-ros2 launch biped_bringup calibrate.launch.py side:=right
-ros2 launch biped_bringup calibrate.launch.py side:=left
+ros2 launch biped_bringup calibrate.launch.py
 ```
 
 Follow interactive prompts — move each joint to both mechanical limits.
-Saves `calibration_right.yaml` and `calibration_left.yaml`.
+Saves `calibration.yaml` (all 12 joints, both legs).
 
 ## Step 3: Test hardware (no policy)
 
@@ -127,7 +126,7 @@ R_foot_roll   6  RS02     L_foot_roll  12  RS02
 | Node | Package | Function |
 |------|---------|----------|
 | `imu_node` | biped_driver | BNO085 I2C → /imu/data, /imu/gravity |
-| `can_bus_node` × 2 | biped_driver | RS02/03/04 CAN → /joint_states, /motor_states |
+| `can_bus_node` × 1 | biped_driver | RS02/03/04 CAN (can0+can1) → /joint_states, /motor_states |
 | `policy_node` | biped_control | ONNX inference → /joint_commands (50Hz) |
 | `safety_node` | biped_control | Watchdog → /safety/status |
 | `state_machine_node` | biped_control | FSM → /state_machine, /robot_state |
