@@ -6,7 +6,7 @@
 # The adapter is configured automatically via serial protocol
 
 can0:
-  interface: /dev/ttyUSB1
+  interface: /dev/ttyUSB0
   side: all
   motors:
     R_hip_pitch:   {id: 1,  type: RS04}
