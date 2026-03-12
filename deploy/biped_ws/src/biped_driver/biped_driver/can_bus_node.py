@@ -219,10 +219,11 @@ class CanBusNode(Node):
     def _loop(self):
         """50Hz: send MIT commands, read feedback, publish.
 
-        Joints are grouped by CAN bus so all write+read cycles on one bus
-        complete before moving to the next bus. This avoids interleaving
-        and keeps each bus's traffic contiguous.
+        Does nothing until motors are enabled (triggered by first /joint_commands).
         """
+        if not self._motors_enabled:
+            return
+
         now = self.get_clock().now().to_msg()
         joint_msg = JointState()
         joint_msg.header.stamp = now
