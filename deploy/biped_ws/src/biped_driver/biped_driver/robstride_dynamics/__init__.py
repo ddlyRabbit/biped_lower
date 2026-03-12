@@ -6,7 +6,7 @@ License: MIT
 This is the shared library — no ROS dependencies, usable standalone.
 """
 
-from .bus import RobstrideBus, Motor  # noqa: F401
+from .bus import RobstrideBus, Motor, MotorFeedback  # noqa: F401
 from .protocol import CommunicationType, ParameterType  # noqa: F401
 from .table import (  # noqa: F401
     MODEL_MIT_POSITION_TABLE,
