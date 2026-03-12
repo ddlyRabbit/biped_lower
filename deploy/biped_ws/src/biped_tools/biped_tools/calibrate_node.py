@@ -1,224 +1,203 @@
 """Manual joint calibration tool.
 
-Interactive CLI: operator moves each joint to both limits while this
-node records absolute encoder positions. Computes URDF-aligned zero
-offsets and saves to calibration.yaml.
+Interactive CLI: move each joint to both mechanical limits,
+records encoder positions, computes offsets, saves calibration.yaml.
 
-For ankle joints (foot_pitch/foot_roll), the motors are connected
-through a parallel linkage. Calibration records raw MOTOR encoder
-positions. The ankle mapping in can_bus_node handles the conversion.
-Ankle motors are calibrated individually — the offset maps motor
-encoder zero to the physical zero of that motor.
-
-Only needs to run once (or after motor reassembly).
+Supports socketcan and waveshare backends.
 
 Usage:
     ros2 run biped_tools calibrate_node --ros-args \
-        -p motor_config:="L_hip_pitch:1:RS04,L_hip_roll:2:RS03,..." \
-        -p can_interface:=can0 \
-        -p output_file:=calibration.yaml
+        -p can_backend:=waveshare -p can_channel:=/dev/ttyUSB0
+
+    ros2 run biped_tools calibrate_node --ros-args \
+        -p can_backend:=socketcan -p can_channel:=can0
 """
 
 import yaml
 import time
-import sys
 import rclpy
 from rclpy.node import Node
-from biped_driver.robstride_can import RobStrideMotor
-from biped_driver.can_bus_node import ANKLE_PAIRS, ankle_command_to_motors, ankle_motors_to_feedback
 
-# URDF joint limits (from biped_env_cfg.py init_state + URDF)
-# For non-ankle joints: limits are in joint-space (direct motor = joint)
-# For ankle joints: limits are in JOINT-space (foot_pitch/foot_roll),
-#   but calibration works in MOTOR-space. Validation uses motor-space
-#   limits computed from the joint-space limits via ankle linkage gains.
+from biped_driver.robstride_dynamics import RobstrideBus, Motor
+
+# URDF joint limits: (lower_rad, upper_rad, default_pos_rad)
 URDF_LIMITS = {
-    # joint_name: (lower_limit_rad, upper_limit_rad, default_pos_rad)
-    "L_hip_pitch":  (-2.222, 1.047, -0.2),
     "R_hip_pitch":  (-1.047, 2.222,  0.2),
-    "L_hip_roll":   (-0.209, 2.269,  0.0),
     "R_hip_roll":   (-2.269, 0.209,  0.0),
-    "L_hip_yaw":    (-2.094, 2.094,  0.0),
     "R_hip_yaw":    (-2.094, 2.094,  0.0),
-    "L_knee":       ( 0.000, 2.618,  0.4),
     "R_knee":       ( 0.000, 2.618,  0.4),
-    "L_foot_pitch": (-1.047, 0.524, -0.2),
     "R_foot_pitch": (-1.047, 0.524, -0.2),
-    "L_foot_roll":  (-0.262, 0.262,  0.0),
     "R_foot_roll":  (-0.262, 0.262,  0.0),
+    "L_hip_pitch":  (-2.222, 1.047, -0.2),
+    "L_hip_roll":   (-0.209, 2.269,  0.0),
+    "L_hip_yaw":    (-2.094, 2.094,  0.0),
+    "L_knee":       ( 0.000, 2.618,  0.4),
+    "L_foot_pitch": (-1.047, 0.524, -0.2),
+    "L_foot_roll":  (-0.262, 0.262,  0.0),
 }
 
-# Ankle joint names for special handling during calibration
-ANKLE_JOINT_NAMES = set()
-for pitch, roll in ANKLE_PAIRS:
-    ANKLE_JOINT_NAMES.add(pitch)
-    ANKLE_JOINT_NAMES.add(roll)
+# Motor list in calibration order (right leg first, then left)
+MOTOR_LIST = [
+    ("R_hip_pitch",   1, "rs-04"),
+    ("R_hip_roll",    2, "rs-03"),
+    ("R_hip_yaw",     3, "rs-03"),
+    ("R_knee",        4, "rs-04"),
+    ("R_foot_pitch",  5, "rs-02"),
+    ("R_foot_roll",   6, "rs-02"),
+    ("L_hip_pitch",   7, "rs-04"),
+    ("L_hip_roll",    8, "rs-03"),
+    ("L_hip_yaw",     9, "rs-03"),
+    ("L_knee",       10, "rs-04"),
+    ("L_foot_pitch", 11, "rs-02"),
+    ("L_foot_roll",  12, "rs-02"),
+]
+
+ANKLE_JOINTS = {"L_foot_pitch", "L_foot_roll", "R_foot_pitch", "R_foot_roll"}
 
 
 class CalibrateNode(Node):
     def __init__(self):
         super().__init__('calibrate_node')
 
-        self.declare_parameter('can_interface', 'can0')
-        self.declare_parameter('motor_config', '')
-        self.declare_parameter('master_id', 253)
+        self.declare_parameter('can_backend', 'waveshare')
+        self.declare_parameter('can_channel', '/dev/ttyUSB0')
         self.declare_parameter('output_file', 'calibration.yaml')
 
-        self._iface = str(self.get_parameter('can_interface').value)
-        self._master_id = int(self.get_parameter('master_id').value)
+        self._backend = str(self.get_parameter('can_backend').value)
+        self._channel = str(self.get_parameter('can_channel').value)
         self._output = str(self.get_parameter('output_file').value)
-        config_str = str(self.get_parameter('motor_config').value)
-
-        # Parse motor config
-        self._joint_names = []
-        self._motor_ids = {}
-        self._motor_types = {}
-
-        for entry in config_str.split(','):
-            entry = entry.strip()
-            if not entry:
-                continue
-            parts = entry.split(':')
-            if len(parts) == 3:
-                name, mid, mtype = parts[0].strip(), int(parts[1].strip()), parts[2].strip()
-                self._joint_names.append(name)
-                self._motor_ids[name] = mid
-                self._motor_types[name] = mtype
 
     def run_calibration(self):
-        """Interactive calibration procedure."""
         print("\n" + "=" * 60)
         print("  BIPED JOINT CALIBRATION")
         print("  Move each joint to both limits when prompted.")
-        print("  All motors are in zero-torque mode (free to move).")
-        print()
-        print("  NOTE: Ankle motors (foot_pitch/foot_roll) are calibrated")
-        print("  as individual motors. The parallel linkage mapping is")
-        print("  applied automatically by the CAN bus node at runtime.")
-        print("  Just move each ankle motor to its physical limits.")
+        print(f"  Backend: {self._backend}, Channel: {self._channel}")
         print("=" * 60)
 
-        if not self._joint_names:
-            print("\nERROR: No motors configured. Set motor_config parameter.")
-            return
-
-        calibration = {}
+        # Build motor dict for the bus
         motors = {}
+        for name, mid, model in MOTOR_LIST:
+            motors[name] = Motor(id=mid, model=model)
 
-        # Connect to all motors
-        print(f"\nConnecting to {len(self._joint_names)} motors on {self._iface}...")
-        for name in self._joint_names:
+        bus = RobstrideBus(
+            channel=self._channel,
+            motors=motors,
+            backend=self._backend,
+        )
+        bus.connect()
+
+        # Enable all motors in zero-torque mode (free to move by hand)
+        print(f"\nEnabling {len(MOTOR_LIST)} motors (zero torque — free to move)...")
+        for name, mid, model in MOTOR_LIST:
             try:
-                motor = RobStrideMotor(
-                    self._iface, self._motor_ids[name],
-                    self._motor_types[name], self._master_id,
-                )
-                motor.enable()
-                motors[name] = motor
-                print(f"  ✓ {name} (ID={self._motor_ids[name]}, {self._motor_types[name]})")
+                bus.enable(name)
+                time.sleep(0.02)
+                bus.set_mode(name, 0)  # MIT mode
+                time.sleep(0.02)
+                print(f"  ✓ {name} (ID={mid})")
             except Exception as e:
                 print(f"  ✗ {name}: {e}")
+                bus.disconnect()
                 return
 
-        print("\nAll motors enabled in zero-torque mode.\n")
+        bus.flush_rx()
+        print("\nAll motors enabled. Joints are free to move.\n")
 
-        # Calibrate each joint
-        for name in self._joint_names:
-            motor = motors[name]
+        calibration = {}
+
+        for name, mid, model in MOTOR_LIST:
             urdf = URDF_LIMITS.get(name)
 
-            print(f"--- {name} ---")
+            print(f"--- {name} (ID={mid}, {model}) ---")
             if urdf:
-                print(f"  URDF range: [{urdf[0]:.3f}, {urdf[1]:.3f}] rad, default: {urdf[2]:.3f}")
+                print(f"  URDF range: [{urdf[0]:.3f}, {urdf[1]:.3f}] rad")
 
             # Read current position
-            current = self._read_position_avg(motor)
-            print(f"  Current encoder position: {current:.4f} rad")
+            current = self._read_pos(bus, name)
+            print(f"  Current position: {current:.4f} rad")
 
             # Limit A
-            input(f"  → Move {name} to LIMIT A (one end), then press Enter...")
-            limit_a = self._read_position_avg(motor)
-            print(f"    Recorded LIMIT A: {limit_a:.4f} rad")
+            input(f"  → Move {name} to LIMIT A (one end), press Enter...")
+            limit_a = self._read_pos(bus, name)
+            print(f"    Limit A: {limit_a:.4f} rad")
 
             # Limit B
-            input(f"  → Move {name} to LIMIT B (other end), then press Enter...")
-            limit_b = self._read_position_avg(motor)
-            print(f"    Recorded LIMIT B: {limit_b:.4f} rad")
+            input(f"  → Move {name} to LIMIT B (other end), press Enter...")
+            limit_b = self._read_pos(bus, name)
+            print(f"    Limit B: {limit_b:.4f} rad")
 
             # Compute
-            encoder_range = abs(limit_b - limit_a)
-            encoder_min = min(limit_a, limit_b)
-            encoder_max = max(limit_a, limit_b)
+            lo = min(limit_a, limit_b)
+            hi = max(limit_a, limit_b)
+            encoder_range = hi - lo
 
-            if urdf:
-                urdf_range = urdf[1] - urdf[0]
-
-                # For ankle joints, the motor range differs from joint range
-                # due to the linkage gains. Skip range validation for ankle
-                # motors — they're calibrated in motor-space, mapping is at runtime.
-                if name in ANKLE_JOINT_NAMES:
-                    offset = encoder_min  # motor-space offset
-                    print(f"    [ANKLE MOTOR] Encoder range: {encoder_range:.4f} rad (motor-space)")
-                    print(f"    Offset: {offset:.4f} rad (motor-space, linkage applied at runtime)")
-                    range_error = 0.0
-                else:
-                    range_error = abs(encoder_range - urdf_range) / urdf_range * 100
-                    # Offset: encoder_position_at_urdf_lower_limit
-                    offset = encoder_min - urdf[0]
-
-                    print(f"    Encoder range: {encoder_range:.4f} rad")
-                    print(f"    URDF range:    {urdf_range:.4f} rad")
-                    print(f"    Range error:   {range_error:.1f}%")
-                    print(f"    Offset:        {offset:.4f} rad")
-
-                    if range_error > 15:
-                        print(f"    ⚠️  Range error >15% — check joint limits!")
-            else:
-                offset = encoder_min
-                range_error = 0.0
-                print(f"    No URDF limits defined for {name}")
-                print(f"    Offset set to encoder_min: {offset:.4f}")
-
-            calibration[name] = {
+            cal_entry = {
                 'encoder_limit_a': round(float(limit_a), 4),
                 'encoder_limit_b': round(float(limit_b), 4),
-                'encoder_min': round(float(encoder_min), 4),
-                'encoder_max': round(float(encoder_max), 4),
-                'offset': round(float(offset), 4),
-                'range_error_pct': round(float(range_error), 1),
+                'limit_lo': round(float(lo), 4),
+                'limit_hi': round(float(hi), 4),
             }
-            if urdf:
-                calibration[name]['urdf_lower'] = round(urdf[0], 4)
-                calibration[name]['urdf_upper'] = round(urdf[1], 4)
-                calibration[name]['default_pos'] = round(urdf[2], 4)
 
+            if urdf and name not in ANKLE_JOINTS:
+                urdf_range = urdf[1] - urdf[0]
+                range_error = abs(encoder_range - urdf_range) / urdf_range * 100
+                offset = lo - urdf[0]
+
+                cal_entry['offset'] = round(float(offset), 4)
+                cal_entry['range_error_pct'] = round(float(range_error), 1)
+                cal_entry['urdf_lower'] = round(urdf[0], 4)
+                cal_entry['urdf_upper'] = round(urdf[1], 4)
+                cal_entry['default_pos'] = round(urdf[2], 4)
+
+                print(f"    Range: {encoder_range:.3f} rad (URDF: {urdf_range:.3f}, err: {range_error:.1f}%)")
+                print(f"    Offset: {offset:.4f} rad")
+                if range_error > 15:
+                    print(f"    ⚠️  Range error >15%!")
+            elif name in ANKLE_JOINTS:
+                # Ankle motors: offset is motor-space, linkage at runtime
+                offset = lo
+                cal_entry['offset'] = round(float(offset), 4)
+                print(f"    [ANKLE] Motor range: {encoder_range:.3f} rad")
+                print(f"    Offset: {offset:.4f} rad (motor-space)")
+            else:
+                offset = lo
+                cal_entry['offset'] = round(float(offset), 4)
+                print(f"    Range: {encoder_range:.3f} rad, offset: {offset:.4f}")
+
+            calibration[name] = cal_entry
             print()
 
-        # Disable motors
-        for motor in motors.values():
-            motor.disable()
-            motor.close()
+        # Disable all motors
+        print("Disabling motors...")
+        for name, _, _ in MOTOR_LIST:
+            try:
+                bus.disable(name)
+            except Exception:
+                pass
+        bus.disconnect()
 
-        # Save calibration
-        print(f"Saving calibration to {self._output}...")
+        # Save
+        print(f"\nSaving to {self._output}...")
         with open(self._output, 'w') as f:
             yaml.dump(calibration, f, default_flow_style=False, sort_keys=False)
 
-        print("\n✓ Calibration complete!")
-        print(f"  File: {self._output}")
-        print(f"  Joints: {len(calibration)}")
-        print("\n  Use with can_bus_node:")
-        print(f"    -p calibration_file:={self._output}")
+        print(f"\n✅ Calibration complete! ({len(calibration)} joints)")
+        print(f"   File: {self._output}")
+        print(f"   Use: ros2 launch biped_bringup hardware.launch.py "
+              f"calibration_file:={self._output} bus_mode:=waveshare")
 
-    def _read_position_avg(self, motor: RobStrideMotor, samples: int = 10) -> float:
-        """Read position averaged over multiple samples for stability."""
+    def _read_pos(self, bus: RobstrideBus, name: str, samples: int = 10) -> float:
+        """Read position averaged over samples using zero-torque MIT frames."""
         positions = []
         for _ in range(samples):
-            fb = motor.send_mit_command(kp=0.0, kd=0.0, torque_ff=0.0)
-            if fb:
-                positions.append(fb.position)
+            try:
+                bus.write_operation_frame(name, 0.0, 0.0, 0.0, 0.0, 0.0)
+                fb = bus.read_operation_frame(name, timeout=0.02)
+                if fb:
+                    positions.append(fb.position)
+            except Exception:
+                pass
             time.sleep(0.01)
-
         if not positions:
             return 0.0
         return sum(positions) / len(positions)
