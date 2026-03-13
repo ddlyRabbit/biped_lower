@@ -55,26 +55,32 @@ _INV_PITCH  = 32.249 / (2 * 41.14)   # 1/(2*K_P) = 0.3919
 _INV_ROLL   = 32.249 / (2 * 31.398)  # 1/(2*K_R) = 0.5136
 
 
-def ankle_command_to_motors(pitch_cmd: float, roll_cmd: float) -> tuple[float, float]:
+def ankle_command_to_motors(
+    pitch_cmd: float, roll_cmd: float, pitch_sign: int = 1
+) -> tuple[float, float]:
     """Forward: joint-space (pitch, roll) → motor-space (upper, lower).
 
-    motor_A (upper) =  K_P × pitch − K_R × roll
-    motor_B (lower) = −K_P × pitch − K_R × roll
+    motor_A (upper) =  pitch_sign × K_P × pitch − K_R × roll
+    motor_B (lower) = −pitch_sign × K_P × pitch − K_R × roll
+
+    pitch_sign: +1 for R ankle, −1 for L ankle (mirrored pitch axis).
     """
-    motor_upper =  _PITCH_GAIN * pitch_cmd - _ROLL_GAIN * roll_cmd
-    motor_lower = -_PITCH_GAIN * pitch_cmd - _ROLL_GAIN * roll_cmd
+    motor_upper =  pitch_sign * _PITCH_GAIN * pitch_cmd - _ROLL_GAIN * roll_cmd
+    motor_lower = -pitch_sign * _PITCH_GAIN * pitch_cmd - _ROLL_GAIN * roll_cmd
     return motor_upper, motor_lower
 
 
 def ankle_motors_to_feedback(
-    upper_pos: float, lower_pos: float
+    upper_pos: float, lower_pos: float, pitch_sign: int = 1
 ) -> tuple[float, float]:
     """Inverse: motor-space (upper, lower) → joint-space (pitch, roll).
 
-    pitch =  INV_P × (A − B)
+    pitch =  pitch_sign × INV_P × (A − B)
     roll  = −INV_R × (A + B)
+
+    pitch_sign: +1 for R ankle, −1 for L ankle (mirrored pitch axis).
     """
-    foot_pitch =  _INV_PITCH * (upper_pos - lower_pos)
+    foot_pitch =  pitch_sign * _INV_PITCH * (upper_pos - lower_pos)
     foot_roll  = -_INV_ROLL  * (upper_pos + lower_pos)
     return foot_pitch, foot_roll
 

@@ -279,6 +279,9 @@ class CanBusNode(Node):
         pitch_cmd = self._last_commands.get(pitch_name)
         roll_cmd = self._last_commands.get(roll_name)
 
+        # L ankle has mirrored pitch axis
+        pitch_sign = -1 if pitch_name.startswith("L") else 1
+
         fb_upper = None
         fb_lower = None
 
@@ -286,7 +289,7 @@ class CanBusNode(Node):
             if pitch_cmd and roll_cmd:
                 # 1. Asimov forward: joint-space → motor-space
                 motor_upper, motor_lower = ankle_command_to_motors(
-                    pitch_cmd.position, roll_cmd.position)
+                    pitch_cmd.position, roll_cmd.position, pitch_sign)
 
                 # Average gains (both are RS02)
                 kp = (pitch_cmd.kp + roll_cmd.kp) / 2.0
@@ -323,9 +326,9 @@ class CanBusNode(Node):
         if fb_upper is not None and fb_lower is not None:
             # Asimov inverse: motor-space → joint-space for /joint_states
             foot_pitch, foot_roll = ankle_motors_to_feedback(
-                fb_upper.position, fb_lower.position)
+                fb_upper.position, fb_lower.position, pitch_sign)
             foot_pitch_vel, foot_roll_vel = ankle_motors_to_feedback(
-                fb_upper.velocity, fb_lower.velocity)
+                fb_upper.velocity, fb_lower.velocity, pitch_sign)
 
             for jname, pos, vel, fb in [
                 (pitch_name, foot_pitch, foot_pitch_vel, fb_upper),
