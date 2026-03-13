@@ -373,30 +373,48 @@ class RobstrideBus:
     def enable_and_set_mit_all(self) -> None:
         """Enable all motors and set MIT mode with per-motor verification.
 
-        More robust than separate enable_all + set_mode_all — ensures each
-        motor is properly enabled and in MIT mode before moving to the next.
+        Sequence per motor: disable → set MIT mode → verify mode → enable → verify MIT.
+        Retries mode set up to 3 times if verification fails.
         """
         for name in self.motors:
+            # 1. Disable (clean state, clear faults)
             self.flush_rx()
-            # Disable first (clean state)
             self.disable(name, clear_fault=True)
-            time.sleep(0.02)
-            # Set MIT mode
+            time.sleep(0.05)
+
+            # 2. Set MIT mode with verification
+            mode_ok = False
+            for attempt in range(3):
+                self.flush_rx()
+                self.set_mode(name, 0)
+                time.sleep(0.05)
+
+                # Read back mode to verify
+                self.flush_rx()
+                mode_val = self.read_parameter(name, ParameterType.MODE)
+                if mode_val is not None and int(mode_val) == 0:
+                    mode_ok = True
+                    break
+                else:
+                    print(f"  ⚠ {name}: mode set attempt {attempt+1} failed (read={mode_val}), retrying...")
+                    time.sleep(0.05)
+
+            if not mode_ok:
+                print(f"  ✗ {name}: FAILED to set MIT mode after 3 attempts!")
+
+            # 3. Enable
             self.flush_rx()
-            self.set_mode(name, 0)
-            time.sleep(0.02)
-            # Enable
-            self.flush_rx()
-            fb = self.enable(name)
-            time.sleep(0.02)
-            # Verify with a zero-torque MIT command
+            self.enable(name)
+            time.sleep(0.05)
+
+            # 4. Verify with zero-torque MIT command
             self.flush_rx()
             self.write_operation_frame(name, 0.0, 0.0, 0.0, 0.0, 0.0)
             verify_fb = self.read_operation_frame(name, timeout=0.05)
             if verify_fb:
-                print(f"  ✓ {name}: pos={verify_fb.position:.3f}, mode={verify_fb.mode_status}")
+                print(f"  ✓ {name}: mode={'MIT' if mode_ok else '??'}, pos={verify_fb.position:.3f}")
             else:
-                print(f"  ⚠ {name}: enabled but no verify response")
+                print(f"  ⚠ {name}: no verify response")
 
     @classmethod
     def scan_channel(cls, channel: str, start_id: int = 1, end_id: int = 127):
