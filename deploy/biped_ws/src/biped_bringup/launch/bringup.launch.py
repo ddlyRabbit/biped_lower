@@ -69,10 +69,14 @@ def launch_setup(context):
             parameters=[motor_params],
         ),
 
-        # Safety
+        # Safety — relaxed limits for suspended testing
         Node(
             package='biped_control', executable='safety_node',
             name='safety_node', output='screen',
+            parameters=[{
+                'max_pitch_deg': 85.0,
+                'max_roll_deg': 85.0,
+            }],
         ),
 
         # State machine

@@ -22,6 +22,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import JointState
+from std_msgs.msg import String
 from biped_msgs.msg import MITCommand, MITCommandArray, MotorState, MotorStateArray
 
 from biped_driver.robstride_can import (
@@ -91,6 +92,8 @@ class CanBusNode(Node):
             MotorStateArray, "/motor_states", fast_qos)
         self._sub_commands = self.create_subscription(
             MITCommandArray, "/joint_commands", self._cmd_callback, 10)
+        self._sub_estop = self.create_subscription(
+            String, "/state_machine", self._fsm_callback, 10)
 
         # ── Connect and start ───────────────────────────────────────
         self._log_motor_map()
@@ -191,7 +194,24 @@ class CanBusNode(Node):
 
     # ── Command callback ────────────────────────────────────────────
 
+    _motors_disabled = False
+
+    def _fsm_callback(self, msg: String):
+        """Disable motors on ESTOP, re-enable on STAND."""
+        state = msg.data.strip().upper()
+        if state == "ESTOP" and not self._motors_disabled:
+            self.get_logger().info("ESTOP — disabling all motors")
+            self._mgr.disable_all()
+            self._motors_disabled = True
+            self._last_commands.clear()
+        elif state == "STAND" and self._motors_disabled:
+            self.get_logger().info("STAND — re-enabling motors")
+            self._mgr.enable_all()
+            self._motors_disabled = False
+
     def _cmd_callback(self, msg: MITCommandArray):
+        if self._motors_disabled:
+            return
         for cmd in msg.commands:
             if cmd.joint_name in self._mgr.joints:
                 self._last_commands[cmd.joint_name] = cmd
@@ -213,9 +233,10 @@ class CanBusNode(Node):
     def _loop(self):
         """50Hz: send MIT commands, read feedback, publish.
 
-        Before motors are enabled: sends zero-torque MIT frames to get position feedback.
-        After enabled: sends actual commands from /joint_commands.
+        Skips entirely when motors are disabled (ESTOP).
         """
+        if self._motors_disabled:
+            return
 
         now = self.get_clock().now().to_msg()
         joint_msg = JointState()
