@@ -212,37 +212,28 @@ class BNO085Node(Node):
 
         now = self.get_clock().now().to_msg()
 
-        # ── IMU mounting compensation ──────────────────────────────
-        # BNO085 is mounted 180° rotated around Y relative to base_link.
-        # This flips X and Z axes.  Apply correction at the source so
-        # all consumers (policy, safety, TF) get base_link-frame data.
-        qx, qy, qz, qw = self._last_quat
-        gx, gy, gz = self._last_gyro
-        grx, gry, grz = self._last_gravity
-
-        # Negate X and Z components (equivalent to 180° Y rotation)
-        qx, qz = -qx, -qz
-        gx, gz = -gx, -gz
-        grx, grz = -grx, -grz
-
         # --- Publish /imu/data ---
         imu_msg = Imu()
         imu_msg.header.stamp = now
         imu_msg.header.frame_id = self._frame_id
 
-        imu_msg.orientation.x = qx
-        imu_msg.orientation.y = qy
-        imu_msg.orientation.z = qz
-        imu_msg.orientation.w = qw
+        # Orientation (quaternion, ROS convention: x, y, z, w)
+        imu_msg.orientation.x = self._last_quat[0]
+        imu_msg.orientation.y = self._last_quat[1]
+        imu_msg.orientation.z = self._last_quat[2]
+        imu_msg.orientation.w = self._last_quat[3]
 
-        imu_msg.angular_velocity.x = gx
-        imu_msg.angular_velocity.y = gy
-        imu_msg.angular_velocity.z = gz
+        # Angular velocity (rad/s, body frame — direct from calibrated gyro)
+        imu_msg.angular_velocity.x = self._last_gyro[0]
+        imu_msg.angular_velocity.y = self._last_gyro[1]
+        imu_msg.angular_velocity.z = self._last_gyro[2]
 
+        # Linear acceleration: not populated (use /imu/gravity for projected_gravity)
         imu_msg.linear_acceleration.x = 0.0
         imu_msg.linear_acceleration.y = 0.0
         imu_msg.linear_acceleration.z = 0.0
 
+        # Covariance: -1 in first element = unknown
         imu_msg.orientation_covariance[0] = -1.0
         imu_msg.angular_velocity_covariance[0] = -1.0
         imu_msg.linear_acceleration_covariance[0] = -1.0
@@ -253,13 +244,16 @@ class BNO085Node(Node):
         grav_msg = Vector3Stamped()
         grav_msg.header.stamp = now
         grav_msg.header.frame_id = self._frame_id
-        grav_msg.vector.x = grx
-        grav_msg.vector.y = gry
-        grav_msg.vector.z = grz
+        grav_msg.vector.x = self._last_gravity[0]
+        grav_msg.vector.y = self._last_gravity[1]
+        grav_msg.vector.z = self._last_gravity[2]
 
         self._pub_gravity.publish(grav_msg)
 
-        # --- Broadcast TF: odom → base_link ---
+        # --- Broadcast TF: odom → base_link from IMU orientation ---
+        # BNO085 is mounted 180° rotated around Y relative to base_link.
+        # Compensate by negating X and Z quaternion components, which is
+        # equivalent to q_baselink = q_imu * Rot(Y, 180°)^{-1}.
         t = TransformStamped()
         t.header.stamp = now
         t.header.frame_id = 'odom'
@@ -267,10 +261,10 @@ class BNO085Node(Node):
         t.transform.translation.x = 0.0
         t.transform.translation.y = 0.0
         t.transform.translation.z = 0.0
-        t.transform.rotation.x = qx
-        t.transform.rotation.y = qy
-        t.transform.rotation.z = qz
-        t.transform.rotation.w = qw
+        t.transform.rotation.x = -self._last_quat[0]
+        t.transform.rotation.y =  self._last_quat[1]
+        t.transform.rotation.z = -self._last_quat[2]
+        t.transform.rotation.w =  self._last_quat[3]
         self._tf_broadcaster.sendTransform(t)
 
         # Periodic diagnostics (every ~200s at 50Hz)
