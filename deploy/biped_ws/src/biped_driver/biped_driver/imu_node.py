@@ -18,7 +18,8 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Imu
-from geometry_msgs.msg import Vector3Stamped
+from geometry_msgs.msg import Vector3Stamped, TransformStamped
+from tf2_ros import TransformBroadcaster
 
 
 class BNO085Node(Node):
@@ -75,6 +76,9 @@ class BNO085Node(Node):
         self._last_quat = (0.0, 0.0, 0.0, 1.0)  # (x, y, z, w) ROS convention
         self._last_gyro = (0.0, 0.0, 0.0)         # rad/s body frame
         self._last_gravity = (0.0, 0.0, -9.81)     # m/s²
+
+        # TF broadcaster: odom → base_link from IMU orientation
+        self._tf_broadcaster = TransformBroadcaster(self)
 
         # Diagnostics
         self._read_count = 0
@@ -245,6 +249,20 @@ class BNO085Node(Node):
         grav_msg.vector.z = self._last_gravity[2]
 
         self._pub_gravity.publish(grav_msg)
+
+        # --- Broadcast TF: odom → base_link from IMU orientation ---
+        t = TransformStamped()
+        t.header.stamp = now
+        t.header.frame_id = 'odom'
+        t.child_frame_id = 'base_link'
+        t.transform.translation.x = 0.0
+        t.transform.translation.y = 0.0
+        t.transform.translation.z = 0.0
+        t.transform.rotation.x = self._last_quat[0]
+        t.transform.rotation.y = self._last_quat[1]
+        t.transform.rotation.z = self._last_quat[2]
+        t.transform.rotation.w = self._last_quat[3]
+        self._tf_broadcaster.sendTransform(t)
 
         # Periodic diagnostics (every ~200s at 50Hz)
         if self._read_count > 0 and self._read_count % 10000 == 0:
