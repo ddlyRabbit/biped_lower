@@ -2,8 +2,8 @@
 <!-- Generated using onshape-to-robot -->
 <!-- Onshape document_id: 21f88870a73ab4d90af9ff16 / workspace_id: 044e925e9b164f66a1d9b1d5 -->
 <robot name="biped">
-  <!-- Link assy_formfg___kd_b_102b_torso_btm -->
-  <link name="assy_formfg___kd_b_102b_torso_btm">
+  <!-- Link base_link -->
+  <link name="base_link">
     <inertial>
       <origin xyz="-0.0003038 0.000275941 -0.0780049" rpy="0 0 0"/>
       <mass value="3.4392"/>
@@ -25,20 +25,20 @@
         <mesh filename="package://biped_description/meshes/rs04.stl"/>
       </geometry>
     </collision>
-    <!-- Part assy_formfg___kd_b_102b_torso_btm -->
+    <!-- Part base_link -->
     <visual>
       <origin xyz="-0.000358761 0.000280909 -0.0188599" rpy="-1.5708 -0 1.5708"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/assy_formfg___kd_b_102b_torso_btm.stl"/>
+        <mesh filename="package://biped_description/meshes/base_link.stl"/>
       </geometry>
-      <material name="assy_formfg___kd_b_102b_torso_btm_material">
+      <material name="base_link_material">
         <color rgba="0.956863 0.956863 0.964706 1"/>
       </material>
     </visual>
     <collision>
       <origin xyz="-0.000358761 0.000280909 -0.0188599" rpy="-1.5708 -0 1.5708"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/assy_formfg___kd_b_102b_torso_btm.stl"/>
+        <mesh filename="package://biped_description/meshes/base_link.stl"/>
       </geometry>
     </collision>
     <!-- Part rs04_2 -->
@@ -154,8 +154,8 @@
       </geometry>
     </collision>
   </link>
-  <!-- Link kd_d_102r_6061 -->
-  <link name="kd_d_102r_6061">
+  <!-- Link R_hip_pitch_link -->
+  <link name="R_hip_pitch_link">
     <inertial>
       <origin xyz="-0.00547037 -0.00477853 -0.0395434" rpy="0 0 0"/>
       <mass value="0.200236"/>
@@ -193,44 +193,44 @@
         <mesh filename="package://biped_description/meshes/kd_d_103r_6061.stl"/>
       </geometry>
     </collision>
-    <!-- Part kd_d_102r_6061 -->
+    <!-- Part R_hip_pitch_link -->
     <visual>
       <origin xyz="-0 0.064 0.055" rpy="-1.5708 -1.5708 0"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/kd_d_102r_6061.stl"/>
+        <mesh filename="package://biped_description/meshes/R_hip_pitch_link.stl"/>
       </geometry>
-      <material name="kd_d_102r_6061_material">
+      <material name="R_hip_pitch_link_material">
         <color rgba="0.956863 0.956863 0.964706 1"/>
       </material>
     </visual>
     <collision>
       <origin xyz="-0 0.064 0.055" rpy="-1.5708 -1.5708 0"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/kd_d_102r_6061.stl"/>
+        <mesh filename="package://biped_description/meshes/R_hip_pitch_link.stl"/>
       </geometry>
     </collision>
   </link>
-  <!-- Link kd_d_201r_6061 -->
-  <link name="kd_d_201r_6061">
+  <!-- Link R_hip_roll_link -->
+  <link name="R_hip_roll_link">
     <inertial>
       <origin xyz="-8.56747e-05 -0.0573245 -0.026883" rpy="0 0 0"/>
       <mass value="2.0407"/>
       <inertia ixx="0.00849746" ixy="-9.42693e-07" ixz="3.68075e-06" iyy="0.00220451" iyz="0.000262714" izz="0.0087226"/>
     </inertial>
-    <!-- Part kd_d_201r_6061 -->
+    <!-- Part R_hip_roll_link -->
     <visual>
       <origin xyz="0.126 0.094 -0.02925" rpy="3.14159 -0 0"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/kd_d_201r_6061.stl"/>
+        <mesh filename="package://biped_description/meshes/R_hip_roll_link.stl"/>
       </geometry>
-      <material name="kd_d_201r_6061_material">
+      <material name="R_hip_roll_link_material">
         <color rgba="0.956863 0.956863 0.964706 1"/>
       </material>
     </visual>
     <collision>
       <origin xyz="0.126 0.094 -0.02925" rpy="3.14159 -0 0"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/kd_d_201r_6061.stl"/>
+        <mesh filename="package://biped_description/meshes/R_hip_roll_link.stl"/>
       </geometry>
     </collision>
     <!-- Part kd_d_203_sus304 -->
@@ -314,8 +314,8 @@
       </geometry>
     </collision>
   </link>
-  <!-- Link kd_d_301r_6061 -->
-  <link name="kd_d_301r_6061">
+  <!-- Link R_hip_yaw_link -->
+  <link name="R_hip_yaw_link">
     <inertial>
       <origin xyz="-0.00360181 0.0171586 -0.192847" rpy="0 0 0"/>
       <mass value="1.82618"/>
@@ -353,20 +353,20 @@
         <mesh filename="package://biped_description/meshes/kd_d_302r_6061.stl"/>
       </geometry>
     </collision>
-    <!-- Part kd_d_301r_6061 -->
+    <!-- Part R_hip_yaw_link -->
     <visual>
       <origin xyz="0.126 0.004 0.236" rpy="-1.5708 0 0"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/kd_d_301r_6061.stl"/>
+        <mesh filename="package://biped_description/meshes/R_hip_yaw_link.stl"/>
       </geometry>
-      <material name="kd_d_301r_6061_material">
+      <material name="R_hip_yaw_link_material">
         <color rgba="0.956863 0.956863 0.964706 1"/>
       </material>
     </visual>
     <collision>
       <origin xyz="0.126 0.004 0.236" rpy="-1.5708 0 0"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/kd_d_301r_6061.stl"/>
+        <mesh filename="package://biped_description/meshes/R_hip_yaw_link.stl"/>
       </geometry>
     </collision>
     <!-- Part ball_bearing_37x25x7_2 -->
@@ -402,27 +402,27 @@
       </geometry>
     </collision>
   </link>
-  <!-- Link kd_d_401r_6061 -->
-  <link name="kd_d_401r_6061">
+  <!-- Link R_knee_link -->
+  <link name="R_knee_link">
     <inertial>
       <origin xyz="0.133024 -0.0351161 -0.0206737" rpy="0 0 0"/>
       <mass value="1.25681"/>
       <inertia ixx="0.00157491" ixy="0.000353938" ixz="0.000273016" iyy="0.00802981" iyz="-1.40904e-05" izz="0.00794252"/>
     </inertial>
-    <!-- Part kd_d_401r_6061 -->
+    <!-- Part R_knee_link -->
     <visual>
       <origin xyz="-0.448 -0.017 0.104" rpy="-1.5708 -1.5708 0"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/kd_d_401r_6061.stl"/>
+        <mesh filename="package://biped_description/meshes/R_knee_link.stl"/>
       </geometry>
-      <material name="kd_d_401r_6061_material">
+      <material name="R_knee_link_material">
         <color rgba="0.956863 0.956863 0.964706 1"/>
       </material>
     </visual>
     <collision>
       <origin xyz="-0.448 -0.017 0.104" rpy="-1.5708 -1.5708 0"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/kd_d_401r_6061.stl"/>
+        <mesh filename="package://biped_description/meshes/R_knee_link.stl"/>
       </geometry>
     </collision>
     <!-- Part r_end_stop_ankle_6061 -->
@@ -539,7 +539,7 @@
     </collision>
   </link>
   <!-- Link arb_uj111_cross_bearing -->
-  <link name="arb_uj111_cross_bearing">
+  <link name="R_foot_pitch_link">
     <inertial>
       <origin xyz="8.901e-09 -1.5576e-08 -0.03" rpy="0 0 0"/>
       <mass value="0.317576"/>
@@ -563,7 +563,7 @@
     </collision>
   </link>
   <!-- Link foot_6061 -->
-  <link name="foot_6061">
+  <link name="R_foot_roll_link">
     <inertial>
       <origin xyz="-9.04e-10 0.0327815 -0.069626" rpy="0 0 0"/>
       <mass value="0.163562"/>
@@ -589,72 +589,72 @@
   <!-- Joint from arb_uj111_cross_bearing to foot_6061 -->
   <joint name="R_foot_roll" type="revolute">
     <origin xyz="-0 0.03 -0.03" rpy="-1.5708 -1.5708 0"/>
-    <parent link="arb_uj111_cross_bearing"/>
-    <child link="foot_6061"/>
+    <parent link="R_foot_pitch_link"/>
+    <child link="R_foot_roll_link"/>
     <axis xyz="0 0 1"/>
     <limit effort="30" velocity="10" lower="-0.261799" upper="0.261799"/>
   </joint>
-  <!-- Joint from kd_d_401r_6061 to arb_uj111_cross_bearing -->
+  <!-- Joint from R_knee_link to arb_uj111_cross_bearing -->
   <joint name="R_foot_pitch" type="revolute">
     <origin xyz="0.288552 -0.0326806 0.008" rpy="0 0 -0"/>
-    <parent link="kd_d_401r_6061"/>
-    <child link="arb_uj111_cross_bearing"/>
+    <parent link="R_knee_link"/>
+    <child link="R_foot_pitch_link"/>
     <axis xyz="0 0 1"/>
     <limit effort="30" velocity="10" lower="-0.872665" upper="0.523599"/>
   </joint>
-  <!-- Joint from kd_d_301r_6061 to kd_d_401r_6061 -->
+  <!-- Joint from R_hip_yaw_link to R_knee_link -->
   <joint name="R_knee" type="revolute">
     <origin xyz="0.022 0.021 -0.212" rpy="-0 1.5708 0"/>
-    <parent link="kd_d_301r_6061"/>
-    <child link="kd_d_401r_6061"/>
+    <parent link="R_hip_yaw_link"/>
+    <child link="R_knee_link"/>
     <axis xyz="0 0 1"/>
     <limit effort="100" velocity="10" lower="0" upper="2.70526"/>
   </joint>
-  <!-- Joint from kd_d_201r_6061 to kd_d_301r_6061 -->
+  <!-- Joint from R_hip_roll_link to R_hip_yaw_link -->
   <joint name="R_hip_yaw" type="revolute">
     <origin xyz="-0 -0.142 -0.02525" rpy="-1.5708 -0 -0"/>
-    <parent link="kd_d_201r_6061"/>
-    <child link="kd_d_301r_6061"/>
+    <parent link="R_hip_roll_link"/>
+    <child link="R_hip_yaw_link"/>
     <axis xyz="0 0 1"/>
     <limit effort="50" velocity="10" lower="-1.5708" upper="1.5708"/>
   </joint>
-  <!-- Joint from kd_d_102r_6061 to kd_d_201r_6061 -->
+  <!-- Joint from R_hip_pitch_link to R_hip_roll_link -->
   <joint name="R_hip_roll" type="revolute">
     <origin xyz="-0.02925 -0.03 -0.071" rpy="-0 -1.5708 0"/>
-    <parent link="kd_d_102r_6061"/>
-    <child link="kd_d_201r_6061"/>
+    <parent link="R_hip_pitch_link"/>
+    <child link="R_hip_roll_link"/>
     <axis xyz="0 0 1"/>
     <limit effort="50" velocity="10" lower="-2.26893" upper="0.20944"/>
   </joint>
-  <!-- Joint from assy_formfg___kd_b_102b_torso_btm to kd_d_102r_6061 -->
+  <!-- Joint from base_link to R_hip_pitch_link -->
   <joint name="R_hip_pitch" type="revolute">
     <origin xyz="-0.000358761 -0.0547191 -0.0828599" rpy="1.5708 0 3.14159"/>
-    <parent link="assy_formfg___kd_b_102b_torso_btm"/>
-    <child link="kd_d_102r_6061"/>
+    <parent link="base_link"/>
+    <child link="R_hip_pitch_link"/>
     <axis xyz="0 0 1"/>
     <limit effort="100" velocity="10" lower="-2.21657" upper="1.0472"/>
   </joint>
-  <!-- Link kd_d_102l_6061 -->
-  <link name="kd_d_102l_6061">
+  <!-- Link L_hip_pitch_link -->
+  <link name="L_hip_pitch_link">
     <inertial>
       <origin xyz="0.00547051 -0.00478043 -0.0395434" rpy="0 0 0"/>
       <mass value="0.200236"/>
       <inertia ixx="0.000337991" ixy="3.11399e-05" ixz="2.97773e-05" iyy="0.00044686" iyz="-6.28366e-05" izz="0.000481459"/>
     </inertial>
-    <!-- Part kd_d_102l_6061 -->
+    <!-- Part L_hip_pitch_link -->
     <visual>
       <origin xyz="0 0.064 0.055" rpy="-1.5708 -1.5708 0"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/kd_d_102l_6061.stl"/>
+        <mesh filename="package://biped_description/meshes/L_hip_pitch_link.stl"/>
       </geometry>
-      <material name="kd_d_102l_6061_material">
+      <material name="L_hip_pitch_link_material">
         <color rgba="0.956863 0.956863 0.964706 1"/>
       </material>
     </visual>
     <collision>
       <origin xyz="0 0.064 0.055" rpy="-1.5708 -1.5708 0"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/kd_d_102l_6061.stl"/>
+        <mesh filename="package://biped_description/meshes/L_hip_pitch_link.stl"/>
       </geometry>
     </collision>
     <!-- Part kd_d_105_sus304_2 -->
@@ -691,7 +691,7 @@
     </collision>
   </link>
   <!-- Link rs03 -->
-  <link name="rs03">
+  <link name="L_hip_roll_link">
     <inertial>
       <origin xyz="-8.55569e-05 0.0573058 -0.0268647" rpy="0 0 0"/>
       <mass value="2.04069"/>
@@ -794,8 +794,8 @@
       </geometry>
     </collision>
   </link>
-  <!-- Link kd_d_301l_6061 -->
-  <link name="kd_d_301l_6061">
+  <!-- Link L_hip_yaw_link -->
+  <link name="L_hip_yaw_link">
     <inertial>
       <origin xyz="-0.00360151 -0.0171579 -0.192541" rpy="0 0 0"/>
       <mass value="1.82623"/>
@@ -849,20 +849,20 @@
         <mesh filename="package://biped_description/meshes/rs04.stl"/>
       </geometry>
     </collision>
-    <!-- Part kd_d_301l_6061 -->
+    <!-- Part L_hip_yaw_link -->
     <visual>
       <origin xyz="0.126 -0.004 0.236" rpy="1.5708 0 -0"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/kd_d_301l_6061.stl"/>
+        <mesh filename="package://biped_description/meshes/L_hip_yaw_link.stl"/>
       </geometry>
-      <material name="kd_d_301l_6061_material">
+      <material name="L_hip_yaw_link_material">
         <color rgba="0.956863 0.956863 0.964706 1"/>
       </material>
     </visual>
     <collision>
       <origin xyz="0.126 -0.004 0.236" rpy="1.5708 0 -0"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/kd_d_301l_6061.stl"/>
+        <mesh filename="package://biped_description/meshes/L_hip_yaw_link.stl"/>
       </geometry>
     </collision>
     <!-- Part kd_d_403_6061_2 -->
@@ -882,8 +882,8 @@
       </geometry>
     </collision>
   </link>
-  <!-- Link kd_d_401l_6061 -->
-  <link name="kd_d_401l_6061">
+  <!-- Link L_knee_link -->
+  <link name="L_knee_link">
     <inertial>
       <origin xyz="-0.133026 0.0351161 0.0192075" rpy="0 0 0"/>
       <mass value="1.25679"/>
@@ -921,20 +921,20 @@
         <mesh filename="package://biped_description/meshes/kd_d_402l_6061.stl"/>
       </geometry>
     </collision>
-    <!-- Part kd_d_401l_6061 -->
+    <!-- Part L_knee_link -->
     <visual>
       <origin xyz="0.448 0.017 -0.106" rpy="1.5708 1.5708 0"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/kd_d_401l_6061.stl"/>
+        <mesh filename="package://biped_description/meshes/L_knee_link.stl"/>
       </geometry>
-      <material name="kd_d_401l_6061_material">
+      <material name="L_knee_link_material">
         <color rgba="0.956863 0.956863 0.964706 1"/>
       </material>
     </visual>
     <collision>
       <origin xyz="0.448 0.017 -0.106" rpy="1.5708 1.5708 0"/>
       <geometry>
-        <mesh filename="package://biped_description/meshes/kd_d_401l_6061.stl"/>
+        <mesh filename="package://biped_description/meshes/L_knee_link.stl"/>
       </geometry>
     </collision>
     <!-- Part l_end_stop_ankle_6061 -->
@@ -1018,20 +1018,20 @@
       </geometry>
     </collision>
   </link>
-  <!-- Link arb_uj111_cross_bearing_2 -->
-  <link name="arb_uj111_cross_bearing_2">
+  <!-- Link L_foot_pitch_link -->
+  <link name="L_foot_pitch_link">
     <inertial>
       <origin xyz="8.901e-09 -1.5576e-08 -0.03" rpy="0 0 0"/>
       <mass value="0.317576"/>
       <inertia ixx="0.000131465" ixy="4e-11" ixz="3e-12" iyy="7.61572e-05" iyz="-1.2e-11" izz="7.61572e-05"/>
     </inertial>
-    <!-- Part arb_uj111_cross_bearing_2 -->
+    <!-- Part L_foot_pitch_link -->
     <visual>
       <origin xyz="0 -0 -0.03" rpy="-1.5708 -1.5708 0"/>
       <geometry>
         <mesh filename="package://biped_description/meshes/arb_uj111_cross_bearing.stl"/>
       </geometry>
-      <material name="arb_uj111_cross_bearing_2_material">
+      <material name="L_foot_pitch_link_material">
         <color rgba="0.72549 0.733333 0.717647 1"/>
       </material>
     </visual>
@@ -1042,20 +1042,20 @@
       </geometry>
     </collision>
   </link>
-  <!-- Link foot_6061_2 -->
-  <link name="foot_6061_2">
+  <!-- Link L_foot_roll_link -->
+  <link name="L_foot_roll_link">
     <inertial>
       <origin xyz="-9.04e-10 0.0327815 -0.069626" rpy="0 0 0"/>
       <mass value="0.163562"/>
       <inertia ixx="0.000552461" ixy="-4e-12" ixz="-0" iyy="0.000618803" iyz="2.21024e-05" izz="0.00010769"/>
     </inertial>
-    <!-- Part foot_6061_2 -->
+    <!-- Part L_foot_roll_link -->
     <visual>
       <origin xyz="-0.0425 0.043 0.02" rpy="1.5708 1.5708 0"/>
       <geometry>
         <mesh filename="package://biped_description/meshes/foot_6061.stl"/>
       </geometry>
-      <material name="foot_6061_2_material">
+      <material name="L_foot_roll_link_material">
         <color rgba="0.956863 0.956863 0.964706 1"/>
       </material>
     </visual>
@@ -1066,51 +1066,51 @@
       </geometry>
     </collision>
   </link>
-  <!-- Joint from arb_uj111_cross_bearing_2 to foot_6061_2 -->
+  <!-- Joint from L_foot_pitch_link to L_foot_roll_link -->
   <joint name="L_foot_roll" type="revolute">
     <origin xyz="0 0.03 -0.03" rpy="-1.5708 -1.5708 0"/>
-    <parent link="arb_uj111_cross_bearing_2"/>
-    <child link="foot_6061_2"/>
+    <parent link="L_foot_pitch_link"/>
+    <child link="L_foot_roll_link"/>
     <axis xyz="0 0 1"/>
     <limit effort="30" velocity="10" lower="-0.261799" upper="0.261799"/>
   </joint>
-  <!-- Joint from kd_d_401l_6061 to arb_uj111_cross_bearing_2 -->
+  <!-- Joint from L_knee_link to L_foot_pitch_link -->
   <joint name="L_foot_pitch" type="revolute">
     <origin xyz="-0.288552 0.0325676 0.05" rpy="0 0 3.14159"/>
-    <parent link="kd_d_401l_6061"/>
-    <child link="arb_uj111_cross_bearing_2"/>
+    <parent link="L_knee_link"/>
+    <child link="L_foot_pitch_link"/>
     <axis xyz="0 0 1"/>
     <limit effort="30" velocity="10" lower="-0.872665" upper="0.523599"/>
   </joint>
-  <!-- Joint from kd_d_301l_6061 to kd_d_401l_6061 -->
+  <!-- Joint from L_hip_yaw_link to L_knee_link -->
   <joint name="L_knee" type="revolute">
     <origin xyz="0.02 -0.021 -0.212" rpy="0 -1.5708 0"/>
-    <parent link="kd_d_301l_6061"/>
-    <child link="kd_d_401l_6061"/>
+    <parent link="L_hip_yaw_link"/>
+    <child link="L_knee_link"/>
     <axis xyz="0 0 1"/>
     <limit effort="100" velocity="10" lower="0" upper="2.70526"/>
   </joint>
-  <!-- Joint from rs03 to kd_d_301l_6061 -->
+  <!-- Joint from rs03 to L_hip_yaw_link -->
   <joint name="L_hip_yaw" type="revolute">
     <origin xyz="0 0.142 -0.02525" rpy="1.5708 0 -0"/>
-    <parent link="rs03"/>
-    <child link="kd_d_301l_6061"/>
+    <parent link="L_hip_roll_link"/>
+    <child link="L_hip_yaw_link"/>
     <axis xyz="0 0 1"/>
     <limit effort="50" velocity="10" lower="-1.5708" upper="1.5708"/>
   </joint>
-  <!-- Joint from kd_d_102l_6061 to rs03 -->
+  <!-- Joint from L_hip_pitch_link to rs03 -->
   <joint name="L_hip_roll" type="revolute">
     <origin xyz="0.02925 -0.03 -0.071" rpy="3.14159 -1.5708 0"/>
-    <parent link="kd_d_102l_6061"/>
-    <child link="rs03"/>
+    <parent link="L_hip_pitch_link"/>
+    <child link="L_hip_roll_link"/>
     <axis xyz="0 0 1"/>
     <limit effort="50" velocity="10" lower="-0.20944" upper="2.26893"/>
   </joint>
-  <!-- Joint from assy_formfg___kd_b_102b_torso_btm to kd_d_102l_6061 -->
+  <!-- Joint from base_link to L_hip_pitch_link -->
   <joint name="L_hip_pitch" type="revolute">
     <origin xyz="-0.000358761 0.0552809 -0.0828599" rpy="1.5708 0 -0"/>
-    <parent link="assy_formfg___kd_b_102b_torso_btm"/>
-    <child link="kd_d_102l_6061"/>
+    <parent link="base_link"/>
+    <child link="L_hip_pitch_link"/>
     <axis xyz="0 0 1"/>
     <limit effort="100" velocity="10" lower="-1.0472" upper="2.21657"/>
   </joint>
@@ -1138,7 +1138,7 @@
 
   <joint name="torso_to_battery" type="fixed">
     <origin xyz="-0.0004 0.0003 0.0436" rpy="0 0 0" />
-    <parent link="assy_formfg___kd_b_102b_torso_btm" />
+    <parent link="base_link" />
     <child link="battery_chest" />
   </joint>
 </robot>
