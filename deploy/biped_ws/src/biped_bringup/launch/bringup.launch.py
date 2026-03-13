@@ -10,7 +10,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration, Command
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
@@ -28,12 +28,13 @@ def generate_launch_description():
     default_robot_config = os.path.join(bringup_dir, 'config', 'robot.yaml')
     urdf_path = os.path.join(description_dir, 'urdf', 'robot.urdf')
     meshes_dir = os.path.join(description_dir, 'meshes')
-    # Replace package:// with file:// so Foxglove can resolve mesh paths
-    robot_description = ParameterValue(
-        Command([
-            'sed', ' ', 's|package://biped_description/meshes/|file://' + meshes_dir + '/|g',
-            ' ', urdf_path
-        ]), value_type=str)
+    # Read URDF and replace package:// with file:// for Foxglove mesh loading
+    with open(urdf_path, 'r') as f:
+        urdf_xml = f.read()
+    urdf_xml = urdf_xml.replace(
+        'package://biped_description/meshes/',
+        'file://' + meshes_dir + '/')
+    robot_description = ParameterValue(urdf_xml, value_type=str)
 
     return LaunchDescription([
         DeclareLaunchArgument('calibration_file', default_value=''),
