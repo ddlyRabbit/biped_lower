@@ -1,0 +1,1144 @@
+<?xml version="1.0" ?>
+<!-- Generated using onshape-to-robot -->
+<!-- Onshape document_id: 21f88870a73ab4d90af9ff16 / workspace_id: 044e925e9b164f66a1d9b1d5 -->
+<robot name="biped">
+  <!-- Link assy_formfg___kd_b_102b_torso_btm -->
+  <link name="assy_formfg___kd_b_102b_torso_btm">
+    <inertial>
+      <origin xyz="-0.0003038 0.000275941 -0.0780049" rpy="0 0 0"/>
+      <mass value="3.4392"/>
+      <inertia ixx="0.00794758" ixy="-2.09667e-05" ixz="-3.43027e-06" iyy="0.00739254" iyz="-4.98576e-07" izz="0.00754132"/>
+    </inertial>
+    <!-- Part rs04 -->
+    <visual>
+      <origin xyz="0.0166412 0.161281 0.36514" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs04.stl"/>
+      </geometry>
+      <material name="rs04_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0166412 0.161281 0.36514" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs04.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part assy_formfg___kd_b_102b_torso_btm -->
+    <visual>
+      <origin xyz="-0.000358761 0.000280909 -0.0188599" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/assy_formfg___kd_b_102b_torso_btm.stl"/>
+      </geometry>
+      <material name="assy_formfg___kd_b_102b_torso_btm_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.000358761 0.000280909 -0.0188599" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/assy_formfg___kd_b_102b_torso_btm.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs04_2 -->
+    <visual>
+      <origin xyz="-0.0173588 -0.160719 0.36514" rpy="-1.5708 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs04.stl"/>
+      </geometry>
+      <material name="rs04_2_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.0173588 -0.160719 0.36514" rpy="-1.5708 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs04.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_101l_6061 -->
+    <visual>
+      <origin xyz="-0.000358761 0.000280909 -0.0188599" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_101l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_101l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.000358761 0.000280909 -0.0188599" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_101l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_101r_6061 -->
+    <visual>
+      <origin xyz="-0.000358761 0.000280909 -0.0188599" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_101r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_101r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.000358761 0.000280909 -0.0188599" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_101r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part assy_formfg___kc_d_107r_r_cover -->
+    <visual>
+      <origin xyz="-0.000358761 0.000280909 -0.0188599" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/assy_formfg___kc_d_107r_r_cover.stl"/>
+      </geometry>
+      <material name="assy_formfg___kc_d_107r_r_cover_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.000358761 0.000280909 -0.0188599" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/assy_formfg___kc_d_107r_r_cover.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_104r_sus304 -->
+    <visual>
+      <origin xyz="0.0636412 0.000280909 -0.0828599" rpy="-0 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_104r_sus304.stl"/>
+      </geometry>
+      <material name="kd_d_104r_sus304_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0636412 0.000280909 -0.0828599" rpy="-0 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_104r_sus304.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_104l_sus304 -->
+    <visual>
+      <origin xyz="0.0636412 0.000280909 -0.0828599" rpy="-0 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_104l_sus304.stl"/>
+      </geometry>
+      <material name="kd_d_104l_sus304_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0636412 0.000280909 -0.0828599" rpy="-0 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_104l_sus304.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part assy_formfg___kc_d_107l_l_cover -->
+    <visual>
+      <origin xyz="-0.000358761 0.000280909 -0.0188599" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/assy_formfg___kc_d_107l_l_cover.stl"/>
+      </geometry>
+      <material name="assy_formfg___kc_d_107l_l_cover_material">
+        <color rgba="0.717647 0.717647 0.717647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.000358761 0.000280909 -0.0188599" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/assy_formfg___kc_d_107l_l_cover.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link kd_d_102r_6061 -->
+  <link name="kd_d_102r_6061">
+    <inertial>
+      <origin xyz="-0.00547037 -0.00477853 -0.0395434" rpy="0 0 0"/>
+      <mass value="0.200236"/>
+      <inertia ixx="0.000337995" ixy="-3.11234e-05" ixz="-2.97768e-05" iyy="0.000446862" iyz="-6.28481e-05" izz="0.000481465"/>
+    </inertial>
+    <!-- Part kd_d_105_sus304 -->
+    <visual>
+      <origin xyz="-0 0.064 0.054" rpy="3.14159 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_105_sus304.stl"/>
+      </geometry>
+      <material name="kd_d_105_sus304_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0 0.064 0.054" rpy="3.14159 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_105_sus304.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_103r_6061 -->
+    <visual>
+      <origin xyz="0 0.064 0.055" rpy="-3.14159 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_103r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_103r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0.064 0.055" rpy="-3.14159 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_103r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_102r_6061 -->
+    <visual>
+      <origin xyz="-0 0.064 0.055" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_102r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_102r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0 0.064 0.055" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_102r_6061.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link kd_d_201r_6061 -->
+  <link name="kd_d_201r_6061">
+    <inertial>
+      <origin xyz="-8.56747e-05 -0.0573245 -0.026883" rpy="0 0 0"/>
+      <mass value="2.0407"/>
+      <inertia ixx="0.00849746" ixy="-9.42693e-07" ixz="3.68075e-06" iyy="0.00220451" iyz="0.000262714" izz="0.0087226"/>
+    </inertial>
+    <!-- Part kd_d_201r_6061 -->
+    <visual>
+      <origin xyz="0.126 0.094 -0.02925" rpy="3.14159 -0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_201r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_201r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.094 -0.02925" rpy="3.14159 -0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_201r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_203_sus304 -->
+    <visual>
+      <origin xyz="0.126 0.094 -0.02125" rpy="0 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_203_sus304.stl"/>
+      </geometry>
+      <material name="kd_d_203_sus304_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.094 -0.02125" rpy="0 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_203_sus304.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs03 -->
+    <visual>
+      <origin xyz="0.126 -0.11275 0.06875" rpy="-1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs03.stl"/>
+      </geometry>
+      <material name="rs03_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.11275 0.06875" rpy="-1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs03.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs03_2 -->
+    <visual>
+      <origin xyz="0.126 0.094 -0.02925" rpy="3.14159 -0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs03.stl"/>
+      </geometry>
+      <material name="rs03_2_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.094 -0.02925" rpy="3.14159 -0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs03.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_202r_6061 -->
+    <visual>
+      <origin xyz="0.126 0.094 -0.02925" rpy="3.14159 -0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_202r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_202r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.094 -0.02925" rpy="3.14159 -0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_202r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part ball_bearing_37x25x7 -->
+    <visual>
+      <origin xyz="-0 0 -0.0716" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/ball_bearing_37x25x7.stl"/>
+      </geometry>
+      <material name="ball_bearing_37x25x7_material">
+        <color rgba="0.717647 0.709804 0.701961 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0 0 -0.0716" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/ball_bearing_37x25x7.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link kd_d_301r_6061 -->
+  <link name="kd_d_301r_6061">
+    <inertial>
+      <origin xyz="-0.00360181 0.0171586 -0.192847" rpy="0 0 0"/>
+      <mass value="1.82618"/>
+      <inertia ixx="0.00813184" ixy="8.71149e-05" ixz="-0.000500282" iyy="0.00700797" iyz="0.000707293" izz="0.00253939"/>
+    </inertial>
+    <!-- Part rs04_3 -->
+    <visual>
+      <origin xyz="0.126 0.004 0.236" rpy="-1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs04.stl"/>
+      </geometry>
+      <material name="rs04_3_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.004 0.236" rpy="-1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs04.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_302r_6061 -->
+    <visual>
+      <origin xyz="0.126 0.004 0.236" rpy="-1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_302r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_302r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.004 0.236" rpy="-1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_302r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_301r_6061 -->
+    <visual>
+      <origin xyz="0.126 0.004 0.236" rpy="-1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_301r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_301r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.004 0.236" rpy="-1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_301r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part ball_bearing_37x25x7_2 -->
+    <visual>
+      <origin xyz="-0.04445 0.021 -0.212" rpy="-0.628319 0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/ball_bearing_37x25x7.stl"/>
+      </geometry>
+      <material name="ball_bearing_37x25x7_2_material">
+        <color rgba="0.717647 0.709804 0.701961 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.04445 0.021 -0.212" rpy="-0.628319 0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/ball_bearing_37x25x7.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_403_6061 -->
+    <visual>
+      <origin xyz="0.126 -0.331447 0.0650811" rpy="-2.51327 -0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_403_6061.stl"/>
+      </geometry>
+      <material name="kd_d_403_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.331447 0.0650811" rpy="-2.51327 -0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_403_6061.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link kd_d_401r_6061 -->
+  <link name="kd_d_401r_6061">
+    <inertial>
+      <origin xyz="0.133024 -0.0351161 -0.0206737" rpy="0 0 0"/>
+      <mass value="1.25681"/>
+      <inertia ixx="0.00157491" ixy="0.000353938" ixz="0.000273016" iyy="0.00802981" iyz="-1.40904e-05" izz="0.00794252"/>
+    </inertial>
+    <!-- Part kd_d_401r_6061 -->
+    <visual>
+      <origin xyz="-0.448 -0.017 0.104" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_401r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_401r_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.448 -0.017 0.104" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_401r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part r_end_stop_ankle_6061 -->
+    <visual>
+      <origin xyz="0.105552 -0.062872 -0.022" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/r_end_stop_ankle_6061.stl"/>
+      </geometry>
+      <material name="r_end_stop_ankle_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.105552 -0.062872 -0.022" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/r_end_stop_ankle_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part r_end_stop_ankle_6061_2 -->
+    <visual>
+      <origin xyz="0.194052 -0.062872 -0.022" rpy="-0 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/r_end_stop_ankle_6061.stl"/>
+      </geometry>
+      <material name="r_end_stop_ankle_6061_2_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.194052 -0.062872 -0.022" rpy="-0 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/r_end_stop_ankle_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_502_6061 -->
+    <visual>
+      <origin xyz="-0.447447 -0.176632 -0.019" rpy="-0 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_502_6061.stl"/>
+      </geometry>
+      <material name="kd_d_502_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.447447 -0.176632 -0.019" rpy="-0 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_502_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_502_6061_2 -->
+    <visual>
+      <origin xyz="0.747053 -0.176632 -0.025" rpy="3.14159 -0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_502_6061.stl"/>
+      </geometry>
+      <material name="kd_d_502_6061_2_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.747053 -0.176632 -0.025" rpy="3.14159 -0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_502_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs02 -->
+    <visual>
+      <origin xyz="0.191052 -0.176632 -0.575" rpy="1.5708 -0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs02.stl"/>
+      </geometry>
+      <material name="rs02_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.191052 -0.176632 -0.575" rpy="1.5708 -0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs02.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_402r_6061 -->
+    <visual>
+      <origin xyz="-0.448 -0.017 0.104" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_402r_6061.stl"/>
+      </geometry>
+      <material name="kd_d_402r_6061_material">
+        <color rgba="0.882353 0.882353 0.882353 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.448 -0.017 0.104" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_402r_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs02_2 -->
+    <visual>
+      <origin xyz="0.102553 -0.176632 -0.575" rpy="1.5708 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs02.stl"/>
+      </geometry>
+      <material name="rs02_2_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.102553 -0.176632 -0.575" rpy="1.5708 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs02.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link arb_uj111_cross_bearing -->
+  <link name="arb_uj111_cross_bearing">
+    <inertial>
+      <origin xyz="8.901e-09 -1.5576e-08 -0.03" rpy="0 0 0"/>
+      <mass value="0.317576"/>
+      <inertia ixx="0.000131465" ixy="4e-11" ixz="3e-12" iyy="7.61572e-05" iyz="-1.2e-11" izz="7.61572e-05"/>
+    </inertial>
+    <!-- Part arb_uj111_cross_bearing -->
+    <visual>
+      <origin xyz="-0 -0 -0.03" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/arb_uj111_cross_bearing.stl"/>
+      </geometry>
+      <material name="arb_uj111_cross_bearing_material">
+        <color rgba="0.72549 0.733333 0.717647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0 -0 -0.03" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/arb_uj111_cross_bearing.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link foot_6061 -->
+  <link name="foot_6061">
+    <inertial>
+      <origin xyz="-9.04e-10 0.0327815 -0.069626" rpy="0 0 0"/>
+      <mass value="0.163562"/>
+      <inertia ixx="0.000552461" ixy="-4e-12" ixz="-0" iyy="0.000618803" iyz="2.21024e-05" izz="0.00010769"/>
+    </inertial>
+    <!-- Part foot_6061 -->
+    <visual>
+      <origin xyz="-0.0425 0.043 0.02" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/foot_6061.stl"/>
+      </geometry>
+      <material name="foot_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.0425 0.043 0.02" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/foot_6061.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Joint from arb_uj111_cross_bearing to foot_6061 -->
+  <joint name="right_foot_roll_02" type="revolute">
+    <origin xyz="-0 0.03 -0.03" rpy="-1.5708 -1.5708 0"/>
+    <parent link="arb_uj111_cross_bearing"/>
+    <child link="foot_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="30" velocity="10" lower="-0.261799" upper="0.261799"/>
+  </joint>
+  <!-- Joint from kd_d_401r_6061 to arb_uj111_cross_bearing -->
+  <joint name="right_foot_pitch_02" type="revolute">
+    <origin xyz="0.288552 -0.0326806 0.008" rpy="0 0 -0"/>
+    <parent link="kd_d_401r_6061"/>
+    <child link="arb_uj111_cross_bearing"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="30" velocity="10" lower="-0.872665" upper="0.523599"/>
+  </joint>
+  <!-- Joint from kd_d_301r_6061 to kd_d_401r_6061 -->
+  <joint name="right_knee_04" type="revolute">
+    <origin xyz="0.022 0.021 -0.212" rpy="-0 1.5708 0"/>
+    <parent link="kd_d_301r_6061"/>
+    <child link="kd_d_401r_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="100" velocity="10" lower="0" upper="2.70526"/>
+  </joint>
+  <!-- Joint from kd_d_201r_6061 to kd_d_301r_6061 -->
+  <joint name="right_hip_yaw_03" type="revolute">
+    <origin xyz="-0 -0.142 -0.02525" rpy="-1.5708 -0 -0"/>
+    <parent link="kd_d_201r_6061"/>
+    <child link="kd_d_301r_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" velocity="10" lower="-1.5708" upper="1.5708"/>
+  </joint>
+  <!-- Joint from kd_d_102r_6061 to kd_d_201r_6061 -->
+  <joint name="right_hip_roll_03" type="revolute">
+    <origin xyz="-0.02925 -0.03 -0.071" rpy="-0 -1.5708 0"/>
+    <parent link="kd_d_102r_6061"/>
+    <child link="kd_d_201r_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" velocity="10" lower="-2.26893" upper="0.20944"/>
+  </joint>
+  <!-- Joint from assy_formfg___kd_b_102b_torso_btm to kd_d_102r_6061 -->
+  <joint name="right_hip_pitch_04" type="revolute">
+    <origin xyz="-0.000358761 -0.0547191 -0.0828599" rpy="1.5708 0 3.14159"/>
+    <parent link="assy_formfg___kd_b_102b_torso_btm"/>
+    <child link="kd_d_102r_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="100" velocity="10" lower="-2.21657" upper="1.0472"/>
+  </joint>
+  <!-- Link kd_d_102l_6061 -->
+  <link name="kd_d_102l_6061">
+    <inertial>
+      <origin xyz="0.00547051 -0.00478043 -0.0395434" rpy="0 0 0"/>
+      <mass value="0.200236"/>
+      <inertia ixx="0.000337991" ixy="3.11399e-05" ixz="2.97773e-05" iyy="0.00044686" iyz="-6.28366e-05" izz="0.000481459"/>
+    </inertial>
+    <!-- Part kd_d_102l_6061 -->
+    <visual>
+      <origin xyz="0 0.064 0.055" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_102l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_102l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0.064 0.055" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_102l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_105_sus304_2 -->
+    <visual>
+      <origin xyz="-0 -0.0607264 0.054" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_105_sus304.stl"/>
+      </geometry>
+      <material name="kd_d_105_sus304_2_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0 -0.0607264 0.054" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_105_sus304.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_103l_6061 -->
+    <visual>
+      <origin xyz="0 0.064 0.055" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_103l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_103l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0.064 0.055" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_103l_6061.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link rs03 -->
+  <link name="rs03">
+    <inertial>
+      <origin xyz="-8.55569e-05 0.0573058 -0.0268647" rpy="0 0 0"/>
+      <mass value="2.04069"/>
+      <inertia ixx="0.00850182" ixy="5.5228e-06" ixz="-9.12525e-07" iyy="0.00220462" iyz="-0.000264875" izz="0.00872685"/>
+    </inertial>
+    <!-- Part ball_bearing_37x25x7_3 -->
+    <visual>
+      <origin xyz="0 -0 -0.0646" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/ball_bearing_37x25x7.stl"/>
+      </geometry>
+      <material name="ball_bearing_37x25x7_3_material">
+        <color rgba="0.717647 0.709804 0.701961 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 -0 -0.0646" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/ball_bearing_37x25x7.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs03_3 -->
+    <visual>
+      <origin xyz="0.126 0.094 -0.02925" rpy="-3.14159 -0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs03.stl"/>
+      </geometry>
+      <material name="rs03_3_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.094 -0.02925" rpy="-3.14159 -0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs03.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_201l_6061 -->
+    <visual>
+      <origin xyz="0.126 -0.094 -0.02925" rpy="3.14159 -0 -0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_201l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_201l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.094 -0.02925" rpy="3.14159 -0 -0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_201l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_202l_6061 -->
+    <visual>
+      <origin xyz="0.126 -0.094 -0.02925" rpy="3.14159 -0 -0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_202l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_202l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.094 -0.02925" rpy="3.14159 -0 -0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_202l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_203_sus304_2 -->
+    <visual>
+      <origin xyz="0.126 -0.094 -0.02925" rpy="-3.14159 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_203_sus304.stl"/>
+      </geometry>
+      <material name="kd_d_203_sus304_2_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.094 -0.02925" rpy="-3.14159 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_203_sus304.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs03_4 -->
+    <visual>
+      <origin xyz="0.126 0.11275 -0.11925" rpy="1.5708 -0 -0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs03.stl"/>
+      </geometry>
+      <material name="rs03_4_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.11275 -0.11925" rpy="1.5708 -0 -0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs03.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link kd_d_301l_6061 -->
+  <link name="kd_d_301l_6061">
+    <inertial>
+      <origin xyz="-0.00360151 -0.0171579 -0.192541" rpy="0 0 0"/>
+      <mass value="1.82623"/>
+      <inertia ixx="0.00811127" ixy="-8.71587e-05" ixz="-0.000503908" iyy="0.0069874" iyz="-0.000714798" izz="0.00253954"/>
+    </inertial>
+    <!-- Part kd_d_302l_6061 -->
+    <visual>
+      <origin xyz="0.126 -0.004 0.236" rpy="1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_302l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_302l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.004 0.236" rpy="1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_302l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part ball_bearing_37x25x7_4 -->
+    <visual>
+      <origin xyz="-0.03745 -0.021 -0.212" rpy="0.628319 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/ball_bearing_37x25x7.stl"/>
+      </geometry>
+      <material name="ball_bearing_37x25x7_4_material">
+        <color rgba="0.717647 0.709804 0.701961 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.03745 -0.021 -0.212" rpy="0.628319 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/ball_bearing_37x25x7.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs04_4 -->
+    <visual>
+      <origin xyz="0.126 -0.004 -0.66" rpy="1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs04.stl"/>
+      </geometry>
+      <material name="rs04_4_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.004 -0.66" rpy="1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs04.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_301l_6061 -->
+    <visual>
+      <origin xyz="0.126 -0.004 0.236" rpy="1.5708 0 -0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_301l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_301l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 -0.004 0.236" rpy="1.5708 0 -0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_301l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_403_6061_2 -->
+    <visual>
+      <origin xyz="0.126 0.331447 -0.489081" rpy="0.628319 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_403_6061.stl"/>
+      </geometry>
+      <material name="kd_d_403_6061_2_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.126 0.331447 -0.489081" rpy="0.628319 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_403_6061.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link kd_d_401l_6061 -->
+  <link name="kd_d_401l_6061">
+    <inertial>
+      <origin xyz="-0.133026 0.0351161 0.0192075" rpy="0 0 0"/>
+      <mass value="1.25679"/>
+      <inertia ixx="0.00157629" ixy="0.000353956" ixz="0.00027267" iyy="0.00803641" iyz="-2.22999e-05" izz="0.00794771"/>
+    </inertial>
+    <!-- Part rs02_3 -->
+    <visual>
+      <origin xyz="-0.102553 0.176632 -0.533" rpy="1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs02.stl"/>
+      </geometry>
+      <material name="rs02_3_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.102553 0.176632 -0.533" rpy="1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs02.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_402l_6061 -->
+    <visual>
+      <origin xyz="0.448 0.017 -0.106" rpy="1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_402l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_402l_6061_material">
+        <color rgba="0.882353 0.882353 0.882353 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.448 0.017 -0.106" rpy="1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_402l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_401l_6061 -->
+    <visual>
+      <origin xyz="0.448 0.017 -0.106" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_401l_6061.stl"/>
+      </geometry>
+      <material name="kd_d_401l_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.448 0.017 -0.106" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_401l_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part l_end_stop_ankle_6061 -->
+    <visual>
+      <origin xyz="-0.194052 0.062872 0.02" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/l_end_stop_ankle_6061.stl"/>
+      </geometry>
+      <material name="l_end_stop_ankle_6061_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.194052 0.062872 0.02" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/l_end_stop_ankle_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_502_6061_3 -->
+    <visual>
+      <origin xyz="-0.658552 0.176632 0.017" rpy="3.14159 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_502_6061.stl"/>
+      </geometry>
+      <material name="kd_d_502_6061_3_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.658552 0.176632 0.017" rpy="3.14159 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_502_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rs02_4 -->
+    <visual>
+      <origin xyz="-0.191052 0.176632 -0.533" rpy="1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs02.stl"/>
+      </geometry>
+      <material name="rs02_4_material">
+        <color rgba="0.929412 0.505882 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.191052 0.176632 -0.533" rpy="1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/rs02.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part kd_d_502_6061_4 -->
+    <visual>
+      <origin xyz="0.358947 0.176632 0.023" rpy="-0 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_502_6061.stl"/>
+      </geometry>
+      <material name="kd_d_502_6061_4_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.358947 0.176632 0.023" rpy="-0 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/kd_d_502_6061.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part l_end_stop_ankle_6061_2 -->
+    <visual>
+      <origin xyz="-0.105552 0.062872 0.02" rpy="0 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/l_end_stop_ankle_6061.stl"/>
+      </geometry>
+      <material name="l_end_stop_ankle_6061_2_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.105552 0.062872 0.02" rpy="0 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/l_end_stop_ankle_6061.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link arb_uj111_cross_bearing_2 -->
+  <link name="arb_uj111_cross_bearing_2">
+    <inertial>
+      <origin xyz="8.901e-09 -1.5576e-08 -0.03" rpy="0 0 0"/>
+      <mass value="0.317576"/>
+      <inertia ixx="0.000131465" ixy="4e-11" ixz="3e-12" iyy="7.61572e-05" iyz="-1.2e-11" izz="7.61572e-05"/>
+    </inertial>
+    <!-- Part arb_uj111_cross_bearing_2 -->
+    <visual>
+      <origin xyz="0 -0 -0.03" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/arb_uj111_cross_bearing.stl"/>
+      </geometry>
+      <material name="arb_uj111_cross_bearing_2_material">
+        <color rgba="0.72549 0.733333 0.717647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 -0 -0.03" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/arb_uj111_cross_bearing.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link foot_6061_2 -->
+  <link name="foot_6061_2">
+    <inertial>
+      <origin xyz="-9.04e-10 0.0327815 -0.069626" rpy="0 0 0"/>
+      <mass value="0.163562"/>
+      <inertia ixx="0.000552461" ixy="-4e-12" ixz="-0" iyy="0.000618803" iyz="2.21024e-05" izz="0.00010769"/>
+    </inertial>
+    <!-- Part foot_6061_2 -->
+    <visual>
+      <origin xyz="-0.0425 0.043 0.02" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/foot_6061.stl"/>
+      </geometry>
+      <material name="foot_6061_2_material">
+        <color rgba="0.956863 0.956863 0.964706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.0425 0.043 0.02" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://biped_description/meshes/foot_6061.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Joint from arb_uj111_cross_bearing_2 to foot_6061_2 -->
+  <joint name="left_foot_roll_02" type="revolute">
+    <origin xyz="0 0.03 -0.03" rpy="-1.5708 -1.5708 0"/>
+    <parent link="arb_uj111_cross_bearing_2"/>
+    <child link="foot_6061_2"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="30" velocity="10" lower="-0.261799" upper="0.261799"/>
+  </joint>
+  <!-- Joint from kd_d_401l_6061 to arb_uj111_cross_bearing_2 -->
+  <joint name="left_foot_pitch_02" type="revolute">
+    <origin xyz="-0.288552 0.0325676 0.05" rpy="0 0 3.14159"/>
+    <parent link="kd_d_401l_6061"/>
+    <child link="arb_uj111_cross_bearing_2"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="30" velocity="10" lower="-0.872665" upper="0.523599"/>
+  </joint>
+  <!-- Joint from kd_d_301l_6061 to kd_d_401l_6061 -->
+  <joint name="left_knee_04" type="revolute">
+    <origin xyz="0.02 -0.021 -0.212" rpy="0 -1.5708 0"/>
+    <parent link="kd_d_301l_6061"/>
+    <child link="kd_d_401l_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="100" velocity="10" lower="0" upper="2.70526"/>
+  </joint>
+  <!-- Joint from rs03 to kd_d_301l_6061 -->
+  <joint name="left_hip_yaw_03" type="revolute">
+    <origin xyz="0 0.142 -0.02525" rpy="1.5708 0 -0"/>
+    <parent link="rs03"/>
+    <child link="kd_d_301l_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" velocity="10" lower="-1.5708" upper="1.5708"/>
+  </joint>
+  <!-- Joint from kd_d_102l_6061 to rs03 -->
+  <joint name="left_hip_roll_03" type="revolute">
+    <origin xyz="0.02925 -0.03 -0.071" rpy="3.14159 -1.5708 0"/>
+    <parent link="kd_d_102l_6061"/>
+    <child link="rs03"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" velocity="10" lower="-0.20944" upper="2.26893"/>
+  </joint>
+  <!-- Joint from assy_formfg___kd_b_102b_torso_btm to kd_d_102l_6061 -->
+  <joint name="left_hip_pitch_04" type="revolute">
+    <origin xyz="-0.000358761 0.0552809 -0.0828599" rpy="1.5708 0 -0"/>
+    <parent link="assy_formfg___kd_b_102b_torso_btm"/>
+    <child link="kd_d_102l_6061"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="100" velocity="10" lower="-1.0472" upper="2.21657"/>
+  </joint>
+
+  <link name="battery_chest">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <mass value="0.5" />
+      <inertia ixx="0.000992" ixy="0" ixz="0" iyy="0.000766" iyz="0" izz="0.001550" />
+    </inertial>
+    <visual>
+      <geometry>
+        <box size="0.1260 0.1460 0.05" />
+      </geometry>
+      <material name="battery_material">
+        <color rgba="0.2 0.2 0.2 1" />
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.1260 0.1460 0.05" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="torso_to_battery" type="fixed">
+    <origin xyz="-0.0004 0.0003 0.0436" rpy="0 0 0" />
+    <parent link="assy_formfg___kd_b_102b_torso_btm" />
+    <child link="battery_chest" />
+  </joint>
+</robot>

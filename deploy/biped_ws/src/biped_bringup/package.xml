@@ -11,6 +11,8 @@
   <exec_depend>biped_control</exec_depend>
   <exec_depend>biped_teleop</exec_depend>
   <exec_depend>biped_tools</exec_depend>
+  <exec_depend>biped_description</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
 
   <buildtool_depend>ament_python</buildtool_depend>
 
