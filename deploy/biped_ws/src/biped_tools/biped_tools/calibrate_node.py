@@ -82,7 +82,7 @@ ANKLE_EXPECTED_RANGE = {
     "L_foot_roll":  _ankle_expected_motor_range("L"),
 }
 
-RANGE_MATCH_THRESHOLD = 0.20
+RANGE_MATCH_THRESHOLD = 0.05
 
 
 class CalibrateNode(Node):
@@ -209,20 +209,25 @@ class CalibrateNode(Node):
                     sys.stdout.write(f"\033[2K{line}\n")
 
                 sys.stdout.write(f"\033[2K\n")
-                sys.stdout.write(
-                    f"\033[2K  {n_done}/{n_joints} done. "
-                    f"[M]=motor-space (ankle linkage). "
-                    f"{'Ctrl+C to save.' if n_done == n_joints else 'Keep moving...'}\n")
+                if n_done == n_joints:
+                    sys.stdout.write(
+                        f"\033[2K  ✅ {n_done}/{n_joints} done! "
+                        f"Press ENTER to save calibration.\n")
+                else:
+                    sys.stdout.write(
+                        f"\033[2K  {n_done}/{n_joints} done. "
+                        f"[M]=motor-space (ankle linkage). Keep moving...\n")
                 sys.stdout.flush()
 
                 if n_done == n_joints:
-                    time.sleep(0.5)
+                    # All joints calibrated — wait for user confirmation
+                    input()
                     break
 
                 time.sleep(0.05)
 
         except KeyboardInterrupt:
-            print("\n\nStopped by user.")
+            print("\n\nStopped early by user.")
 
         # Disable
         print("\nDisabling motors...")
