@@ -37,7 +37,7 @@ def generate_launch_description():
         Node(
             package='biped_driver', executable='imu_node',
             name='imu_node', output='screen',
-            parameters=[{'rate_hz': 100.0, 'i2c_address': 75, 'reset_pin': 4}],
+            parameters=[{'rate_hz': 50.0, 'i2c_address': 75, 'reset_pin': 4}],
         ),
 
         # CAN bus — all 12 motors on can0
