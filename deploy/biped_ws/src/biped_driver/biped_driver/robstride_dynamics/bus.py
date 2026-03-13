@@ -285,52 +285,66 @@ class RobstrideBus:
     def _receive_feedback(
         self, motor_name: str, timeout: float = 0.01
     ) -> Optional[MotorFeedback]:
-        """Receive and decode a motor feedback frame."""
-        resp = self.receive(timeout)
-        if resp is None:
-            return None
+        """Receive and decode a motor feedback frame.
 
-        comm_type, extra_data, _, data = resp
+        Filters by motor ID — discards frames from other motors
+        and keeps reading until the expected motor responds or timeout.
+        """
+        m = self.motors[motor_name]
+        expected_id = m.id
+        model = m.model
+        deadline = time.monotonic() + timeout
 
-        if comm_type == CommunicationType.FAULT_REPORT:
-            fault_val, warn_val = struct.unpack("<LL", data)
-            raise RuntimeError(
-                f"Motor {motor_name} fault: fault=0x{fault_val:08X} warn=0x{warn_val:08X}"
+        while time.monotonic() < deadline:
+            remaining = max(0.001, deadline - time.monotonic())
+            resp = self.receive(remaining)
+            if resp is None:
+                return None
+
+            comm_type, extra_data, _, data = resp
+
+            if comm_type == CommunicationType.FAULT_REPORT:
+                fault_val, warn_val = struct.unpack("<LL", data)
+                raise RuntimeError(
+                    f"Motor {motor_name} fault: fault=0x{fault_val:08X} warn=0x{warn_val:08X}"
+                )
+
+            if comm_type != CommunicationType.OPERATION_STATUS:
+                continue  # not an operation status frame, keep looking
+
+            # Check motor ID
+            device_id = extra_data & 0xFF
+            if device_id != expected_id:
+                continue  # wrong motor, discard and keep reading
+
+            # Status flags
+            fault_code = (extra_data >> 8) & 0x3F
+            mode_status = (extra_data >> 14) & 0x03
+
+            # Decode feedback (big-endian per spec)
+            pos_u16, vel_u16, torque_u16, temp_u16 = struct.unpack(">HHHH", data)
+
+            position = (float(pos_u16) / 0x7FFF - 1.0) * MODEL_MIT_POSITION_TABLE[model]
+            velocity = (float(vel_u16) / 0x7FFF - 1.0) * MODEL_MIT_VELOCITY_TABLE[model]
+            torque = (float(torque_u16) / 0x7FFF - 1.0) * MODEL_MIT_TORQUE_TABLE[model]
+            temperature = float(temp_u16) * 0.1
+
+            # Undo calibration
+            cal = self.calibration.get(motor_name, {"direction": 1, "homing_offset": 0.0})
+            position = (position - cal["homing_offset"]) * cal["direction"]
+            velocity = velocity * cal["direction"]
+            torque = torque * cal["direction"]
+
+            return MotorFeedback(
+                position=position,
+                velocity=velocity,
+                torque=torque,
+                temperature=temperature,
+                fault_code=fault_code,
+                mode_status=mode_status,
             )
 
-        if comm_type != CommunicationType.OPERATION_STATUS:
-            return None
-
-        m = self.motors[motor_name]
-        model = m.model
-
-        # Status flags from extra_data
-        fault_code = (extra_data >> 8) & 0x3F
-        mode_status = (extra_data >> 14) & 0x03
-        device_id = extra_data & 0xFF
-
-        # Decode feedback (big-endian per spec)
-        pos_u16, vel_u16, torque_u16, temp_u16 = struct.unpack(">HHHH", data)
-
-        position = (float(pos_u16) / 0x7FFF - 1.0) * MODEL_MIT_POSITION_TABLE[model]
-        velocity = (float(vel_u16) / 0x7FFF - 1.0) * MODEL_MIT_VELOCITY_TABLE[model]
-        torque = (float(torque_u16) / 0x7FFF - 1.0) * MODEL_MIT_TORQUE_TABLE[model]
-        temperature = float(temp_u16) * 0.1
-
-        # Undo calibration
-        cal = self.calibration.get(motor_name, {"direction": 1, "homing_offset": 0.0})
-        position = (position - cal["homing_offset"]) * cal["direction"]
-        velocity = velocity * cal["direction"]
-        torque = torque * cal["direction"]
-
-        return MotorFeedback(
-            position=position,
-            velocity=velocity,
-            torque=torque,
-            temperature=temperature,
-            fault_code=fault_code,
-            mode_status=mode_status,
-        )
+        return None  # timeout
 
     # ── Bulk operations ─────────────────────────────────────────────
 
