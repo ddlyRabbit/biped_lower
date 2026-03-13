@@ -119,7 +119,12 @@ class RobstrideBus:
             dlc=len(data),
             data=data,
         )
-        self._bus.send(frame)
+        try:
+            self._bus.send(frame)
+        except can.CanOperationError:
+            # TX buffer full — wait briefly and retry once
+            time.sleep(0.001)
+            self._bus.send(frame)
 
     def receive(self, timeout: float = 0.05) -> Optional[tuple[int, int, int, bytes]]:
         """Returns (comm_type, extra_data, host_id, data) or None."""
