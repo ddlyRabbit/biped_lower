@@ -145,8 +145,22 @@ class CalibrateNode(Node):
         for _ in range(n_joints + 2):
             print()
 
+        # Non-blocking stdin: detect Enter while the read loop runs
+        import select
+        import tty
+        import termios
+        old_settings = termios.tcgetattr(sys.stdin)
         try:
-            while True:
+            tty.setcbreak(sys.stdin.fileno())
+            user_done = False
+
+            while not user_done:
+                # Check for Enter (non-blocking)
+                if select.select([sys.stdin], [], [], 0)[0]:
+                    ch = sys.stdin.read(1)
+                    if ch in ('\n', '\r'):
+                        user_done = True
+
                 # Read all motor positions
                 for name, _, _ in MOTOR_LIST:
                     try:
@@ -161,7 +175,7 @@ class CalibrateNode(Node):
                     except Exception:
                         pass
 
-                # Check done
+                # Check done (indicative only — ticks don't gate saving)
                 n_done = 0
                 for name in DISPLAY_JOINTS:
                     if done[name]:
@@ -209,30 +223,25 @@ class CalibrateNode(Node):
                     sys.stdout.write(f"\033[2K{line}\n")
 
                 sys.stdout.write(f"\033[2K\n")
-                if n_done == n_joints:
-                    sys.stdout.write(
-                        f"\033[2K  ✅ {n_done}/{n_joints} done!\n")
-                    sys.stdout.flush()
-                    break
-                else:
-                    sys.stdout.write(
-                        f"\033[2K  {n_done}/{n_joints} done. "
-                        f"[M]=motor-space (ankle linkage). Keep moving...\n")
+                sys.stdout.write(
+                    f"\033[2K  {n_done}/{n_joints} ✅  —  "
+                    f"Press ENTER to save calibration.\n")
                 sys.stdout.flush()
 
                 time.sleep(0.05)
 
         except KeyboardInterrupt:
-            print("\n\nStopped early by user.")
-
-        # Wait for user confirmation before saving
-        try:
-            input("\nPress ENTER to save calibration...")
-        except (KeyboardInterrupt, EOFError):
-            print("\nAborted — calibration NOT saved.")
-            bus.disable_all()
+            print("\n\nAborted — calibration NOT saved.")
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+            for name, _, _ in MOTOR_LIST:
+                try:
+                    bus.disable(name)
+                except Exception:
+                    pass
             bus.disconnect()
             return
+        finally:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
 
         # Disable
         print("\nDisabling motors...")
