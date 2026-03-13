@@ -211,23 +211,28 @@ class CalibrateNode(Node):
                 sys.stdout.write(f"\033[2K\n")
                 if n_done == n_joints:
                     sys.stdout.write(
-                        f"\033[2K  ✅ {n_done}/{n_joints} done! "
-                        f"Press ENTER to save calibration.\n")
+                        f"\033[2K  ✅ {n_done}/{n_joints} done!\n")
+                    sys.stdout.flush()
+                    break
                 else:
                     sys.stdout.write(
                         f"\033[2K  {n_done}/{n_joints} done. "
                         f"[M]=motor-space (ankle linkage). Keep moving...\n")
                 sys.stdout.flush()
 
-                if n_done == n_joints:
-                    # All joints calibrated — wait for user confirmation
-                    input()
-                    break
-
                 time.sleep(0.05)
 
         except KeyboardInterrupt:
             print("\n\nStopped early by user.")
+
+        # Wait for user confirmation before saving
+        try:
+            input("\nPress ENTER to save calibration...")
+        except (KeyboardInterrupt, EOFError):
+            print("\nAborted — calibration NOT saved.")
+            bus.disable_all()
+            bus.disconnect()
+            return
 
         # Disable
         print("\nDisabling motors...")
