@@ -53,6 +53,7 @@ def generate_launch_description():
             parameters=[{
                 'max_pitch_deg': LaunchConfiguration('max_pitch_deg'),
                 'max_roll_deg': LaunchConfiguration('max_roll_deg'),
+                'imu_timeout_ms': 1000.0,
             }],
         ),
     ])
