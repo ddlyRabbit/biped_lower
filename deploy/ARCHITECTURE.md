@@ -1,7 +1,6 @@
 # Biped Deployment Architecture
 
-ROS2 Jazzy on RPi 5 (Ubuntu 24.04). Single SocketCAN bus (`can0`), all 12 RobStride motors.
-Student RL policy (ONNX, 45d obs → 12d actions). BNO085 IMU on I2C. +X forward frame convention.
+ROS2 Jazzy · RPi 5 · SocketCAN `can0` · 12 RobStride motors · BNO085 IMU · ONNX policy
 
 ---
 
@@ -9,427 +8,249 @@ Student RL policy (ONNX, 45d obs → 12d actions). BNO085 IMU on I2C. +X forward
 
 | Component | Detail |
 |-----------|--------|
-| Compute | Raspberry Pi 5 (8 GB), Ubuntu 24.04 aarch64 |
-| CAN | Waveshare RS485 CAN HAT (B) — MCP2515 on SPI0, SocketCAN `can0`, 1 Mbps |
-| IMU | BNO085 on I2C bus 1, addr 0x4B, RST GPIO 4, SH2 protocol @ 400 kHz |
-| Motors | 12× RobStride (4× RS04, 4× RS03, 4× RS02) on single CAN bus |
-| Policy | `student_flat.onnx` — MLP 45→128→128→128→12, ~0.5 ms inference |
+| Compute | RPi 5 (8 GB), Ubuntu 24.04 aarch64 |
+| CAN | Waveshare RS485 CAN HAT (B) — MCP2515/SPI0, `can0`, 1 Mbps |
+| IMU | BNO085 I2C bus 1, addr 0x4B, RST GPIO 4, 50 Hz |
+| Motors | 12× RobStride (4× RS04, 4× RS03, 4× RS02) on `can0` |
+| Policy | `student_flat.onnx` — MLP 45→128→128→128→12, ~0.5 ms |
 
-## Motor CAN IDs
+## Motors
 
-| Joint | CAN ID | Model | Torque (Nm) |
-|-------|--------|-------|-------------|
-| R_hip_pitch | 1 | RS04 | 12.0 |
-| R_hip_roll | 2 | RS03 | 7.5 |
-| R_hip_yaw | 3 | RS03 | 7.5 |
-| R_knee | 4 | RS04 | 12.0 |
-| R_foot_pitch | 5 | RS02 | 4.0 |
-| R_foot_roll | 6 | RS02 | 4.0 |
-| L_hip_pitch | 7 | RS04 | 12.0 |
-| L_hip_roll | 8 | RS03 | 7.5 |
-| L_hip_yaw | 9 | RS03 | 7.5 |
-| L_knee | 10 | RS04 | 12.0 |
-| L_foot_pitch | 11 | RS02 | 4.0 |
-| L_foot_roll | 12 | RS02 | 4.0 |
+| Joint | ID | Model | Nm | Joint | ID | Model | Nm |
+|-------|----|-------|----|-------|----|-------|----|
+| R_hip_pitch | 1 | RS04 | 12 | L_hip_pitch | 7 | RS04 | 12 |
+| R_hip_roll | 2 | RS03 | 7.5 | L_hip_roll | 8 | RS03 | 7.5 |
+| R_hip_yaw | 3 | RS03 | 7.5 | L_hip_yaw | 9 | RS03 | 7.5 |
+| R_knee | 4 | RS04 | 12 | L_knee | 10 | RS04 | 12 |
+| R_foot_pitch | 5 | RS02 | 4 | L_foot_pitch | 11 | RS02 | 4 |
+| R_foot_roll | 6 | RS02 | 4 | L_foot_roll | 12 | RS02 | 4 |
 
-Host CAN ID: `0xFD` (253) — higher than all motor IDs for optimal CAN arbitration.
+Host CAN ID: `0xFD`. Per-motor `direction` (±1) stored in `calibration.yaml`.
 
-## URDF Joint Limits
+## Joint Limits & Defaults
 
-| Joint | Lower (rad) | Upper (rad) | Default (rad) |
-|-------|-------------|-------------|---------------|
-| R_hip_pitch | −2.217 | 1.047 | 0.2 |
-| R_hip_roll | −2.269 | 0.209 | 0.0 |
-| R_hip_yaw | −1.571 | 1.571 | 0.0 |
-| R_knee | 0.000 | 2.705 | 0.4 |
-| R_foot_pitch | −0.873 | 0.524 | −0.2 |
-| R_foot_roll | −0.262 | 0.262 | 0.0 |
-| L_hip_pitch | −1.047 | 2.217 | −0.2 |
-| L_hip_roll | −0.209 | 2.269 | 0.0 |
-| L_hip_yaw | −1.571 | 1.571 | 0.0 |
-| L_knee | 0.000 | 2.705 | 0.4 |
-| L_foot_pitch | −0.873 | 0.524 | −0.2 |
-| L_foot_roll | −0.262 | 0.262 | 0.0 |
+| Joint | Lower | Upper | Default | | Joint | Lower | Upper | Default |
+|-------|-------|-------|---------|---|-------|-------|-------|---------|
+| R_hip_pitch | −2.217 | 1.047 | 0.2 | | L_hip_pitch | −1.047 | 2.217 | −0.2 |
+| R_hip_roll | −2.269 | 0.209 | 0.0 | | L_hip_roll | −0.209 | 2.269 | 0.0 |
+| R_hip_yaw | −1.571 | 1.571 | 0.0 | | L_hip_yaw | −1.571 | 1.571 | 0.0 |
+| R_knee | 0.000 | 2.705 | 0.4 | | L_knee | 0.000 | 2.705 | 0.4 |
+| R_foot_pitch | −0.873 | 0.524 | −0.2 | | L_foot_pitch | −0.873 | 0.524 | −0.2 |
+| R_foot_roll | −0.262 | 0.262 | 0.0 | | L_foot_roll | −0.262 | 0.262 | 0.0 |
+
+Hip pitch/roll limits are mirrored L↔R. Knee, foot limits are symmetric.
 
 ## PD Gains
 
-| Joint group | Kp | Kd | Notes |
-|-------------|-----|-----|-------|
-| hip_pitch | 15.0 | 3.0 | RS04 — MIT mode, output-shaft level |
-| hip_roll | 10.0 | 3.0 | RS03 |
-| hip_yaw | 10.0 | 3.0 | RS03 |
-| knee | 15.0 | 3.0 | RS04 |
-| foot_pitch | 2.0 | 0.2 | RS02 — through ankle linkage |
-| foot_roll | 2.0 | 0.2 | RS02 — through ankle linkage |
+| Group | Kp | Kd | | Group | Kp | Kd |
+|-------|----|----|---|-------|----|----|
+| hip_pitch | 15 | 3.0 | | knee | 15 | 3.0 |
+| hip_roll | 10 | 3.0 | | foot_pitch | 2.0 | 0.2 |
+| hip_yaw | 10 | 3.0 | | foot_roll | 2.0 | 0.2 |
 
-Start with `gain_scale:=0.3` and increase. RS04 MIT Kp range: 0–5000.
+Runtime-tunable via `gain_scale` parameter (0.3→1.0 ladder).
 
 ---
 
-## Package Structure
+## Packages
 
 ```
-deploy/
-├── ARCHITECTURE.md              ← this file
-├── BRINGUP.md                   ← setup & operations guide
-├── student_flat.onnx            ← exported policy
-├── scripts/
-│   ├── setup_can.sh             ← bring up can0 (run each boot)
-│   └── scan_motors.py           ← read-only motor scan
-├── foxglove/
-│   └── biped_hardware.json      ← Foxglove Studio layout
-└── biped_ws/src/
-    ├── biped_msgs/              ← Custom message definitions
-    │   └── msg/
-    │       ├── MITCommand.msg
-    │       ├── MITCommandArray.msg
-    │       ├── MotorState.msg
-    │       ├── MotorStateArray.msg
-    │       └── RobotState.msg
-    ├── biped_driver/            ← Hardware interface
-    │   └── biped_driver/
-    │       ├── robstride_dynamics/   ← Vendored Seeed library (no ROS)
-    │       │   ├── protocol.py       ← CAN comm types + parameter IDs
-    │       │   ├── table.py          ← Per-model MIT scaling tables
-    │       │   └── bus.py            ← RobstrideBus: connect, MIT R/W, param R/W
-    │       ├── robstride_can.py      ← BipedMotorManager, ankle linkage, soft stops
-    │       ├── can_bus_node.py       ← ROS2 node: 12 motors on can0
-    │       └── imu_node.py           ← BNO085 I2C node
-    ├── biped_control/           ← Policy + state machine
-    │   └── biped_control/
-    │       ├── obs_builder.py        ← Sensor → 45d observation
-    │       ├── policy_node.py        ← 50Hz ONNX inference
-    │       ├── state_machine_node.py ← IDLE→STAND→WALK→ESTOP
-    │       └── safety_node.py        ← Watchdog, e-stop triggers
-    ├── biped_teleop/            ← Velocity commands
-    │   └── biped_teleop/
-    │       └── keyboard_teleop.py    ← Terminal → /cmd_vel
-    ├── biped_tools/             ← Calibration + utilities
-    │   └── biped_tools/
-    │       ├── calibrate_node.py     ← Interactive homing
-    │       └── export_onnx.py        ← PyTorch → ONNX
-    └── biped_bringup/           ← Launch files + config
-        ├── launch/
-        │   ├── bringup.launch.py     ← Full robot (all nodes)
-        │   ├── hardware.launch.py    ← IMU + CAN + safety (no policy)
-        │   ├── calibrate.launch.py   ← Interactive calibration
-        │   └── record.launch.py      ← Foxglove bridge + rosbag
-        └── config/
-            └── robot.yaml            ← Motor map (12 motors on can0)
+biped_ws/src/
+├── biped_msgs/         CMake — MITCommand, MotorState, RobotState
+├── biped_description/  CMake — URDF (light) + 35 STL meshes
+├── biped_driver/       Python
+│   ├── robstride_dynamics/  Vendored Seeed CAN library (python-can)
+│   │   └── bus.py           RobstrideBus: MIT R/W, motor ID–filtered reads
+│   ├── robstride_can.py     BipedMotorManager, ankle linkage, soft stops
+│   ├── can_bus_node.py      12-motor CAN loop @ 50 Hz
+│   └── imu_node.py          BNO085 I2C @ 50 Hz
+├── biped_control/      Python
+│   ├── obs_builder.py       Sensor → 45d observation vector
+│   ├── policy_node.py       ONNX inference @ 50 Hz
+│   ├── state_machine_node.py  IDLE→STAND→WALK→ESTOP
+│   └── safety_node.py       Pitch/roll/temp/timeout watchdog
+├── biped_teleop/       keyboard_teleop → /cmd_vel
+├── biped_tools/        calibrate_node, export_onnx
+└── biped_bringup/      Launch files + robot.yaml
 ```
 
 ---
 
-## ROS2 Graph
+## Data Flow
 
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                            HARDWARE LAYER                                │
-│                                                                          │
-│  ┌────────────────────────┐       ┌──────────────────────────────────┐  │
-│  │      /imu_node         │       │        /can_bus_node             │  │
-│  │     (biped_driver)     │       │       (biped_driver)             │  │
-│  │                        │       │                                  │  │
-│  │  BNO085 I2C SH2       │       │  12× RobStride on can0           │  │
-│  │  Bus 1, 0x4B, GPIO 4  │       │  BipedMotorManager               │  │
-│  │                        │       │  + ankle linkage transform       │  │
-│  │  Pub:                  │       │                                  │  │
-│  │   /imu/data     100Hz  │       │  Sub: /joint_commands            │  │
-│  │   /imu/gravity  100Hz  │       │  Pub: /joint_states  50Hz        │  │
-│  │                        │       │       /motor_states  50Hz        │  │
-│  └──────┬───────┬─────────┘       └──────┬──────────┬────────────────┘  │
-│         │       │                        │          │                    │
-└─────────┼───────┼────────────────────────┼──────────┼────────────────────┘
-          │       │                        │          │
-┌─────────┼───────┼────────────────────────┼──────────┼────────────────────┐
-│         │   CONTROL LAYER                │          │                    │
-│         ▼       │                        ▼          │                    │
-│  ┌──────────────┼──────────────────────────┐        │                    │
-│  │  /policy_node│     (biped_control)      │        │                    │
-│  │              │                          │        │                    │
-│  │  Sub: /imu/data, /imu/gravity,          │        │                    │
-│  │       /joint_states, /cmd_vel,          │        │                    │
-│  │       /state_machine                    │        │                    │
-│  │                                         │        │                    │
-│  │  ONNX 50Hz: obs(45d) → action(12d)     │        │                    │
-│  │  target = default + action × 0.5        │        │                    │
-│  │                                         │        │                    │
-│  │  Pub: /joint_commands  50Hz ────────────┼──▶ can │                    │
-│  └─────────────────────────────────────────┘        │                    │
-│                                                     │                    │
-│  ┌─────────────────────────────────────────┐        │                    │
-│  │  /safety_node       (biped_control)     │        │                    │
-│  │                                         │        │                    │
-│  │  Sub: /imu/data, /motor_states,         │◀───────┘                    │
-│  │       /joint_commands (watchdog)        │                             │
-│  │                                         │                             │
-│  │  Checks: pitch/roll, temp, faults       │                             │
-│  │  Pub: /safety/status  10Hz              │                             │
-│  └──────────────┬──────────────────────────┘                             │
-│                 │                                                        │
-│                 ▼                                                        │
-│  ┌─────────────────────────────────────────┐                             │
-│  │  /state_machine_node  (biped_control)   │                             │
-│  │                                         │                             │
-│  │  Sub: /safety/status, /joint_states,    │                             │
-│  │       /state_command                    │                             │
-│  │                                         │                             │
-│  │  FSM: IDLE → STAND → WALK → ESTOP      │                             │
-│  │  STAND: soft start (2s interp + 1s     │                             │
-│  │         gain ramp)                      │                             │
-│  │  ESTOP: sends kp=0/kd=0 → motors free  │                             │
-│  │                                         │                             │
-│  │  Pub: /state_machine  10Hz              │                             │
-│  │       /robot_state    10Hz              │                             │
-│  │       /joint_commands (during STAND)    │                             │
-│  └─────────────────────────────────────────┘                             │
-│                                                                          │
-└──────────────────────────────────────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────────────────────────┐
-│  TELEOP: /keyboard_teleop → /cmd_vel (Twist)                            │
-│  MONITORING: /foxglove_bridge (ws://pi:8765) + rosbag                   │
-└──────────────────────────────────────────────────────────────────────────┘
+ /cmd_vel ──────────────────────────────┐
+ /imu/data ──┐                          │
+ /imu/gravity┤  ┌────────────────┐      │
+             ├─▶│  policy_node   │◀─────┘
+ /joint_states┤  │  obs(45d)→ONNX │
+              │  │  →action(12d)  │
+              │  └───────┬────────┘
+              │          │ /joint_commands
+              │          ▼
+              │  ┌────────────────┐    ┌──────────────┐
+              └─▶│  can_bus_node  │◀──▶│  12× motors  │
+                 │  ankle linkage │    └──────────────┘
+                 │  soft stops    │
+                 └────────────────┘
+                         │
+ /motor_states ──────────┤
+                         ▼
+                 ┌────────────────┐    ┌──────────────────┐
+                 │  safety_node   │───▶│ state_machine_node│
+                 │  pitch/roll    │    │ IDLE→STAND→WALK   │
+                 │  temp/faults   │    │ →ESTOP            │
+                 └────────────────┘    └──────────────────┘
 ```
 
-### Topic Summary
-
-| Topic | Type | Hz | Publisher | Subscribers |
-|-------|------|-----|----------|-------------|
-| /imu/data | Imu | 100 | imu_node | policy, safety |
-| /imu/gravity | Vector3Stamped | 100 | imu_node | policy |
-| /joint_states | JointState | 50 | can_bus_node | policy, state_machine |
-| /motor_states | MotorStateArray | 50 | can_bus_node | safety |
-| /joint_commands | MITCommandArray | 50 | policy / state_machine | can_bus_node, safety |
-| /cmd_vel | Twist | var | teleop | policy |
-| /state_machine | String | 10 | state_machine | policy |
-| /robot_state | RobotState | 10 | state_machine | foxglove |
-| /safety/status | Bool | 10 | safety_node | state_machine |
-| /safety/fault | String | var | safety_node | foxglove |
-| /state_command | String | var | user | state_machine |
-
----
-
-## Custom Messages
-
-### MITCommand.msg
-```
-string joint_name
-float32 position      # target position (rad)
-float32 velocity      # target velocity (rad/s), typically 0
-float32 kp            # position gain
-float32 kd            # velocity gain
-float32 torque_ff     # feedforward torque (Nm), typically 0
-```
-
-### MITCommandArray.msg
-```
-std_msgs/Header header
-biped_msgs/MITCommand[] commands
-```
-
-### MotorState.msg
-```
-string joint_name
-uint8 can_id
-float32 position      # calibrated position (rad)
-float32 velocity      # velocity (rad/s)
-float32 torque        # torque (Nm)
-float32 temperature   # motor temp (°C)
-uint8 fault_code      # 6-bit fault flags
-uint8 mode_status     # 0=Reset, 1=Calibration, 2=Run
-```
-
-### MotorStateArray.msg
-```
-std_msgs/Header header
-biped_msgs/MotorState[] motors
-```
-
-### RobotState.msg
-```
-std_msgs/Header header
-string fsm_state
-bool safety_ok
-bool all_motors_enabled
-float32 battery_voltage
-string[] active_faults
-```
-
----
-
-## Observation Vector (45d)
-
-Must match training order exactly:
-
-| Index | Dim | Name | Source |
-|-------|-----|------|--------|
-| 0–2 | 3 | base_ang_vel | BNO085 gyro (rad/s, body frame) |
-| 3–5 | 3 | projected_gravity | −BNO085 gravity / ‖g‖ (unit vector, Isaac convention) |
-| 6–8 | 3 | velocity_commands | /cmd_vel (lin_x, lin_y, ang_z) |
-| 9–14 | 6 | hip_pos | joint_pos − default: L_roll, R_roll, L_yaw, R_yaw, L_pitch, R_pitch |
-| 15–16 | 2 | knee_pos | joint_pos − default: L_knee, R_knee |
-| 17–18 | 2 | foot_pitch_pos | joint_pos − default: L, R |
-| 19–20 | 2 | foot_roll_pos | joint_pos − default: L, R |
-| 21–32 | 12 | joint_vel | CAN velocity (Isaac runtime order) |
-| 33–44 | 12 | last_action | Previous policy output (dimensionless) |
-
-### Isaac Runtime Joint Order
-```
- 0: L_hip_pitch    6: L_knee
- 1: R_hip_pitch    7: R_knee
- 2: L_hip_roll     8: L_foot_pitch
- 3: R_hip_roll     9: R_foot_pitch
- 4: L_hip_yaw     10: L_foot_roll
- 5: R_hip_yaw     11: R_foot_roll
-```
-
-### projected_gravity
-BNO085 `SH2_GRAVITY` reports acceleration (~9.81 m/s²). **Must normalize** to unit vector
-then **negate** to match Isaac convention: `proj_grav = −gravity / ‖gravity‖`.
-
----
-
-## Action Pipeline
-
-```
-Policy output: action[12]  (dimensionless, ~ [-1, 1])
-       │
-       ▼
-Position target: target[i] = default_pos[i] + action[i] × 0.5
-       │
-       ▼
-MIT command: { position=target, velocity=0, kp=gain×scale, kd=gain×scale, torque_ff=0 }
-       │
-       ▼
-Motor executes: τ = Kp × (target − actual) + Kd × (0 − vel)
-```
-
-Matches Isaac's `ImplicitActuator` PD control.
+All control loops run at **50 Hz**. Safety at 50 Hz, state publishing at 10 Hz.
 
 ---
 
 ## Ankle Parallel Linkage
 
-Reference: [asimov-v0 ankle_mechanism.md](https://github.com/asimovinc/asimov-v0/blob/main/mechanical/ankle_mechanism.md)
+Ref: [asimov-v0/mechanical/ankle_mechanism.md](https://github.com/asimovinc/asimov-v0/blob/main/mechanical/ankle_mechanism.md)
 
-Two RS02 motors per ankle, U-joint to foot plate.  Motor A (upper, knee-side)
-and Motor B (lower, foot-side) have **inverted mounting**: positive rotation on
-A pushes its linkage UP, positive rotation on B pushes its linkage DOWN.
+Two RS02 motors per ankle with inverted mounting (A up → linkage up, B up → linkage down).
 
-**From Onshape CAD:**
-- Crank radius (r): 32.249 mm
-- Pivot-to-bar distance (d): 41.14 mm forward
-- Bar half-length (c/2): 31.398 mm lateral
-- K_P = d/r = 1.2757, K_R = (c/2)/r = 0.9736
-
-**Forward transform** (joint → motors):
 ```
-motor_A (upper) =  K_P × pitch − K_R × roll
-motor_B (lower) = −K_P × pitch − K_R × roll
+K_P = d/r = 41.14/32.249 = 1.2757    (pivot-to-bar / crank radius)
+K_R = (c/2)/r = 31.398/32.249 = 0.9736  (bar half-length / crank radius)
 ```
 
-**Inverse transform** (motors → joint):
+### Forward (joint → motors)
+
 ```
-foot_pitch =  (A − B) / (2 × K_P)
-foot_roll  = −(A + B) / (2 × K_R)
+motor_A (upper) =  ps × K_P × pitch − K_R × roll
+motor_B (lower) = −ps × K_P × pitch − K_R × roll
 ```
 
-Policy sees `foot_pitch` / `foot_roll` in joint-space. `can_bus_node` transparently
-transforms to/from motor-space via the Asimov linkage equations.
+### Inverse (motors → joint)
+
+```
+pitch =  ps × (A − B) / (2 × K_P)
+roll  = −(A + B) / (2 × K_R)
+```
+
+**`ps` = pitch_sign**: `+1` for R ankle, `−1` for L ankle (mirrored mounting).
+
+### What moves what
+
+| Motion | Motor A | Motor B | Result |
+|--------|---------|---------|--------|
+| Pure pitch | +ps×K_P | −ps×K_P | Both linkages rise/fall together |
+| Pure roll | −K_R | −K_R | One up, one down (inverted mounting) |
+
+Roll transform is identical for L and R. Pitch is mirrored.
 
 ---
 
-## Soft Stops
+## Calibration & Motor Direction
 
-Every motor has a 2° (0.035 rad) buffer inside its calibration limits.
-When a motor enters the buffer zone, a restoring spring torque is applied:
+### calibration.yaml
+
+Produced by `calibrate_node` + `setup_directions.py`. Per joint:
+
+```yaml
+R_knee:
+  motor_min: 1.4247      # raw encoder at physical limit A
+  motor_max: 4.2013      # raw encoder at physical limit B
+  offset: 1.4247         # computed homing offset
+  direction: -1          # +1 normal, -1 inverted encoder
+  urdf_lower: 0.0
+  urdf_upper: 2.7053
+```
+
+### Direction detection
+
+Some motors have encoders that increase in the opposite direction to the URDF
+joint convention. `direction` in `calibration.yaml` handles this:
+
+| direction | offset | joint_pos formula |
+|-----------|--------|-------------------|
+| +1 | `motor_min − URDF_lower` | `(encoder − offset) × 1` |
+| −1 | `motor_max` | `(encoder − offset) × −1` |
+
+Set interactively via `setup_directions.py` (move joint, check Foxglove, flip if wrong).
+
+### Offset computation (from_robot_yaml)
 
 ```
-τ_restore = Kp_softstop × min(penetration, buffer)
-Kp_softstop = 20 Nm/rad
+Normal joints:    offset = motor_min − URDF_lower  (dir=+1)
+                  offset = motor_max               (dir=−1)
+Ankle joints:     offset = motor_min − cmd_at_encoder_min  (linkage transform)
 ```
 
-All soft stops operate in **motor command-space** using limits from calibration
-data (not URDF).  For normal joints, motor command-space equals joint-space.
-For ankle motors, soft stops run in the post-linkage motor-space independently
-per motor.
+### Soft stops
+
+2° buffer inside calibration limits. Restoring torque `τ = 20 × penetration`.
+All in **motor command-space** (not joint-space). For ankles, per-motor independently.
 
 ---
 
-## Calibration
+## Observation Vector (45d)
 
-`calibrate_node` manages CAN directly (no `can_bus_node` needed). Enables all 12 motors
-with zero torque in MIT mode and tracks raw encoder min/max as the user moves each joint.
+```
+[0–2]   base_ang_vel      ← IMU gyro (rad/s, body frame)
+[3–5]   projected_gravity  ← −gravity/‖g‖ (Isaac convention)
+[6–8]   velocity_commands  ← /cmd_vel (lin_x, lin_y, ang_z)
+[9–20]  joint_pos_rel      ← pos − default (hip×6, knee×2, foot_pitch×2, foot_roll×2)
+[21–32] joint_vel          ← 12d in Isaac runtime order
+[33–44] last_action        ← previous policy output
+```
 
-- **Normal joints:** `offset = encoder_min − URDF_lower_limit`
-- **Ankle joints:** `offset = encoder_min − theoretical_cmd_at_encoder_min` (Asimov linkage)
+Isaac runtime joint order:
+```
+L_hip_pitch, R_hip_pitch, L_hip_roll, R_hip_roll,
+L_hip_yaw, R_hip_yaw, L_knee, R_knee,
+L_foot_pitch, R_foot_pitch, L_foot_roll, R_foot_roll
+```
 
-All motor command-space limits are derived from `motor_min` / `motor_max` in
-`calibration.yaml`.  URDF values are only used as a fallback when no calibration
-is loaded.
+## Action Pipeline
 
-Auto-marks joints ✅ when observed range matches expected range within 20%.
-Saves `calibration.yaml` with offsets and limits.
-
----
-
-## Safety
-
-### safety_node checks (50 Hz)
-1. IMU pitch/roll within `max_pitch_deg` / `max_roll_deg` (launch args, default 85°)
-2. Motor temperatures below 80°C
-3. No motor fault codes
-4. IMU data alive (200 ms timeout)
-
-On any violation → `/safety/status = false` → `state_machine_node` → ESTOP.
-
-### ESTOP behaviour
-`state_machine_node` sends `kp=0 / kd=0 / torque_ff=0` to all joints via `/joint_commands`.
-`can_bus_node` forwards these — motors go free (zero stiffness). The control loop always
-runs; there is no disabled state in `can_bus_node`.
-
-### Hardware-level safety
-Each motor's `CAN_TIMEOUT` (index 0x702B) should be set to 100 ms at startup.
-If no CAN command arrives within timeout, motor enters reset mode independently of the RPi.
+```
+action[12] (±1) → target = default + action × 0.5 → MIT(pos, kp×scale, kd×scale)
+```
 
 ---
 
 ## State Machine
 
 ```
-IDLE ──START──▶ STAND ──(2s stable)──▶ WALK
-                  ▲                      │
-                  │◀────STOP─────────────┘
-                  │
-ANY ──────────▶ ESTOP ──RESET──▶ IDLE
+IDLE ──START──▶ STAND ──(stable)──▶ WALK
+                  ▲                    │
+                  │◀───STOP────────────┘
+ANY ───────────▶ ESTOP ──RESET──▶ IDLE
 ```
 
-### STAND soft start
-1. Capture current joint positions
-2. Interpolate to default positions over 2 s
-3. Ramp gains from 10% → 100% over 1 s
-4. Run with zero velocity command
+**STAND**: 2s position interpolation → 1s gain ramp (10%→100%) → zero velocity.
+**ESTOP**: kp=0, kd=0, torque=0 → motors free. Auto-triggers on safety fault.
 
 ---
 
-## CAN Timing Budget (50 Hz = 20 ms)
+## Safety
+
+| Check | Threshold | Action |
+|-------|-----------|--------|
+| IMU pitch | 85° (configurable) | → ESTOP |
+| IMU roll | 85° (configurable) | → ESTOP |
+| Motor temp | 80°C | → ESTOP |
+| Motor fault | any fault code | → ESTOP |
+| IMU timeout | 200 ms | → ESTOP |
+
+---
+
+## CAN Timing (50 Hz = 20 ms budget)
 
 ```
-CAN commands (12 motors on can0):
-  12 × ~0.4 ms write+read             ~4.8 ms
-IMU I2C read (SH2):                   ~0.2 ms
-Obs vector assembly:                   ~0.1 ms
-ONNX inference (45→128→128→128→12):   ~0.5 ms
-Safety checks:                         ~0.1 ms
-──────────────────────────────────────────────
-Total:                                 ~5.7 ms
-Headroom:                              14.3 ms  ✅
+12× MIT write+read (ID-filtered):  ~4.8 ms
+IMU I2C read:                       ~3–5 ms
+ONNX inference:                     ~0.5 ms
+Total:                              ~9 ms → 11 ms headroom
 ```
 
-The MCP2515 has 3 TX buffer slots. `bus.py` retries on `CanOperationError` with
-0.5 ms backoff (up to 5 attempts) to handle TX buffer full conditions. A 0.2 ms
-sleep after each `write_operation_frame` lets the SPI transfer complete.
+`bus.py` filters responses by motor ID (discards wrong-motor frames).
+MCP2515 TX buffer: 5-attempt retry with 0.5 ms backoff.
 
 ---
 
@@ -437,10 +258,26 @@ sleep after each `write_operation_frame` lets the SPI transfer complete.
 
 | System | Convention |
 |--------|-----------|
-| Isaac Lab (training) | Z-up, +X forward, gravity = (0, 0, −9.81) |
-| BNO085 | Z-up, +X forward (when mounted correctly) |
-| projected_gravity | `−gravity / ‖gravity‖` to match Isaac `quat_rotate_inverse(q, [0,0,−1])` |
-| Motor positions | Radians, output shaft (post-gearbox), absolute encoder |
-| Motor torques | Nm, output shaft |
+| URDF / Isaac | Z-up, +X forward |
+| BNO085 | Z-up, +X forward (mount X-axis forward) |
+| projected_gravity | `−gravity/‖g‖` → matches `quat_rotate_inverse(q, [0,0,−1])` |
+| Motor positions | Radians, output shaft, absolute encoder |
 
-**BNO085 mounting**: IMU X-axis must point in robot's +X direction (forward).
+---
+
+## Workspace Setup (RPi)
+
+```bash
+# colcon bug: biped_msgs (CMake) not added to AMENT_PREFIX_PATH
+# Use setup_biped.bash instead of install/setup.bash:
+source ~/biped_lower/deploy/biped_ws/setup_biped.bash
+```
+
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `setup_can.sh` | Bring up can0 (run each boot) |
+| `scan_motors.py` | Read-only motor scan |
+| `test_hip_yaw.py` | Jog test with soft stop verification |
+| `setup_directions.py` | Interactive motor direction setup (Foxglove) |
