@@ -1,28 +1,19 @@
 # Biped Robot Motor Configuration
-# CAN0 = Right leg (ID 1-6), CAN1 = Left leg (ID 7-12)
+# All 12 motors on single CAN bus (can0) via Waveshare RS485 CAN HAT (B)
+# MCP2515 on SPI0, SocketCAN interface
 
 can0:
   interface: can0
-  side: right
   motors:
-    R_hip_pitch:   {id: 1, type: RS04}
-    R_hip_roll:    {id: 2, type: RS03}
-    R_hip_yaw:     {id: 3, type: RS03}
-    R_knee:        {id: 4, type: RS04}
-    R_foot_pitch:  {id: 5, type: RS02}
-    R_foot_roll:   {id: 6, type: RS02}
-
-can1:
-  interface: can1
-  side: left
-  motors:
+    R_hip_pitch:   {id: 1,  type: RS04}
+    R_hip_roll:    {id: 2,  type: RS03}
+    R_hip_yaw:     {id: 3,  type: RS03}
+    R_knee:        {id: 4,  type: RS04}
+    R_foot_pitch:  {id: 5,  type: RS02}
+    R_foot_roll:   {id: 6,  type: RS02}
     L_hip_pitch:   {id: 7,  type: RS04}
     L_hip_roll:    {id: 8,  type: RS03}
     L_hip_yaw:     {id: 9,  type: RS03}
     L_knee:        {id: 10, type: RS04}
     L_foot_pitch:  {id: 11, type: RS02}
     L_foot_roll:   {id: 12, type: RS02}
-
-# Motor config strings for ros2 launch params:
-# can0: "R_hip_pitch:1:RS04,R_hip_roll:2:RS03,R_hip_yaw:3:RS03,R_knee:4:RS04,R_foot_pitch:5:RS02,R_foot_roll:6:RS02"
-# can1: "L_hip_pitch:7:RS04,L_hip_roll:8:RS03,L_hip_yaw:9:RS03,L_knee:10:RS04,L_foot_pitch:11:RS02,L_foot_roll:12:RS02"

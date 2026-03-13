@@ -3,10 +3,10 @@
 ## Prerequisites
 
 - RPi 5 with Ubuntu 24.04 + ROS2 Jazzy
-- 2-CH CAN HAT (MCP2515) configured in `/boot/firmware/config.txt`
+- Waveshare RS485 CAN HAT (B) — MCP2515 on SPI0
 - BNO085 IMU on I2C bus 1 (addr 0x4B, RST on GPIO 4)
-- Motor CAN IDs set: Right 1-6 (can0), Left 7-12 (can1)
-- Student policy exported as ONNX
+- All 12 motors on single CAN bus (can0), IDs 1–12
+- Student policy exported as ONNX (`student_flat.onnx`)
 
 ## CAN HAT Setup (one-time)
 
@@ -14,56 +14,41 @@ Add to `/boot/firmware/config.txt`:
 ```
 dtparam=spi=on
 dtoverlay=mcp2515-can0,oscillator=12000000,interrupt=25
-dtoverlay=mcp2515-can1,oscillator=12000000,interrupt=24
 ```
-Reboot. Verify: `ls /sys/class/net/ | grep can`
+Reboot. Verify: `ls /sys/class/net/ | grep can` → should show `can0`.
 
-## Launch Files
+## Step 1: Bring Up CAN (every boot)
 
-| Launch | Purpose | When to use |
-|--------|---------|-------------|
-| `hardware.launch.py` | IMU + CAN × 2 + safety | Test hardware without policy |
-| `calibrate.launch.py` | Interactive joint calibration | Once, or after motor reassembly |
-| `bringup.launch.py` | Full robot (all nodes) | Normal operation |
-| `record.launch.py` | Foxglove bridge + rosbag | Monitoring + data collection |
-
-## Step 1: Setup CAN (every boot)
-
-**Option A: Dual bus (MCP2515 CAN HAT)**
 ```bash
 cd ~/biped_lower/deploy
 ./scripts/setup_can.sh
-# Creates can0 (right leg) + can1 (left leg)
 ```
 
-**Option B: Single bus (RobStride USB-CAN / CANable)**
+Verify: `candump can0` — shows nothing if no motors powered, frames if powered.
+
+## Step 2: Scan Motors
+
+Power on motors, then:
 ```bash
-cd ~/biped_lower/deploy
-./scripts/setup_can_usb.sh          # default: /dev/ttyACM0
-./scripts/setup_can_usb.sh /dev/ttyACM1   # if different port
-# Creates can0 with all 12 motors
+python3 scripts/scan_motors.py
 ```
 
-Verify: `candump can0` (shows nothing if no motors powered, frames if powered)
+All 12 motors should respond with position/velocity/voltage readings.
 
-## Step 2: Calibrate (once per assembly)
+## Step 3: Calibrate (once per assembly)
 
-Power on motors:
 ```bash
 ros2 launch biped_bringup calibrate.launch.py
 ```
 
-Follow interactive prompts — move each joint to both mechanical limits.
-Saves `calibration.yaml` (all 12 joints, both legs).
+Move each joint to both mechanical limits. Joints auto-mark ✅ when range matches
+URDF limits ±20%. Press Ctrl+C to save `calibration.yaml`.
 
-## Step 3: Test hardware (no policy)
+## Step 4: Test Hardware (no policy)
 
 ```bash
-# Dual bus (MCP2515 HAT):
-ros2 launch biped_bringup hardware.launch.py
-
-# Single bus (USB-CAN):
-ros2 launch biped_bringup hardware.launch.py bus_mode:=single
+ros2 launch biped_bringup hardware.launch.py \
+  calibration_file:=calibration.yaml
 
 # In another terminal:
 ros2 topic echo /joint_states     # motor positions + velocities
@@ -71,13 +56,14 @@ ros2 topic echo /imu/data         # IMU quaternion + gyro
 ros2 topic echo /safety/status    # should be True
 ```
 
-## Step 4: Test policy (robot suspended)
+## Step 5: Suspended Test (robot hanging, feet off ground)
 
-**⚠️ Robot must be hanging / feet off ground!**
+⚠️ **Robot must be suspended!**
 
 ```bash
 # Terminal 1: full robot with low gains
 ros2 launch biped_bringup bringup.launch.py \
+  calibration_file:=calibration.yaml \
   onnx_model:=~/biped_lower/deploy/student_flat.onnx \
   gain_scale:=0.3
 
@@ -92,70 +78,66 @@ ros2 topic pub --once /state_command std_msgs/String "data: START"
 
 Robot should slowly move to standing pose over 2 seconds (soft start).
 
-## Step 5: Walking
+## Step 6: Ground Test
 
+After suspended test looks good:
 ```bash
-# After standing is stable:
+# Same as Step 5 but increase gains
+ros2 launch biped_bringup bringup.launch.py \
+  calibration_file:=calibration.yaml \
+  onnx_model:=~/biped_lower/deploy/student_flat.onnx \
+  gain_scale:=0.5
+
+# Start standing, then walking:
+ros2 topic pub --once /state_command std_msgs/String "data: START"
+# Wait for stable stand...
 ros2 topic pub --once /state_command std_msgs/String "data: WALK"
 
-# Keyboard teleop in another terminal:
+# Keyboard teleop:
 ros2 run biped_teleop keyboard_teleop
-
 # Press 1 for 0.1 m/s, then w to go forward
 ```
 
-## Step 6: Emergency stop
+## Step 7: Emergency Stop
 
 ```bash
 ros2 topic pub --once /state_command std_msgs/String "data: ESTOP"
 ```
-Also triggers automatically on pitch/roll violation or motor fault.
 
+Also triggers automatically on pitch/roll violation or motor fault.
 Reset: `ros2 topic pub --once /state_command std_msgs/String "data: RESET"`
 
 ## Gain Tuning
 
-Start with `gain_scale:=0.3`. Increase gradually:
-```
-0.3  →  test standing stability
-0.5  →  test slow walking
-0.7  →  test normal walking
-1.0  →  full sim gains
-```
+Use `gain_scale` launch argument to scale all PD gains uniformly:
 
-## Motor Config
+| Scale | Use case |
+|-------|----------|
+| 0.3 | First suspended test |
+| 0.5 | Suspended walking test |
+| 0.7 | Ground standing test |
+| 1.0 | Full sim gains |
 
-```
-CAN0 (Right)              CAN1 (Left)
-R_hip_pitch   1  RS04     L_hip_pitch   7  RS04
-R_hip_roll    2  RS03     L_hip_roll    8  RS03
-R_hip_yaw     3  RS03     L_hip_yaw     9  RS03
-R_knee        4  RS04     L_knee       10  RS04
-R_foot_pitch  5  RS02     L_foot_pitch 11  RS02
-R_foot_roll   6  RS02     L_foot_roll  12  RS02
-```
+Safety pitch/roll limits default to 85° (adjustable via `max_pitch_deg` / `max_roll_deg` launch args).
 
-## Node Summary
+## Launch Files
 
-| Node | Package | Function |
-|------|---------|----------|
-| `imu_node` | biped_driver | BNO085 I2C → /imu/data, /imu/gravity |
-| `can_bus_node` × 1 | biped_driver | RS02/03/04 CAN (can0+can1) → /joint_states, /motor_states |
-| `policy_node` | biped_control | ONNX inference → /joint_commands (50Hz) |
-| `safety_node` | biped_control | Watchdog → /safety/status |
-| `state_machine_node` | biped_control | FSM → /state_machine, /robot_state |
-| `keyboard_teleop` | biped_teleop | Keyboard → /cmd_vel |
-| `calibrate_node` | biped_tools | Interactive calibration → calibration.yaml |
-| `foxglove_bridge` | foxglove_bridge | WebSocket bridge for desktop monitoring |
+| Launch | Purpose |
+|--------|---------|
+| `hardware.launch.py` | IMU + CAN + safety (no policy) |
+| `calibrate.launch.py` | Interactive joint calibration |
+| `bringup.launch.py` | Full robot (all nodes) |
+| `record.launch.py` | Foxglove bridge + rosbag recording |
 
 ## Troubleshooting
 
 | Problem | Solution |
 |---------|----------|
-| No CAN device | Run `setup_can.sh`, check dtoverlay in config.txt |
-| IMU init fails | Power cycle BNO085, check I2C: `i2cdetect -y 1` |
-| Motor no response | Check 48V power, verify CAN ID with RobStride tool |
-| Wild policy outputs | Normal without motor feedback — closed loop fixes this |
-| Robot falls immediately | Reduce `gain_scale`, check calibration offsets |
+| No CAN device | Run `setup_can.sh`, check dtoverlay in `/boot/firmware/config.txt` |
+| Motor no response | Check 48V power, run `scan_motors.py`, verify CAN ID |
+| IMU init fails | Power cycle BNO085, check I2C: `i2cdetect -y 1` (expect 0x4B) |
+| Robot falls immediately | Reduce `gain_scale`, verify calibration offsets |
 | ESTOP triggered | Check: `ros2 topic echo /safety/fault` |
-| Foxglove won't connect | Check Pi IP, ensure port 8765 is not blocked |
+| Foxglove won't connect | Check Pi IP, ensure port 8765 not blocked |
+| TX buffer full errors | Normal at startup (MCP2515 has 3 slots), retries handle it |
+| Ankle motors track poorly | Re-calibrate ankles, check linkage rod lengths match CAD |

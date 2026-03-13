@@ -2,7 +2,7 @@
 
 Adds:
   - Ankle parallel linkage transform (2× RS02 → foot pitch/roll)
-  - Multi-bus manager (can0 + can1)
+  - Multi-bus manager (routes joints to correct CAN bus)
   - Soft stop joint protection (2° buffer with restoring torque)
   - Convenience config loader from robot.yaml format
 
@@ -96,7 +96,7 @@ SOFTSTOP_KP = 20.0  # Nm/rad restoring spring
 class JointConfig:
     """Per-joint configuration."""
     name: str
-    can_bus: str          # "can0" or "can1" or "/dev/ttyUSB0"
+    can_bus: str          # "can0"
     can_id: int
     model: str            # "rs-02", "rs-03", "rs-04"
     offset: float = 0.0   # bus homing_offset (motor-space)
@@ -113,7 +113,7 @@ class JointConfig:
 
 
 class BipedMotorManager:
-    """Manages all motors across both CAN buses via RobstrideBus instances.
+    """Manages all motors across CAN buses via RobstrideBus instances.
 
     For normal joints: limits, soft stops, and commands all operate in joint-space.
     For ankle joints: limits and soft stops operate in joint-space (before linkage).
@@ -137,9 +137,8 @@ class BipedMotorManager:
         "L_foot_roll":  (-0.26180, 0.26180),
     }
 
-    def __init__(self, joints: list[JointConfig], backend: str = "socketcan"):
+    def __init__(self, joints: list[JointConfig]):
         self.joints = {j.name: j for j in joints}
-        self.backend = backend
         self._buses: dict[str, RobstrideBus] = {}
         self._joint_to_bus: dict[str, str] = {}
 
@@ -166,11 +165,10 @@ class BipedMotorManager:
                 channel=channel,
                 motors=motors,
                 calibration=bus_calibration[channel],
-                backend=backend,
             )
 
     @classmethod
-    def from_robot_yaml(cls, config: dict, offsets: Optional[dict] = None, backend: str = "socketcan") -> "BipedMotorManager":
+    def from_robot_yaml(cls, config: dict, offsets: Optional[dict] = None) -> "BipedMotorManager":
         joints = []
         for bus_key, bus_cfg in config.items():
             if not isinstance(bus_cfg, dict) or "motors" not in bus_cfg:
@@ -227,7 +225,7 @@ class BipedMotorManager:
                     motor_cmd_lo=motor_cmd_lo,
                     motor_cmd_hi=motor_cmd_hi,
                 ))
-        return cls(joints, backend=backend)
+        return cls(joints)
 
     def _bus_for(self, joint_name: str) -> RobstrideBus:
         return self._buses[self._joint_to_bus[joint_name]]

@@ -11,7 +11,7 @@ Press Ctrl+C when all joints are done (or early) to save calibration.yaml.
 
 Usage:
     ros2 run biped_tools calibrate_node --ros-args \
-        -p can_backend:=waveshare -p can_channel:=/dev/ttyUSB0
+        -p can_channel:=can0
 """
 
 import yaml
@@ -89,11 +89,9 @@ class CalibrateNode(Node):
     def __init__(self):
         super().__init__('calibrate_node')
 
-        self.declare_parameter('can_backend', 'waveshare')
-        self.declare_parameter('can_channel', '/dev/ttyUSB0')
+        self.declare_parameter('can_channel', 'can0')
         self.declare_parameter('output_file', 'calibration.yaml')
 
-        self._backend = str(self.get_parameter('can_backend').value)
         self._channel = str(self.get_parameter('can_channel').value)
         self._output = str(self.get_parameter('output_file').value)
 
@@ -105,7 +103,6 @@ class CalibrateNode(Node):
         bus = RobstrideBus(
             channel=self._channel,
             motors=motors,
-            backend=self._backend,
         )
         bus.connect()
 

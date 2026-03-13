@@ -5,9 +5,8 @@ Pings each expected motor ID, reads position/velocity/voltage.
 Use to verify wiring and CAN comms before enabling any motor.
 
 Usage:
-    python3 scan_motors.py                          # scan can0 (socketcan)
-    python3 scan_motors.py can0 can1                # scan both buses
-    python3 scan_motors.py --waveshare /dev/ttyUSB0 # Waveshare USB-CAN-A
+    python3 scan_motors.py              # scan can0 (default)
+    python3 scan_motors.py can0         # explicit channel
 """
 
 import sys
@@ -17,45 +16,30 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__),
 
 from biped_driver.robstride_dynamics import RobstrideBus, Motor, CommunicationType, ParameterType
 
-# Expected motor map
-MOTOR_MAP = {
-    "can0": [
-        ("R_hip_pitch",   1, "rs-04"),
-        ("R_hip_roll",    2, "rs-03"),
-        ("R_hip_yaw",     3, "rs-03"),
-        ("R_knee",        4, "rs-04"),
-        ("R_foot_pitch",  5, "rs-02"),
-        ("R_foot_roll",   6, "rs-02"),
-        ("L_hip_pitch",   7, "rs-04"),
-        ("L_hip_roll",    8, "rs-03"),
-        ("L_hip_yaw",     9, "rs-03"),
-        ("L_knee",       10, "rs-04"),
-        ("L_foot_pitch", 11, "rs-02"),
-        ("L_foot_roll",  12, "rs-02"),
-    ],
-    "can1": [
-        ("L_hip_pitch",   7, "rs-04"),
-        ("L_hip_roll",    8, "rs-03"),
-        ("L_hip_yaw",     9, "rs-03"),
-        ("L_knee",       10, "rs-04"),
-        ("L_foot_pitch", 11, "rs-02"),
-        ("L_foot_roll",  12, "rs-02"),
-    ],
-}
-
-# Single bus mode: all 12 on can0
-MOTOR_MAP_SINGLE = {
-    "can0": MOTOR_MAP["can0"],
-}
+# All 12 motors on can0
+MOTOR_MAP = [
+    ("R_hip_pitch",   1, "rs-04"),
+    ("R_hip_roll",    2, "rs-03"),
+    ("R_hip_yaw",     3, "rs-03"),
+    ("R_knee",        4, "rs-04"),
+    ("R_foot_pitch",  5, "rs-02"),
+    ("R_foot_roll",   6, "rs-02"),
+    ("L_hip_pitch",   7, "rs-04"),
+    ("L_hip_roll",    8, "rs-03"),
+    ("L_hip_yaw",     9, "rs-03"),
+    ("L_knee",       10, "rs-04"),
+    ("L_foot_pitch", 11, "rs-02"),
+    ("L_foot_roll",  12, "rs-02"),
+]
 
 
-def scan_bus(channel: str, motors: list, backend: str = "socketcan"):
+def scan_bus(channel: str, motors: list):
     """Ping and read from each motor on one CAN bus. Read-only — no enable, no MIT commands."""
     print(f"\n{'='*60}")
-    print(f"  Scanning {channel} ({backend}) — {len(motors)} expected motors")
+    print(f"  Scanning {channel} — {len(motors)} expected motors")
     print(f"{'='*60}")
 
-    bus = RobstrideBus(channel=channel, backend=backend)
+    bus = RobstrideBus(channel=channel)
     bus.connect()
 
     found = 0
@@ -97,54 +81,18 @@ def scan_bus(channel: str, motors: list, backend: str = "socketcan"):
 
 
 def main():
-    backend = "socketcan"
-    channels = []
+    channel = sys.argv[1] if len(sys.argv) > 1 else "can0"
 
-    # Parse args
-    args = sys.argv[1:]
-    i = 0
-    while i < len(args):
-        if args[i] == "--waveshare":
-            backend = "waveshare"
-            i += 1
-            if i < len(args) and not args[i].startswith("-"):
-                channels.append(args[i])
-                i += 1
-            else:
-                channels.append("/dev/ttyUSB0")
-        else:
-            channels.append(args[i])
-            i += 1
-
-    if not channels:
-        channels = ["can0"]
-
-    print(f"RobStride Motor Scanner — READ ONLY (no actuation) [{backend}]")
+    print(f"RobStride Motor Scanner — READ ONLY (no actuation)")
     print("Motors will NOT be enabled. Safe to run anytime.")
 
-    total_found = 0
-    total_failed = 0
-
-    for ch in channels:
-        # All 12 motors for single-bus or waveshare modes
-        if backend == "waveshare" or (len(channels) == 1 and ch not in MOTOR_MAP):
-            motors = MOTOR_MAP_SINGLE["can0"]
-        elif len(channels) == 1 and ch == "can0":
-            motors = MOTOR_MAP_SINGLE["can0"]
-        elif ch in MOTOR_MAP:
-            motors = MOTOR_MAP[ch]
-        else:
-            motors = [(f"motor_{i}", i, "rs-04") for i in range(1, 13)]
-
-        f, fail = scan_bus(ch, motors, backend=backend)
-        total_found += f
-        total_failed += fail
+    found, failed = scan_bus(channel, MOTOR_MAP)
 
     print(f"\n{'='*60}")
-    print(f"  TOTAL: {total_found} found, {total_failed} missing")
-    if total_failed == 0 and total_found > 0:
+    print(f"  TOTAL: {found} found, {failed} missing")
+    if failed == 0 and found > 0:
         print("  ✅ All motors responding — ready for hardware.launch.py")
-    elif total_found > 0:
+    elif found > 0:
         print("  ⚠️  Some motors missing — check wiring and CAN IDs")
     else:
         print("  ❌ No motors found — check power, CAN adapter, and wiring")

@@ -1,11 +1,10 @@
-"""ROS2 CAN bus node — single node managing all 12 motors across 2 CAN buses.
+"""ROS2 CAN bus node — single node managing all 12 motors on can0.
 
 Uses robstride_dynamics (Seeed shared library) via BipedMotorManager.
 Handles ankle parallel linkage transparently.
 
 Hardware layout:
-    can0 → Right leg (6 motors: R_hip_pitch, R_hip_roll, R_hip_yaw, R_knee, R_foot_pitch, R_foot_roll)
-    can1 → Left leg  (6 motors: L_hip_pitch, L_hip_roll, L_hip_yaw, L_knee, L_foot_pitch, L_foot_roll)
+    can0 → All 12 motors (Waveshare RS485 CAN HAT (B), MCP2515 on SPI0)
 
 Subscribes:
     /joint_commands   biped_msgs/MITCommandArray
@@ -22,7 +21,6 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import JointState
-from std_msgs.msg import String
 from biped_msgs.msg import MITCommand, MITCommandArray, MotorState, MotorStateArray
 
 from biped_driver.robstride_can import (
@@ -36,7 +34,7 @@ from biped_driver.robstride_can import (
 
 
 class CanBusNode(Node):
-    """Single ROS2 node controlling all RobStride motors on can0 + can1.
+    """Single ROS2 node controlling all RobStride motors on can0.
 
     Motor config comes from robot.yaml (or param strings as fallback).
     Ankle joints are transparently mapped through the parallel linkage
@@ -44,6 +42,10 @@ class CanBusNode(Node):
 
     The control loop groups joints by CAN bus so each bus's write+read
     cycles are batched together, avoiding unnecessary bus switching.
+
+    ESTOP behaviour: state_machine_node sends kp=0/kd=0 commands via
+    /joint_commands — motors go free. This node always runs the loop
+    and forwards whatever commands it receives.
     """
 
     def __init__(self):
@@ -53,26 +55,23 @@ class CanBusNode(Node):
         self.declare_parameter("robot_config", "")
         self.declare_parameter("calibration_file", "")
         self.declare_parameter("loop_rate", 50.0)
-        self.declare_parameter("can_backend", "socketcan")  # "socketcan" or "waveshare"
 
         # Motor config string fallback (comma-separated "name:id:type")
         self.declare_parameter("motor_config_can0", "")
-        self.declare_parameter("motor_config_can1", "")
 
         robot_config_path = str(self.get_parameter("robot_config").value)
         cal_file = str(self.get_parameter("calibration_file").value)
         self._rate = float(self.get_parameter("loop_rate").value)
-        self._backend = str(self.get_parameter("can_backend").value)
 
         # ── Build motor manager ─────────────────────────────────────
         offsets = self._load_calibration(cal_file)
 
         if robot_config_path:
             config = self._load_robot_yaml(robot_config_path)
-            self._mgr = BipedMotorManager.from_robot_yaml(config, offsets, backend=self._backend)
+            self._mgr = BipedMotorManager.from_robot_yaml(config, offsets)
         else:
             joints = self._parse_param_strings(offsets)
-            self._mgr = BipedMotorManager(joints, backend=self._backend)
+            self._mgr = BipedMotorManager(joints)
 
         self._last_commands: dict[str, MITCommand] = {}
         self._last_positions: dict[str, float] = {}  # last known motor positions (normal joints)
@@ -92,13 +91,13 @@ class CanBusNode(Node):
             MotorStateArray, "/motor_states", fast_qos)
         self._sub_commands = self.create_subscription(
             MITCommandArray, "/joint_commands", self._cmd_callback, 10)
-        self._sub_estop = self.create_subscription(
-            String, "/state_machine", self._fsm_callback, 10)
 
-        # ── Connect and start ───────────────────────────────────────
+        # ── Connect and enable ──────────────────────────────────────
         self._log_motor_map()
         self._mgr.connect_all()
         self._mgr.flush_all()
+        self._mgr.enable_all()
+        self.get_logger().info("All motors enabled in MIT mode.")
 
         self._timer = self.create_timer(1.0 / self._rate, self._loop)
         self.get_logger().info("CAN bus node ready.")
@@ -124,27 +123,25 @@ class CanBusNode(Node):
             return {}
 
     def _parse_param_strings(self, offsets: dict) -> list[JointConfig]:
-        """Fallback: parse motor_config_canX params ("name:id:type,...")."""
+        """Fallback: parse motor_config_can0 param ("name:id:type,...")."""
         joints = []
-        for bus in ("can0", "can1"):
-            param_name = f"motor_config_{bus}"
-            config_str = str(self.get_parameter(param_name).value)
-            if not config_str:
+        config_str = str(self.get_parameter("motor_config_can0").value)
+        if not config_str:
+            return joints
+        for entry in config_str.split(","):
+            entry = entry.strip()
+            if not entry:
                 continue
-            for entry in config_str.split(","):
-                entry = entry.strip()
-                if not entry:
-                    continue
-                parts = entry.split(":")
-                if len(parts) != 3:
-                    self.get_logger().error(f"Invalid motor entry: {entry}")
-                    continue
-                name, mid, mtype = parts[0].strip(), int(parts[1]), parts[2].strip()
-                offset = offsets.get(name, {}).get("offset", 0.0) if offsets else 0.0
-                model = f"rs-{mtype[2:].zfill(2)}" if mtype.startswith("RS") else mtype.lower()
-                joints.append(JointConfig(
-                    name=name, can_bus=bus, can_id=mid, model=model, offset=offset,
-                ))
+            parts = entry.split(":")
+            if len(parts) != 3:
+                self.get_logger().error(f"Invalid motor entry: {entry}")
+                continue
+            name, mid, mtype = parts[0].strip(), int(parts[1]), parts[2].strip()
+            offset = offsets.get(name, {}).get("offset", 0.0) if offsets else 0.0
+            model = f"rs-{mtype[2:].zfill(2)}" if mtype.startswith("RS") else mtype.lower()
+            joints.append(JointConfig(
+                name=name, can_bus="can0", can_id=mid, model=model, offset=offset,
+            ))
         return joints
 
     def _log_motor_map(self):
@@ -158,10 +155,10 @@ class CanBusNode(Node):
             self.get_logger().info(f"  {bus_name}: {motors_str}")
         self.get_logger().info(
             f"Total: {len(self._mgr.joints)} motors on "
-            f"{len(self._mgr._buses)} buses @ {self._rate} Hz")
+            f"{len(self._mgr._buses)} bus(es) @ {self._rate} Hz")
 
     def _build_bus_joint_order(self) -> list[list[str]]:
-        """Group joints by bus. Returns [[joints_on_bus0], [joints_on_bus1], ...].
+        """Group joints by bus. Returns [[joints_on_bus0], ...].
 
         Within each bus group, ankle pairs are kept adjacent (pitch before roll)
         and non-ankle joints are sorted alphabetically.
@@ -194,50 +191,18 @@ class CanBusNode(Node):
 
     # ── Command callback ────────────────────────────────────────────
 
-    _motors_disabled = False
-
-    def _fsm_callback(self, msg: String):
-        """Disable motors on ESTOP, re-enable on STAND."""
-        state = msg.data.strip().upper()
-        if state == "ESTOP" and not self._motors_disabled:
-            self.get_logger().info("ESTOP — disabling all motors")
-            self._mgr.disable_all()
-            self._motors_disabled = True
-            self._last_commands.clear()
-        elif state == "STAND" and self._motors_disabled:
-            self.get_logger().info("STAND — re-enabling motors")
-            self._mgr.enable_all()
-            self._motors_disabled = False
-
     def _cmd_callback(self, msg: MITCommandArray):
-        if self._motors_disabled:
-            return
         for cmd in msg.commands:
             if cmd.joint_name in self._mgr.joints:
                 self._last_commands[cmd.joint_name] = cmd
-
-    # ── Enable / Disable ────────────────────────────────────────────
-
-    def enable_all(self):
-        self.get_logger().info("Enabling all motors (MIT mode)...")
-        self._mgr.enable_all()
-        self.get_logger().info("All motors enabled.")
-
-    def disable_all(self):
-        self.get_logger().info("Disabling all motors...")
-        self._mgr.disable_all()
-        self.get_logger().info("All motors disabled.")
 
     # ── Main control loop ───────────────────────────────────────────
 
     def _loop(self):
         """50Hz: send MIT commands, read feedback, publish.
 
-        Skips entirely when motors are disabled (ESTOP).
+        Always runs. ESTOP = state_machine sends kp=0 → motors free.
         """
-        if self._motors_disabled:
-            return
-
         now = self.get_clock().now().to_msg()
         joint_msg = JointState()
         joint_msg.header.stamp = now
@@ -425,10 +390,6 @@ def main(args=None):
     rclpy.init(args=args)
     node = CanBusNode()
     try:
-        # Enable motors in MIT mode (zero-torque) — they'll be free to move
-        # but we get position feedback for the state_machine's soft start.
-        # Actual stiffness only applied when /joint_commands has kp > 0.
-        node.enable_all()
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass

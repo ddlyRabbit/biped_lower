@@ -55,20 +55,12 @@ class RobstrideBus:
         motors: Optional[dict[str, Motor]] = None,
         calibration: Optional[dict[str, dict]] = None,
         bitrate: int = 1_000_000,
-        backend: str = "socketcan",
     ):
-        """
-        Args:
-            channel: For socketcan: interface name (e.g. "can0").
-                     For waveshare: serial port (e.g. "/dev/ttyUSB0").
-            backend: "socketcan" (default) or "waveshare".
-        """
         self.channel = channel
         self.motors: dict[str, Motor] = motors or {}
         self.calibration = calibration or {}
         self.bitrate = bitrate
-        self.backend = backend
-        self._bus = None  # can.Bus or WaveshareCANBus
+        self._bus = None  # can.Bus
         # Host ID > all motor IDs for optimal CAN arbitration
         self.host_id = 0xFD  # 253, matching ARCHITECTURE.md
 
@@ -81,18 +73,11 @@ class RobstrideBus:
     def connect(self) -> None:
         if self.is_connected:
             raise RuntimeError(f"Already connected to {self.channel}")
-        if self.backend == "waveshare":
-            from .waveshare_bus import WaveshareCANBus
-            self._bus = WaveshareCANBus(
-                port=self.channel,
-                bitrate=self.bitrate,
-            )
-        else:
-            self._bus = can.interface.Bus(
-                interface="socketcan",
-                channel=self.channel,
-                bitrate=self.bitrate,
-            )
+        self._bus = can.interface.Bus(
+            interface="socketcan",
+            channel=self.channel,
+            bitrate=self.bitrate,
+        )
 
     def disconnect(self) -> None:
         if self._bus:

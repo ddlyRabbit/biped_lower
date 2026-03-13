@@ -1,63 +1,37 @@
-"""Hardware-only launch — IMU + CAN, no policy.
+"""Hardware-only launch — IMU + CAN + safety, no policy.
 
 For testing hardware before policy integration.
 
-Dual bus (MCP2515 HAT):
+Usage:
     ros2 launch biped_bringup hardware.launch.py
-
-Single bus (USB-CAN adapter):
-    ros2 launch biped_bringup hardware.launch.py bus_mode:=single
+    ros2 launch biped_bringup hardware.launch.py calibration_file:=calibration.yaml
 """
 
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
-# Fallback motor config strings
-CAN0_MOTORS = "R_hip_pitch:1:RS04,R_hip_roll:2:RS03,R_hip_yaw:3:RS03,R_knee:4:RS04,R_foot_pitch:5:RS02,R_foot_roll:6:RS02"
-CAN1_MOTORS = "L_hip_pitch:7:RS04,L_hip_roll:8:RS03,L_hip_yaw:9:RS03,L_knee:10:RS04,L_foot_pitch:11:RS02,L_foot_roll:12:RS02"
-ALL_MOTORS = CAN0_MOTORS + "," + CAN1_MOTORS
+ALL_MOTORS = (
+    "R_hip_pitch:1:RS04,R_hip_roll:2:RS03,R_hip_yaw:3:RS03,"
+    "R_knee:4:RS04,R_foot_pitch:5:RS02,R_foot_roll:6:RS02,"
+    "L_hip_pitch:7:RS04,L_hip_roll:8:RS03,L_hip_yaw:9:RS03,"
+    "L_knee:10:RS04,L_foot_pitch:11:RS02,L_foot_roll:12:RS02"
+)
 
 
-def launch_setup(context):
+def generate_launch_description():
     bringup_dir = get_package_share_directory('biped_bringup')
-    bus_mode = LaunchConfiguration('bus_mode').perform(context)
-    cal_file = LaunchConfiguration('calibration_file').perform(context)
+    default_robot_config = os.path.join(bringup_dir, 'config', 'robot.yaml')
 
-    if bus_mode == 'waveshare':
-        robot_config = os.path.join(bringup_dir, 'config', 'robot_waveshare.yaml')
-        motor_params = {
-            'robot_config': robot_config,
-            'calibration_file': cal_file,
-            'loop_rate': 50.0,
-            'can_backend': 'waveshare',
-        }
-    elif bus_mode == 'single':
-        robot_config = os.path.join(bringup_dir, 'config', 'robot_single_bus.yaml')
-        motor_params = {
-            'robot_config': robot_config,
-            'calibration_file': cal_file,
-            'loop_rate': 50.0,
-            'motor_config_can0': ALL_MOTORS,
-        }
-    else:
-        robot_config_override = LaunchConfiguration('robot_config').perform(context)
-        if robot_config_override:
-            robot_config = robot_config_override
-        else:
-            robot_config = os.path.join(bringup_dir, 'config', 'robot.yaml')
-        motor_params = {
-            'robot_config': robot_config,
-            'calibration_file': cal_file,
-            'loop_rate': 50.0,
-            'motor_config_can0': CAN0_MOTORS,
-            'motor_config_can1': CAN1_MOTORS,
-        }
+    return LaunchDescription([
+        DeclareLaunchArgument('calibration_file', default_value=''),
+        DeclareLaunchArgument('robot_config', default_value=default_robot_config),
+        DeclareLaunchArgument('max_pitch_deg', default_value='85.0'),
+        DeclareLaunchArgument('max_roll_deg', default_value='85.0'),
 
-    return [
         Node(
             package='biped_driver', executable='imu_node',
             name='imu_node', output='screen',
@@ -66,20 +40,19 @@ def launch_setup(context):
         Node(
             package='biped_driver', executable='can_bus_node',
             name='can_bus_node', output='screen',
-            parameters=[motor_params],
+            parameters=[{
+                'robot_config': LaunchConfiguration('robot_config'),
+                'calibration_file': LaunchConfiguration('calibration_file'),
+                'loop_rate': 50.0,
+                'motor_config_can0': ALL_MOTORS,
+            }],
         ),
         Node(
             package='biped_control', executable='safety_node',
             name='safety_node', output='screen',
+            parameters=[{
+                'max_pitch_deg': LaunchConfiguration('max_pitch_deg'),
+                'max_roll_deg': LaunchConfiguration('max_roll_deg'),
+            }],
         ),
-    ]
-
-
-def generate_launch_description():
-    return LaunchDescription([
-        DeclareLaunchArgument('bus_mode', default_value='dual',
-                              description='CAN bus mode: dual (MCP2515 HAT), single (slcand USB-CAN), or waveshare (serial USB-CAN-A)'),
-        DeclareLaunchArgument('calibration_file', default_value=''),
-        DeclareLaunchArgument('robot_config', default_value=''),
-        OpaqueFunction(function=launch_setup),
     ])
