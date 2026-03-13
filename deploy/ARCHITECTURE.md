@@ -311,43 +311,49 @@ Matches Isaac's `ImplicitActuator` PD control.
 
 ## Ankle Parallel Linkage
 
-Two RS02 motors per ankle, asymmetric rod lengths, U-joint to foot plate.
+Reference: [asimov-v0 ankle_mechanism.md](https://github.com/asimovinc/asimov-v0/blob/main/mechanical/ankle_mechanism.md)
+
+Two RS02 motors per ankle, U-joint to foot plate.  Motor A (upper, knee-side)
+and Motor B (lower, foot-side) have **inverted mounting**: positive rotation on
+A pushes its linkage UP, positive rotation on B pushes its linkage DOWN.
 
 **From Onshape CAD:**
-- Crank radius: 32.249 mm
-- Upper rod: 192 mm (knee-side motor = foot_pitch CAN ID)
-- Lower rod: 98 mm (foot-side motor = foot_roll CAN ID)
-- Foot attachment: ±31.398 mm lateral, 41.14 mm forward
+- Crank radius (r): 32.249 mm
+- Pivot-to-bar distance (d): 41.14 mm forward
+- Bar half-length (c/2): 31.398 mm lateral
+- K_P = d/r = 1.2757, K_R = (c/2)/r = 0.9736
 
 **Forward transform** (joint → motors):
 ```
-motor_upper = pitch_gain × pitch + roll_gain × roll    (pitch_gain = 1.2757)
-motor_lower = pitch_gain × pitch − roll_gain × roll    (roll_gain  = 0.9736)
+motor_A (upper) =  K_P × pitch − K_R × roll
+motor_B (lower) = −K_P × pitch − K_R × roll
 ```
 
 **Inverse transform** (motors → joint):
 ```
-foot_pitch = inv_pitch × (upper + lower)    (inv_pitch = 0.3919)
-foot_roll  = inv_roll  × (upper − lower)    (inv_roll  = 0.5136)
+foot_pitch =  (A − B) / (2 × K_P)
+foot_roll  = −(A + B) / (2 × K_R)
 ```
 
 Policy sees `foot_pitch` / `foot_roll` in joint-space. `can_bus_node` transparently
-transforms to/from motor-space via these linear gains.
+transforms to/from motor-space via the Asimov linkage equations.
 
 ---
 
 ## Soft Stops
 
-Every joint has a 2° (0.035 rad) buffer inside URDF limits. When a joint enters
-the buffer zone, a restoring spring torque is applied:
+Every motor has a 2° (0.035 rad) buffer inside its calibration limits.
+When a motor enters the buffer zone, a restoring spring torque is applied:
 
 ```
 τ_restore = Kp_softstop × min(penetration, buffer)
 Kp_softstop = 20 Nm/rad
 ```
 
-For normal joints: applied in `send_mit_command()` via `torque_ff`.
-For ankle joints: applied in joint-space (before linkage transform) by `can_bus_node._handle_ankle()`.
+All soft stops operate in **motor command-space** using limits from calibration
+data (not URDF).  For normal joints, motor command-space equals joint-space.
+For ankle motors, soft stops run in the post-linkage motor-space independently
+per motor.
 
 ---
 
@@ -357,7 +363,11 @@ For ankle joints: applied in joint-space (before linkage transform) by `can_bus_
 with zero torque in MIT mode and tracks raw encoder min/max as the user moves each joint.
 
 - **Normal joints:** `offset = encoder_min − URDF_lower_limit`
-- **Ankle joints:** `offset = encoder_min − motor_cmd_at_joint_min` (accounts for linkage)
+- **Ankle joints:** `offset = encoder_min − theoretical_cmd_at_encoder_min` (Asimov linkage)
+
+All motor command-space limits are derived from `motor_min` / `motor_max` in
+`calibration.yaml`.  URDF values are only used as a fallback when no calibration
+is loaded.
 
 Auto-marks joints ✅ when observed range matches expected range within 20%.
 Saves `calibration.yaml` with offsets and limits.

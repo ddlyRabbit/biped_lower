@@ -40,8 +40,8 @@ class CanBusNode(Node):
     Ankle joints are transparently mapped through the parallel linkage
     transform: policy sees foot_pitch/foot_roll, CAN sends motor_upper/lower.
 
-    The control loop groups joints by CAN bus so each bus's write+read
-    cycles are batched together, avoiding unnecessary bus switching.
+    All soft-stop and clamping logic operates in motor command-space
+    using calibration-derived limits.
 
     ESTOP behaviour: state_machine_node sends kp=0/kd=0 commands via
     /joint_commands — motors go free. This node always runs the loop
@@ -74,8 +74,10 @@ class CanBusNode(Node):
             self._mgr = BipedMotorManager(joints)
 
         self._last_commands: dict[str, MITCommand] = {}
-        self._last_positions: dict[str, float] = {}  # last known motor positions (normal joints)
-        self._last_joint_positions: dict[str, float] = {}  # joint-space positions (for ankle soft stops)
+        # Last known motor-space positions (used for soft-stop torque).
+        # For normal joints motor command-space = joint-space.
+        # For ankle motors this is the raw post-linkage motor position.
+        self._last_positions: dict[str, float] = {}
 
         # Pre-compute bus-grouped joint ordering for the control loop.
         # Within each bus, ankle pairs are grouped together.
@@ -229,19 +231,22 @@ class CanBusNode(Node):
         self._pub_motors.publish(motor_msg)
 
     def _handle_normal(self, name: str, joint_msg: JointState, motor_msg: MotorStateArray):
-        """Send/receive for a normal (non-ankle) joint."""
+        """Send/receive for a normal (non-ankle) joint.
+
+        send_mit_command handles clamping + soft-stop in motor
+        command-space (= joint-space for normal joints).
+        """
         cmd = self._last_commands.get(name)
         actual_pos = self._last_positions.get(name)
         fb = None
 
         try:
             if cmd:
-                pos = self._mgr.clamp(name, cmd.position)
                 self._mgr.send_mit_command(
-                    name, pos, cmd.kp, cmd.kd, cmd.velocity, cmd.torque_ff,
+                    name, cmd.position, cmd.kp, cmd.kd, cmd.velocity, cmd.torque_ff,
                     actual_pos=actual_pos)
             else:
-                # No command yet — zero stiffness, just read (soft stop still active)
+                # No command yet — zero stiffness, just read
                 self._mgr.send_mit_command(name, 0.0, 0.0, 0.0,
                                            actual_pos=actual_pos)
             fb = self._mgr.read_feedback(name)
@@ -262,56 +267,42 @@ class CanBusNode(Node):
     ):
         """Send/receive for an ankle pair with parallel linkage transform.
 
-        All clamping and soft stops happen in JOINT-SPACE (foot_pitch/roll)
-        BEFORE the linkage forward transform to motor-space.
+        Flow: policy joint-space → Asimov forward → motor-space soft-stop → CAN
+        Feedback: CAN → Asimov inverse → joint-space → /joint_states
 
-        Flow: policy joint-space → clamp → soft stop → linkage forward → motor CAN
+        All clamping and soft-stop happens in motor command-space using
+        calibration limits.  No joint-space clamping.
 
-        pitch_name → upper motor (knee-side CAN ID)
-        roll_name  → lower motor (foot-side CAN ID)
+        pitch_name → upper motor (knee-side CAN ID, motor A)
+        roll_name  → lower motor (foot-side CAN ID, motor B)
         """
         pitch_name, roll_name = pair
         pitch_cmd = self._last_commands.get(pitch_name)
         roll_cmd = self._last_commands.get(roll_name)
-
-        # Get last known joint-space positions for soft stop torque
-        # (stored from previous cycle's linkage inverse)
-        actual_pitch = self._last_joint_positions.get(pitch_name)
-        actual_roll = self._last_joint_positions.get(roll_name)
 
         fb_upper = None
         fb_lower = None
 
         try:
             if pitch_cmd and roll_cmd:
-                # 1. Clamp in joint-space (URDF limits)
-                pitch_pos = self._mgr.clamp_joint(pitch_name, pitch_cmd.position)
-                roll_pos = self._mgr.clamp_joint(roll_name, roll_cmd.position)
+                # 1. Asimov forward: joint-space → motor-space
+                motor_upper, motor_lower = ankle_command_to_motors(
+                    pitch_cmd.position, roll_cmd.position)
 
-                # 2. Soft stop clamp in joint-space (2° inside limits)
-                pitch_pos = self._mgr.softstop_clamp(pitch_name, pitch_pos)
-                roll_pos = self._mgr.softstop_clamp(roll_name, roll_pos)
-
-                # 3. Compute soft stop restoring torque in joint-space
-                tff = (pitch_cmd.torque_ff + roll_cmd.torque_ff) / 2.0
-                if actual_pitch is not None:
-                    tff += self._mgr.compute_softstop_torque(pitch_name, actual_pitch)
-                if actual_roll is not None:
-                    tff += self._mgr.compute_softstop_torque(roll_name, actual_roll)
-
-                # 4. Linkage forward: joint-space → motor-space
-                motor_upper, motor_lower = ankle_command_to_motors(pitch_pos, roll_pos)
-
-                # Average gains
+                # Average gains (both are RS02)
                 kp = (pitch_cmd.kp + roll_cmd.kp) / 2.0
                 kd = (pitch_cmd.kd + roll_cmd.kd) / 2.0
+                tff = (pitch_cmd.torque_ff + roll_cmd.torque_ff) / 2.0
 
-                # 5. Send motor commands (no additional soft stops in send_ankle_mit_command)
+                # 2. Send with per-motor soft-stop in motor command-space
                 self._mgr.send_ankle_mit_command(
-                    pitch_name, motor_upper, kp, kd, 0.0, tff)
+                    pitch_name, motor_upper, kp, kd, 0.0, tff,
+                    actual_pos=self._last_positions.get(pitch_name))
                 fb_upper = self._mgr.read_feedback(pitch_name)
+
                 self._mgr.send_ankle_mit_command(
-                    roll_name, motor_lower, kp, kd, 0.0, tff)
+                    roll_name, motor_lower, kp, kd, 0.0, tff,
+                    actual_pos=self._last_positions.get(roll_name))
                 fb_lower = self._mgr.read_feedback(roll_name)
             else:
                 # No commands — zero stiffness, just read
@@ -324,16 +315,18 @@ class CanBusNode(Node):
                 f"Ankle {pitch_name}/{roll_name}: CAN error: {e}",
                 throttle_duration_sec=1.0)
 
+        # Store raw motor positions for next cycle's soft-stop torque
+        if fb_upper is not None:
+            self._last_positions[pitch_name] = fb_upper.position
+        if fb_lower is not None:
+            self._last_positions[roll_name] = fb_lower.position
+
         if fb_upper is not None and fb_lower is not None:
-            # Inverse linkage: reconstruct foot pitch/roll from motor positions
+            # Asimov inverse: motor-space → joint-space for /joint_states
             foot_pitch, foot_roll = ankle_motors_to_feedback(
                 fb_upper.position, fb_lower.position)
             foot_pitch_vel, foot_roll_vel = ankle_motors_to_feedback(
                 fb_upper.velocity, fb_lower.velocity)
-
-            # Store joint-space positions for next cycle's soft stop computation
-            self._last_joint_positions[pitch_name] = foot_pitch
-            self._last_joint_positions[roll_name] = foot_roll
 
             for jname, pos, vel, fb in [
                 (pitch_name, foot_pitch, foot_pitch_vel, fb_upper),

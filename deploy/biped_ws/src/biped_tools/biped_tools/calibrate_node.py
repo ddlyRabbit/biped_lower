@@ -62,11 +62,11 @@ ANKLE_PITCH_MOTORS = set(ANKLE_PAIRS.keys())       # foot_pitch = upper motor
 ANKLE_ROLL_MOTORS = set(ANKLE_PAIRS.values())       # foot_roll = lower motor
 ANKLE_ALL = ANKLE_PITCH_MOTORS | ANKLE_ROLL_MOTORS
 
-# Expected motor range for each ankle motor:
-# motor_upper = pitch_gain * pitch + roll_gain * roll
-# motor_lower = pitch_gain * pitch - roll_gain * roll
-# Max motor excursion = pitch_gain * pitch_range + roll_gain * roll_range
-# (both motors see the same total range when exercising full pitch + roll)
+# Expected motor range for each ankle motor (Asimov convention):
+# motor_A (upper) =  K_P × pitch − K_R × roll
+# motor_B (lower) = −K_P × pitch − K_R × roll
+# Both motors have the same total range = K_P × pitch_range + K_R × roll_range
+# (the sign differences cancel when computing max − min)
 def _ankle_expected_motor_range(side_prefix):
     """Compute expected motor range for ankle motors from URDF joint limits."""
     pitch_urdf = URDF_LIMITS[f"{side_prefix}_foot_pitch"]
