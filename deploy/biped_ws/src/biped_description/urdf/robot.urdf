@@ -587,7 +587,7 @@
     </collision>
   </link>
   <!-- Joint from arb_uj111_cross_bearing to foot_6061 -->
-  <joint name="right_foot_roll_02" type="revolute">
+  <joint name="R_foot_roll" type="revolute">
     <origin xyz="-0 0.03 -0.03" rpy="-1.5708 -1.5708 0"/>
     <parent link="arb_uj111_cross_bearing"/>
     <child link="foot_6061"/>
@@ -595,7 +595,7 @@
     <limit effort="30" velocity="10" lower="-0.261799" upper="0.261799"/>
   </joint>
   <!-- Joint from kd_d_401r_6061 to arb_uj111_cross_bearing -->
-  <joint name="right_foot_pitch_02" type="revolute">
+  <joint name="R_foot_pitch" type="revolute">
     <origin xyz="0.288552 -0.0326806 0.008" rpy="0 0 -0"/>
     <parent link="kd_d_401r_6061"/>
     <child link="arb_uj111_cross_bearing"/>
@@ -603,7 +603,7 @@
     <limit effort="30" velocity="10" lower="-0.872665" upper="0.523599"/>
   </joint>
   <!-- Joint from kd_d_301r_6061 to kd_d_401r_6061 -->
-  <joint name="right_knee_04" type="revolute">
+  <joint name="R_knee" type="revolute">
     <origin xyz="0.022 0.021 -0.212" rpy="-0 1.5708 0"/>
     <parent link="kd_d_301r_6061"/>
     <child link="kd_d_401r_6061"/>
@@ -611,7 +611,7 @@
     <limit effort="100" velocity="10" lower="0" upper="2.70526"/>
   </joint>
   <!-- Joint from kd_d_201r_6061 to kd_d_301r_6061 -->
-  <joint name="right_hip_yaw_03" type="revolute">
+  <joint name="R_hip_yaw" type="revolute">
     <origin xyz="-0 -0.142 -0.02525" rpy="-1.5708 -0 -0"/>
     <parent link="kd_d_201r_6061"/>
     <child link="kd_d_301r_6061"/>
@@ -619,7 +619,7 @@
     <limit effort="50" velocity="10" lower="-1.5708" upper="1.5708"/>
   </joint>
   <!-- Joint from kd_d_102r_6061 to kd_d_201r_6061 -->
-  <joint name="right_hip_roll_03" type="revolute">
+  <joint name="R_hip_roll" type="revolute">
     <origin xyz="-0.02925 -0.03 -0.071" rpy="-0 -1.5708 0"/>
     <parent link="kd_d_102r_6061"/>
     <child link="kd_d_201r_6061"/>
@@ -627,7 +627,7 @@
     <limit effort="50" velocity="10" lower="-2.26893" upper="0.20944"/>
   </joint>
   <!-- Joint from assy_formfg___kd_b_102b_torso_btm to kd_d_102r_6061 -->
-  <joint name="right_hip_pitch_04" type="revolute">
+  <joint name="R_hip_pitch" type="revolute">
     <origin xyz="-0.000358761 -0.0547191 -0.0828599" rpy="1.5708 0 3.14159"/>
     <parent link="assy_formfg___kd_b_102b_torso_btm"/>
     <child link="kd_d_102r_6061"/>
@@ -1067,7 +1067,7 @@
     </collision>
   </link>
   <!-- Joint from arb_uj111_cross_bearing_2 to foot_6061_2 -->
-  <joint name="left_foot_roll_02" type="revolute">
+  <joint name="L_foot_roll" type="revolute">
     <origin xyz="0 0.03 -0.03" rpy="-1.5708 -1.5708 0"/>
     <parent link="arb_uj111_cross_bearing_2"/>
     <child link="foot_6061_2"/>
@@ -1075,7 +1075,7 @@
     <limit effort="30" velocity="10" lower="-0.261799" upper="0.261799"/>
   </joint>
   <!-- Joint from kd_d_401l_6061 to arb_uj111_cross_bearing_2 -->
-  <joint name="left_foot_pitch_02" type="revolute">
+  <joint name="L_foot_pitch" type="revolute">
     <origin xyz="-0.288552 0.0325676 0.05" rpy="0 0 3.14159"/>
     <parent link="kd_d_401l_6061"/>
     <child link="arb_uj111_cross_bearing_2"/>
@@ -1083,7 +1083,7 @@
     <limit effort="30" velocity="10" lower="-0.872665" upper="0.523599"/>
   </joint>
   <!-- Joint from kd_d_301l_6061 to kd_d_401l_6061 -->
-  <joint name="left_knee_04" type="revolute">
+  <joint name="L_knee" type="revolute">
     <origin xyz="0.02 -0.021 -0.212" rpy="0 -1.5708 0"/>
     <parent link="kd_d_301l_6061"/>
     <child link="kd_d_401l_6061"/>
@@ -1091,7 +1091,7 @@
     <limit effort="100" velocity="10" lower="0" upper="2.70526"/>
   </joint>
   <!-- Joint from rs03 to kd_d_301l_6061 -->
-  <joint name="left_hip_yaw_03" type="revolute">
+  <joint name="L_hip_yaw" type="revolute">
     <origin xyz="0 0.142 -0.02525" rpy="1.5708 0 -0"/>
     <parent link="rs03"/>
     <child link="kd_d_301l_6061"/>
@@ -1099,7 +1099,7 @@
     <limit effort="50" velocity="10" lower="-1.5708" upper="1.5708"/>
   </joint>
   <!-- Joint from kd_d_102l_6061 to rs03 -->
-  <joint name="left_hip_roll_03" type="revolute">
+  <joint name="L_hip_roll" type="revolute">
     <origin xyz="0.02925 -0.03 -0.071" rpy="3.14159 -1.5708 0"/>
     <parent link="kd_d_102l_6061"/>
     <child link="rs03"/>
@@ -1107,7 +1107,7 @@
     <limit effort="50" velocity="10" lower="-0.20944" upper="2.26893"/>
   </joint>
   <!-- Joint from assy_formfg___kd_b_102b_torso_btm to kd_d_102l_6061 -->
-  <joint name="left_hip_pitch_04" type="revolute">
+  <joint name="L_hip_pitch" type="revolute">
     <origin xyz="-0.000358761 0.0552809 -0.0828599" rpy="1.5708 0 -0"/>
     <parent link="assy_formfg___kd_b_102b_torso_btm"/>
     <child link="kd_d_102l_6061"/>
