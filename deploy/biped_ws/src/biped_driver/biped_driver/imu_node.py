@@ -1,12 +1,16 @@
 """BNO085 IMU Node — I2C, SH2 protocol via adafruit-circuitpython-bno08x.
 
 Publishes fused orientation (quaternion) from ROTATION_VECTOR,
-calibrated angular velocity from GYROSCOPE, and gravity from GRAVITY.
+calibrated angular velocity from GYROSCOPE, gravity from GRAVITY,
+and broadcasts odom→base_link TF from the orientation quaternion.
+
+IMU mounted with axes aligned to base_link: +X forward, +Y left, +Z up.
+No axis corrections needed — raw BNO085 data matches URDF/Isaac convention.
 
 Requires: adafruit-circuitpython-bno08x
   pip install adafruit-circuitpython-bno08x adafruit-blinka
 
-Hardware: BNO085 on I2C bus 1, address 0x4A (default).
+Hardware: BNO085 on I2C bus 1, address 0x4B, RST on GPIO 4.
   RPi 5 GPIO 2 (SDA) / GPIO 3 (SCL), 400kHz.
 """
 
@@ -26,16 +30,14 @@ class BNO085Node(Node):
     """ROS2 node for BNO085 IMU over I2C.
 
     Publishes:
-      /imu/data     sensor_msgs/Imu          @ rate_hz (default 100)
-      /imu/gravity  geometry_msgs/Vector3Stamped  @ rate_hz
+      /imu/data     sensor_msgs/Imu          @ 50 Hz
+      /imu/gravity  geometry_msgs/Vector3Stamped  @ 50 Hz
+    Broadcasts:
+      /tf  odom → base_link  @ 50 Hz (orientation from quaternion)
 
-    /imu/data contains:
-      - orientation: quaternion from SH2_ROTATION_VECTOR (fused, mag-corrected)
-      - angular_velocity: from SH2_GYROSCOPE_CALIBRATED (rad/s, body frame)
-      - linear_acceleration: zeros (gravity published separately)
-
-    /imu/gravity contains the raw gravity vector (m/s²) from SH2_GRAVITY.
-    Policy node normalizes this for projected_gravity observation.
+    /imu/data: quaternion (ROTATION_VECTOR), gyro (body-frame rad/s)
+    /imu/gravity: raw gravity vector (m/s²) — obs_builder negates+normalizes
+    /tf: base_link orientation in odom frame for Foxglove visualization
     """
 
     def __init__(self):
@@ -251,8 +253,8 @@ class BNO085Node(Node):
         self._pub_gravity.publish(grav_msg)
 
         # --- Broadcast TF: odom → base_link from IMU orientation ---
-        # Publish raw BNO085 quaternion — no corrections applied.
-        # TODO: determine correct transform after verifying IMU axes.
+        # BNO085 quaternion published directly — no mounting correction needed.
+        # IMU is mounted with axes aligned to base_link: +X fwd, +Y left, +Z up.
         t = TransformStamped()
         t.header.stamp = now
         t.header.frame_id = 'odom'

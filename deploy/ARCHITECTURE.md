@@ -10,7 +10,7 @@ ROS2 Jazzy · RPi 5 · SocketCAN `can0` · 12 RobStride motors · BNO085 IMU · 
 |-----------|--------|
 | Compute | RPi 5 (8 GB), Ubuntu 24.04 aarch64 |
 | CAN | Waveshare RS485 CAN HAT (B) — MCP2515/SPI0, `can0`, 1 Mbps |
-| IMU | BNO085 I2C bus 1, addr 0x4B, RST GPIO 4, 50 Hz |
+| IMU | BNO085 I2C bus 1, addr 0x4B, RST GPIO 4, 50 Hz, axes aligned to base_link |
 | Motors | 12× RobStride (4× RS04, 4× RS03, 4× RS02) on `can0` |
 | Policy | `student_flat.onnx` — MLP 45→128→128→128→12, ~0.5 ms |
 
@@ -101,6 +101,10 @@ biped_ws/src/
                  │  pitch/roll    │    │ IDLE→STAND→WALK   │
                  │  temp/faults   │    │ →ESTOP            │
                  └────────────────┘    └──────────────────┘
+
+ /tf (odom→base_link) ◀── imu_node (raw quaternion)
+ /tf (base_link→joints) ◀── robot_state_publisher ◀── /joint_states
+ /robot_description ◀── bringup.launch.py (URDF with meshes)
 ```
 
 All control loops run at **50 Hz**. Safety at 50 Hz, state publishing at 10 Hz.
@@ -258,9 +262,10 @@ MCP2515 TX buffer: 5-attempt retry with 0.5 ms backoff.
 
 | System | Convention |
 |--------|-----------|
-| URDF / Isaac | Z-up, +X forward |
-| BNO085 | Z-up, +X forward (mount X-axis forward) |
-| projected_gravity | `−gravity/‖g‖` → matches `quat_rotate_inverse(q, [0,0,−1])` |
+| URDF / Isaac | Z-up, +X forward, +Y left |
+| BNO085 (mounted) | +X forward, +Y left, +Z up — aligned to base_link, no corrections |
+| BNO085 quaternion | Sensor→Earth rotation, published raw as odom→base_link TF |
+| projected_gravity | `−gravity/‖g‖` → BNO085 (0,0,+9.81) upright → Isaac (0,0,−1) |
 | Motor positions | Radians, output shaft, absolute encoder |
 
 ---

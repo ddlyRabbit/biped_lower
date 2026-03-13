@@ -78,10 +78,12 @@ class ObsBuilder:
         # [0-2] base_ang_vel
         obs[0:3] = gyro
 
-        # [3-5] projected_gravity — MUST normalize to unit vector
-        # BNO085 gravity: (0, 0, +9.81) upright → normalized (0, 0, +1)
-        # Isaac Lab projected_gravity: quat_rotate_inverse(q, [0,0,-1]) → (0, 0, -1) upright
-        # Must NEGATE to match Isaac convention
+        # [3-5] projected_gravity — normalize to unit vector then negate.
+        # BNO085 SH2_GRAVITY reports acceleration due to gravity:
+        #   upright → (0, 0, +9.81)  (points up, towards sky)
+        # Isaac projected_gravity = quat_rotate_inverse(q, [0,0,-1]):
+        #   upright → (0, 0, -1)     (points down, gravity direction)
+        # Transform: proj_grav = -gravity / ||gravity||
         g_norm = np.linalg.norm(gravity)
         if g_norm > 0.1:
             obs[3:6] = -gravity / g_norm
