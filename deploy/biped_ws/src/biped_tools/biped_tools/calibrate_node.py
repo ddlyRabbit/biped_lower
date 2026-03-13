@@ -145,18 +145,22 @@ class CalibrateNode(Node):
         for _ in range(n_joints + 2):
             print()
 
-        # Non-blocking stdin: detect Enter while the read loop runs
+        # Non-blocking stdin: detect Enter while the read loop runs.
+        # Falls back to Ctrl+C if stdin is not a real terminal (e.g. ros2 launch).
         import select
-        import tty
-        import termios
-        old_settings = termios.tcgetattr(sys.stdin)
-        try:
+        has_tty = sys.stdin.isatty()
+        old_settings = None
+        if has_tty:
+            import tty
+            import termios
+            old_settings = termios.tcgetattr(sys.stdin)
             tty.setcbreak(sys.stdin.fileno())
+        try:
             user_done = False
 
             while not user_done:
-                # Check for Enter (non-blocking)
-                if select.select([sys.stdin], [], [], 0)[0]:
+                # Check for Enter (non-blocking) — only if stdin is a TTY
+                if has_tty and select.select([sys.stdin], [], [], 0)[0]:
                     ch = sys.stdin.read(1)
                     if ch in ('\n', '\r'):
                         user_done = True
@@ -223,25 +227,33 @@ class CalibrateNode(Node):
                     sys.stdout.write(f"\033[2K{line}\n")
 
                 sys.stdout.write(f"\033[2K\n")
+                prompt = "Press ENTER to save." if has_tty else "Ctrl+C to save."
                 sys.stdout.write(
-                    f"\033[2K  {n_done}/{n_joints} ✅  —  "
-                    f"Press ENTER to save calibration.\n")
+                    f"\033[2K  {n_done}/{n_joints} ✅  —  {prompt}\n")
                 sys.stdout.flush()
 
                 time.sleep(0.05)
 
         except KeyboardInterrupt:
-            print("\n\nAborted — calibration NOT saved.")
-            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
-            for name, _, _ in MOTOR_LIST:
-                try:
-                    bus.disable(name)
-                except Exception:
-                    pass
-            bus.disconnect()
-            return
+            if not has_tty:
+                # Non-TTY mode: Ctrl+C means "save and exit"
+                print("\n")
+            else:
+                print("\n\nAborted — calibration NOT saved.")
+                if old_settings:
+                    import termios
+                    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+                for name, _, _ in MOTOR_LIST:
+                    try:
+                        bus.disable(name)
+                    except Exception:
+                        pass
+                bus.disconnect()
+                return
         finally:
-            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+            if old_settings:
+                import termios
+                termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
 
         # Disable
         print("\nDisabling motors...")
