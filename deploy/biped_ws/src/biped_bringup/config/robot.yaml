@@ -8,7 +8,7 @@ can0:
     R_hip_pitch:   {id: 1,  type: RS04}
     R_hip_roll:    {id: 2,  type: RS03}
     R_hip_yaw:     {id: 3,  type: RS03}
-    R_knee:        {id: 4,  type: RS04}
+    R_knee:        {id: 4,  type: RS04, direction: -1}
     R_foot_pitch:  {id: 5,  type: RS02}
     R_foot_roll:   {id: 6,  type: RS02}
     L_hip_pitch:   {id: 7,  type: RS04}

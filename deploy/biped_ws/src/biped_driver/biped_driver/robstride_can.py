@@ -164,6 +164,7 @@ class JointConfig:
     can_id: int
     model: str            # "rs-02", "rs-03", "rs-04"
     offset: float = 0.0   # bus homing_offset (motor-space)
+    direction: int = 1    # +1 normal, -1 inverted motor
     is_ankle: bool = False
     # Motor command-space limits (from calibration, URDF fallback)
     motor_cmd_lo: float = -12.57
@@ -214,7 +215,7 @@ class BipedMotorManager:
                 model=j.model.lower(),
             )
             bus_calibration[j.can_bus][j.name] = {
-                "direction": 1,
+                "direction": j.direction,
                 "homing_offset": j.offset,
             }
             self._joint_to_bus[j.name] = j.can_bus
@@ -248,6 +249,10 @@ class BipedMotorManager:
                 motor_cmd_lo = -12.57
                 motor_cmd_hi = 12.57
 
+                # Motor direction: +1 = normal, -1 = encoder inverted.
+                # Specified in robot.yaml per motor.  Default +1.
+                direction = mcfg.get("direction", 1)
+
                 if offsets and name in offsets:
                     cal = offsets[name]
                     m_min = cal.get("motor_min", 0.0)
@@ -257,12 +262,25 @@ class BipedMotorManager:
                         is_upper = name in ANKLE_PITCH_MOTORS
                         cmd_at_min = ankle_motor_cmd_at_encoder_min(is_upper)
                         offset = m_min - cmd_at_min
+                    elif direction == -1:
+                        # Inverted motor: encoder decreases as joint increases.
+                        # offset = motor_max so that pos = -(encoder - motor_max)
+                        # At motor_max (URDF lower): pos = 0
+                        # At motor_min (URDF upper): pos = motor_max - motor_min
+                        offset = m_max
                     else:
-                        offset = cal.get("offset", 0.0)
+                        offset = cal.get("offset", m_min - urdf[0])
 
                     # Limits from calibration (motor command-space)
-                    motor_cmd_lo = m_min - offset
-                    motor_cmd_hi = m_max - offset
+                    if direction == -1:
+                        # pos = -(encoder - offset) = offset - encoder
+                        # At m_max: pos = offset - m_max (= 0 if offset = m_max)
+                        # At m_min: pos = offset - m_min (= motor range)
+                        motor_cmd_lo = -(m_max - offset)
+                        motor_cmd_hi = -(m_min - offset)
+                    else:
+                        motor_cmd_lo = m_min - offset
+                        motor_cmd_hi = m_max - offset
                 else:
                     # No calibration — URDF / theoretical fallback
                     if is_ankle:
@@ -281,6 +299,7 @@ class BipedMotorManager:
                     can_id=mcfg["id"],
                     model=f"rs-{mcfg['type'][2:].zfill(2)}",
                     offset=offset,
+                    direction=direction,
                     is_ankle=is_ankle,
                     motor_cmd_lo=motor_cmd_lo,
                     motor_cmd_hi=motor_cmd_hi,
