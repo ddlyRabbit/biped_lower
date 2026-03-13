@@ -27,8 +27,13 @@ def generate_launch_description():
     description_dir = get_package_share_directory('biped_description')
     default_robot_config = os.path.join(bringup_dir, 'config', 'robot.yaml')
     urdf_path = os.path.join(description_dir, 'urdf', 'robot.urdf')
+    meshes_dir = os.path.join(description_dir, 'meshes')
+    # Replace package:// with file:// so Foxglove can resolve mesh paths
     robot_description = ParameterValue(
-        Command(['cat ', urdf_path]), value_type=str)
+        Command([
+            'sed', ' ', 's|package://biped_description/meshes/|file://' + meshes_dir + '/|g',
+            ' ', urdf_path
+        ]), value_type=str)
 
     return LaunchDescription([
         DeclareLaunchArgument('calibration_file', default_value=''),
