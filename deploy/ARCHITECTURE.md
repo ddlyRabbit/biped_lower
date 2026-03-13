@@ -265,6 +265,117 @@ MCP2515 TX buffer: 5-attempt retry with 0.5 ms backoff.
 
 ---
 
+## New Robot: Zero to Walk
+
+### 1. Hardware Setup
+```bash
+# Flash RPi 5 with Ubuntu 24.04 + ROS2 Jazzy
+# Wire: CAN HAT on SPI0, BNO085 on I2C1 (addr 0x4B, RST→GPIO4)
+# Connect all 12 motors to can0, power 48V
+
+# Add to /boot/firmware/config.txt:
+dtparam=spi=on
+dtoverlay=mcp2515-can0,oscillator=12000000,interrupt=25
+# Reboot
+```
+
+### 2. Clone & Build
+```bash
+git clone git@github.com:ddlyRabbit/biped_lower.git ~/biped_lower
+cd ~/biped_lower/deploy/biped_ws
+sudo apt install ros-jazzy-foxglove-bridge ros-jazzy-robot-state-publisher
+pip install adafruit-circuitpython-bno08x adafruit-blinka onnxruntime
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install
+# Create setup_biped.bash (see Workspace Setup below)
+```
+
+### 3. CAN + Motor Scan
+```bash
+cd ~/biped_lower/deploy
+./scripts/setup_can.sh              # run every boot
+python3 scripts/scan_motors.py      # verify all 12 respond
+```
+
+### 4. Calibrate
+```bash
+source ~/biped_lower/deploy/biped_ws/setup_biped.bash
+ros2 launch biped_bringup calibrate.launch.py
+# Move each joint to both mechanical stops
+# ✅ ticks are indicative (5% threshold) — press Enter when done
+# Saves calibration.yaml
+```
+
+### 5. Set Motor Directions
+```bash
+# Terminal 1: launch hardware (or full bringup) + Foxglove
+ros2 launch biped_bringup bringup.launch.py \
+  calibration_file:=$(pwd)/calibration.yaml \
+  onnx_model:=~/biped_lower/deploy/student_flat.onnx \
+  gain_scale:=0.3
+
+# Terminal 2: Foxglove
+source ~/biped_lower/deploy/biped_ws/setup_biped.bash
+ros2 launch foxglove_bridge foxglove_bridge_launch.xml
+# Connect Foxglove desktop to ws://<pi-ip>:8765
+
+# Terminal 3: direction setup
+python3 ~/biped_lower/deploy/scripts/setup_directions.py
+# For each joint: move by hand, check Foxglove, flip if inverted
+# For ankles: tested as pairs (upper/lower coupled)
+# Saves direction to calibration.yaml — restart bringup to apply
+```
+
+### 6. Verify Hardware
+```bash
+ros2 launch biped_bringup hardware.launch.py \
+  calibration_file:=$(pwd)/calibration.yaml
+# Check in another terminal:
+ros2 topic echo /joint_states --qos-reliability best_effort --once
+ros2 topic echo /imu/data --qos-reliability best_effort --once
+ros2 topic echo /safety/status --qos-reliability best_effort --once
+```
+
+### 7. Suspended Test (robot hanging)
+```bash
+ros2 launch biped_bringup bringup.launch.py \
+  calibration_file:=$(pwd)/calibration.yaml \
+  onnx_model:=~/biped_lower/deploy/student_flat.onnx \
+  gain_scale:=0.3
+
+# Start standing (2s soft start):
+ros2 topic pub --once /state_command std_msgs/String "data: START"
+# Robot moves to default pose. Increase gains if needed:
+ros2 param set /policy_node gain_scale 0.5
+```
+
+### 8. Walk (suspended)
+```bash
+ros2 topic pub --once /state_command std_msgs/String "data: WALK"
+ros2 topic pub --rate 10 /cmd_vel geometry_msgs/msg/Twist \
+  '{linear: {x: 0.3}}'
+# Legs should show alternating swing motions
+```
+
+### 9. Ground Test
+```bash
+# Same as above but: gain_scale:=0.7, then 1.0
+# Place robot on ground, START → WALK
+# E-stop anytime:
+ros2 topic pub --once /state_command std_msgs/String "data: ESTOP"
+```
+
+### Gain Ladder
+
+| Scale | Use |
+|-------|-----|
+| 0.3 | First suspended test |
+| 0.5 | Suspended walking |
+| 0.7 | Ground standing |
+| 1.0 | Full sim-matched gains |
+
+---
+
 ## Workspace Setup (RPi)
 
 ```bash
