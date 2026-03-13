@@ -126,6 +126,7 @@ class BNO085Node(Node):
 
             i2c = busio.I2C(board.SCL, board.SDA, frequency=400_000)
             self._bno = BNO08X_I2C(i2c, address=self._addr, debug=False)
+            self._bno._debug = False  # force off — some lib versions ignore constructor arg
 
             # Enable reports with retry (sensor may need time after reset)
 

@@ -246,9 +246,8 @@ class CanBusNode(Node):
                     name, cmd.position, cmd.kp, cmd.kd, cmd.velocity, cmd.torque_ff,
                     actual_pos=actual_pos)
             else:
-                # No command yet — zero stiffness, just read
-                self._mgr.send_mit_command(name, 0.0, 0.0, 0.0,
-                                           actual_pos=actual_pos)
+                # No command yet — truly zero torque (no soft stops)
+                self._mgr.send_mit_command(name, 0.0, 0.0, 0.0)
             fb = self._mgr.read_feedback(name)
         except Exception as e:
             self.get_logger().warn(
