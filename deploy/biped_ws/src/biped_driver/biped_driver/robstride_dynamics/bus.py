@@ -119,12 +119,15 @@ class RobstrideBus:
             dlc=len(data),
             data=data,
         )
-        try:
-            self._bus.send(frame)
-        except can.CanOperationError:
-            # TX buffer full — wait briefly and retry once
-            time.sleep(0.001)
-            self._bus.send(frame)
+        for attempt in range(5):
+            try:
+                self._bus.send(frame)
+                return
+            except can.CanOperationError:
+                # TX buffer full — MCP2515 has only 3 TX slots
+                time.sleep(0.0005 * (attempt + 1))  # 0.5ms, 1ms, 1.5ms...
+        # Last attempt without catch
+        self._bus.send(frame)
 
     def receive(self, timeout: float = 0.05) -> Optional[tuple[int, int, int, bytes]]:
         """Returns (comm_type, extra_data, host_id, data) or None."""
@@ -225,6 +228,7 @@ class RobstrideBus:
 
         data = struct.pack(">HHHH", pos_u16, vel_u16, kp_u16, kd_u16)
         self.transmit(CommunicationType.OPERATION_CONTROL, trq_u16, m.id, data)
+        time.sleep(0.0002)  # 0.2ms — let MCP2515 SPI transfer complete before next op
 
     def read_operation_frame(
         self, motor_name: str, timeout: float = 0.01
