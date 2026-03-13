@@ -251,9 +251,8 @@ class BNO085Node(Node):
         self._pub_gravity.publish(grav_msg)
 
         # --- Broadcast TF: odom → base_link from IMU orientation ---
-        # BNO085 is mounted 180° rotated around Y relative to base_link.
-        # Compensate by negating X and Z quaternion components, which is
-        # equivalent to q_baselink = q_imu * Rot(Y, 180°)^{-1}.
+        # Publish raw BNO085 quaternion — no corrections applied.
+        # TODO: determine correct transform after verifying IMU axes.
         t = TransformStamped()
         t.header.stamp = now
         t.header.frame_id = 'odom'
@@ -261,10 +260,10 @@ class BNO085Node(Node):
         t.transform.translation.x = 0.0
         t.transform.translation.y = 0.0
         t.transform.translation.z = 0.0
-        t.transform.rotation.x = -self._last_quat[0]
-        t.transform.rotation.y =  self._last_quat[1]
-        t.transform.rotation.z = -self._last_quat[2]
-        t.transform.rotation.w =  self._last_quat[3]
+        t.transform.rotation.x = self._last_quat[0]
+        t.transform.rotation.y = self._last_quat[1]
+        t.transform.rotation.z = self._last_quat[2]
+        t.transform.rotation.w = self._last_quat[3]
         self._tf_broadcaster.sendTransform(t)
 
         # Periodic diagnostics (every ~200s at 50Hz)
