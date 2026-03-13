@@ -261,8 +261,10 @@ class BNO085Node(Node):
         t.transform.translation.x = 0.0
         t.transform.translation.y = 0.0
         t.transform.translation.z = 0.0
+        # BNO085 ROTATION_VECTOR gives sensor→Earth rotation.
+        # TF odom→base_link needs the conjugate (Earth→base_link).
         t.transform.rotation.x = -self._last_quat[0]
-        t.transform.rotation.y =  self._last_quat[1]
+        t.transform.rotation.y = -self._last_quat[1]
         t.transform.rotation.z = -self._last_quat[2]
         t.transform.rotation.w =  self._last_quat[3]
         self._tf_broadcaster.sendTransform(t)
