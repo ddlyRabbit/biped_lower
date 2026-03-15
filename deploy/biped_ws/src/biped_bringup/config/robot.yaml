@@ -1,6 +1,6 @@
 # Biped Robot Motor Configuration
-# All 12 motors on single CAN bus (can0) via Waveshare RS485 CAN HAT (B)
-# MCP2515 on SPI0, SocketCAN interface
+# Dual CAN bus via Waveshare 2-CH CAN HAT (MCP2515 × 2)
+# can0: Right leg (SPI0 CE1), can1: Left leg (SPI0 CE0)
 
 can0:
   interface: can0
@@ -11,6 +11,10 @@ can0:
     R_knee:        {id: 4,  type: RS04}
     R_foot_pitch:  {id: 5,  type: RS02}
     R_foot_roll:   {id: 6,  type: RS02}
+
+can1:
+  interface: can1
+  motors:
     L_hip_pitch:   {id: 7,  type: RS04}
     L_hip_roll:    {id: 8,  type: RS03}
     L_hip_yaw:     {id: 9,  type: RS03}

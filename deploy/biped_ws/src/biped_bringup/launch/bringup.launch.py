@@ -14,9 +14,11 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
-ALL_MOTORS = (
+CAN0_MOTORS = (  # Right leg
     "R_hip_pitch:1:RS04,R_hip_roll:2:RS03,R_hip_yaw:3:RS03,"
-    "R_knee:4:RS04,R_foot_pitch:5:RS02,R_foot_roll:6:RS02,"
+    "R_knee:4:RS04,R_foot_pitch:5:RS02,R_foot_roll:6:RS02"
+)
+CAN1_MOTORS = (  # Left leg
     "L_hip_pitch:7:RS04,L_hip_roll:8:RS03,L_hip_yaw:9:RS03,"
     "L_knee:10:RS04,L_foot_pitch:11:RS02,L_foot_roll:12:RS02"
 )
@@ -53,7 +55,7 @@ def generate_launch_description():
             parameters=[{'rate_hz': 50.0, 'i2c_address': 75, 'reset_pin': 4}],
         ),
 
-        # CAN bus — all 12 motors on can0
+        # CAN bus — right leg on can0, left leg on can1
         Node(
             package='biped_driver', executable='can_bus_node',
             name='can_bus_node', output='screen',
@@ -61,7 +63,7 @@ def generate_launch_description():
                 'robot_config': LaunchConfiguration('robot_config'),
                 'calibration_file': LaunchConfiguration('calibration_file'),
                 'loop_rate': 50.0,
-                'motor_config_can0': ALL_MOTORS,
+                'motor_config_can0': '',
             }],
         ),
 
