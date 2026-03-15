@@ -14,15 +14,6 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
-CAN0_MOTORS = (  # Right leg
-    "R_hip_pitch:1:RS04,R_hip_roll:2:RS03,R_hip_yaw:3:RS03,"
-    "R_knee:4:RS04,R_foot_pitch:5:RS02,R_foot_roll:6:RS02"
-)
-CAN1_MOTORS = (  # Left leg
-    "L_hip_pitch:7:RS04,L_hip_roll:8:RS03,L_hip_yaw:9:RS03,"
-    "L_knee:10:RS04,L_foot_pitch:11:RS02,L_foot_roll:12:RS02"
-)
-
 
 def generate_launch_description():
     bringup_dir = get_package_share_directory('biped_bringup')
@@ -41,7 +32,7 @@ def generate_launch_description():
         DeclareLaunchArgument('max_pitch_deg', default_value='85.0'),
         DeclareLaunchArgument('max_roll_deg', default_value='85.0'),
 
-        # Robot description
+        # Robot description (URDF → /tf, /tf_static, /robot_description)
         Node(
             package='robot_state_publisher', executable='robot_state_publisher',
             name='robot_state_publisher', output='screen',
@@ -55,7 +46,7 @@ def generate_launch_description():
             parameters=[{'rate_hz': 50.0, 'i2c_address': 75, 'reset_pin': 4}],
         ),
 
-        # CAN bus — right leg on can0, left leg on can1
+        # CAN bus — motor config from robot.yaml
         Node(
             package='biped_driver', executable='can_bus_node',
             name='can_bus_node', output='screen',
@@ -63,7 +54,6 @@ def generate_launch_description():
                 'robot_config': LaunchConfiguration('robot_config'),
                 'calibration_file': LaunchConfiguration('calibration_file'),
                 'loop_rate': 50.0,
-                'motor_config_can0': '',
             }],
         ),
 
@@ -74,7 +64,6 @@ def generate_launch_description():
             parameters=[{
                 'max_pitch_deg': LaunchConfiguration('max_pitch_deg'),
                 'max_roll_deg': LaunchConfiguration('max_roll_deg'),
-                
             }],
         ),
 
