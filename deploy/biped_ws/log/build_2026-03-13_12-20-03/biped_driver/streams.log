@@ -1,0 +1,27 @@
+[1.726s] Invoking command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_driver': CMAKE_PREFIX_PATH=/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs LD_LIBRARY_PATH=/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib:${LD_LIBRARY_PATH} PKG_CONFIG_PATH=/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/aarch64-linux-gnu/pkgconfig:/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/pkgconfig PYTHONPATH=/home/roy/biped_lower/deploy/biped_ws/build/biped_driver/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/roy/biped_lower/deploy/biped_ws/install/biped_driver/lib/python3.12/site-packages:/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages:${PYTHONPATH} ROS_PACKAGE_PATH=/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/roy/biped_lower/deploy/biped_ws/build/biped_driver/build --no-deps symlink_data
+[2.291s] running develop
+[2.547s] running egg_info
+[2.547s] creating biped_driver.egg-info
+[2.572s] writing biped_driver.egg-info/PKG-INFO
+[2.575s] writing dependency_links to biped_driver.egg-info/dependency_links.txt
+[2.575s] writing entry points to biped_driver.egg-info/entry_points.txt
+[2.575s] writing requirements to biped_driver.egg-info/requires.txt
+[2.575s] writing top-level names to biped_driver.egg-info/top_level.txt
+[2.575s] writing manifest file 'biped_driver.egg-info/SOURCES.txt'
+[2.627s] reading manifest file 'biped_driver.egg-info/SOURCES.txt'
+[2.628s] writing manifest file 'biped_driver.egg-info/SOURCES.txt'
+[2.658s] running build_ext
+[2.659s] Creating /home/roy/biped_lower/deploy/biped_ws/install/biped_driver/lib/python3.12/site-packages/biped-driver.egg-link (link to .)
+[2.661s] Installing can_bus_node script to /home/roy/biped_lower/deploy/biped_ws/install/biped_driver/lib/biped_driver
+[2.661s] Installing imu_node script to /home/roy/biped_lower/deploy/biped_ws/install/biped_driver/lib/biped_driver
+[2.661s] 
+[2.661s] Installed /home/roy/biped_lower/deploy/biped_ws/build/biped_driver
+[2.663s] running symlink_data
+[2.663s] creating /home/roy/biped_lower/deploy/biped_ws/install/biped_driver/share/ament_index
+[2.663s] creating /home/roy/biped_lower/deploy/biped_ws/install/biped_driver/share/ament_index/resource_index
+[2.663s] creating /home/roy/biped_lower/deploy/biped_ws/install/biped_driver/share/ament_index/resource_index/packages
+[2.663s] symbolically linking /home/roy/biped_lower/deploy/biped_ws/build/biped_driver/resource/biped_driver -> /home/roy/biped_lower/deploy/biped_ws/install/biped_driver/share/ament_index/resource_index/packages
+[2.663s] symbolically linking /home/roy/biped_lower/deploy/biped_ws/build/biped_driver/package.xml -> /home/roy/biped_lower/deploy/biped_ws/install/biped_driver/share/biped_driver
+[2.663s] creating /home/roy/biped_lower/deploy/biped_ws/install/biped_driver/share/biped_driver/launch
+[2.663s] symbolically linking /home/roy/biped_lower/deploy/biped_ws/build/biped_driver/launch/imu_test.launch.py -> /home/roy/biped_lower/deploy/biped_ws/install/biped_driver/share/biped_driver/launch
+[2.781s] Invoked command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_driver' returned '0': CMAKE_PREFIX_PATH=/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs LD_LIBRARY_PATH=/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib:${LD_LIBRARY_PATH} PKG_CONFIG_PATH=/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/aarch64-linux-gnu/pkgconfig:/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/pkgconfig PYTHONPATH=/home/roy/biped_lower/deploy/biped_ws/build/biped_driver/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/roy/biped_lower/deploy/biped_ws/install/biped_driver/lib/python3.12/site-packages:/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages:${PYTHONPATH} ROS_PACKAGE_PATH=/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/roy/biped_lower/deploy/biped_ws/build/biped_driver/build --no-deps symlink_data

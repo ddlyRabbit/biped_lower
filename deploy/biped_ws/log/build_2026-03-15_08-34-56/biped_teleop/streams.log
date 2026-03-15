@@ -1,0 +1,17 @@
+[2.062s] Invoking command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_teleop': PYTHONPATH=/home/roy/biped_lower/deploy/biped_ws/build/biped_teleop/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/roy/biped_lower/deploy/biped_ws/install/biped_teleop/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/roy/biped_lower/deploy/biped_ws/build/biped_teleop/build --no-deps symlink_data
+[2.663s] running develop
+[3.076s] running egg_info
+[3.100s] writing biped_teleop.egg-info/PKG-INFO
+[3.101s] writing dependency_links to biped_teleop.egg-info/dependency_links.txt
+[3.103s] writing entry points to biped_teleop.egg-info/entry_points.txt
+[3.104s] writing requirements to biped_teleop.egg-info/requires.txt
+[3.105s] writing top-level names to biped_teleop.egg-info/top_level.txt
+[3.192s] reading manifest file 'biped_teleop.egg-info/SOURCES.txt'
+[3.195s] writing manifest file 'biped_teleop.egg-info/SOURCES.txt'
+[3.241s] running build_ext
+[3.241s] Creating /home/roy/biped_lower/deploy/biped_ws/install/biped_teleop/lib/python3.12/site-packages/biped-teleop.egg-link (link to .)
+[3.243s] Installing keyboard_teleop script to /home/roy/biped_lower/deploy/biped_ws/install/biped_teleop/lib/biped_teleop
+[3.244s] 
+[3.244s] Installed /home/roy/biped_lower/deploy/biped_ws/build/biped_teleop
+[3.244s] running symlink_data
+[3.416s] Invoked command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_teleop' returned '0': PYTHONPATH=/home/roy/biped_lower/deploy/biped_ws/build/biped_teleop/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/roy/biped_lower/deploy/biped_ws/install/biped_teleop/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/roy/biped_lower/deploy/biped_ws/build/biped_teleop/build --no-deps symlink_data

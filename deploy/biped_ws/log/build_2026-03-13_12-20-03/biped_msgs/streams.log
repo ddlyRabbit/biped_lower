@@ -1,0 +1,371 @@
+[0.024s] Invoking command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_msgs': /usr/bin/cmake /home/roy/biped_lower/deploy/biped_ws/src/biped_msgs -DCATKIN_INSTALL_INTO_PREFIX_ROOT=0 -DCATKIN_SYMLINK_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs
+[0.473s] -- The C compiler identification is GNU 13.3.0
+[0.473s] -- The CXX compiler identification is GNU 13.3.0
+[0.473s] -- Detecting C compiler ABI info
+[0.639s] -- Detecting C compiler ABI info - done
+[0.658s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.661s] -- Detecting C compile features
+[0.663s] -- Detecting C compile features - done
+[0.676s] -- Detecting CXX compiler ABI info
+[0.926s] -- Detecting CXX compiler ABI info - done
+[0.944s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.945s] -- Detecting CXX compile features
+[0.949s] -- Detecting CXX compile features - done
+[0.950s] -- Found ament_cmake: 2.5.5 (/opt/ros/jazzy/share/ament_cmake/cmake)
+[1.238s] -- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter 
+[1.433s] -- Found rosidl_default_generators: 1.6.0 (/opt/ros/jazzy/share/rosidl_default_generators/cmake)
+[1.433s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[1.480s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[1.551s] -- Found rosidl_adapter: 4.6.7 (/opt/ros/jazzy/share/rosidl_adapter/cmake)
+[1.554s] -- Found std_msgs: 5.3.6 (/opt/ros/jazzy/share/std_msgs/cmake)
+[1.648s] -- Found geometry_msgs: 5.3.6 (/opt/ros/jazzy/share/geometry_msgs/cmake)
+[2.940s] -- Found ament_cmake_ros: 0.12.0 (/opt/ros/jazzy/share/ament_cmake_ros/cmake)
+[3.910s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[5.276s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[5.284s] -- Found python_cmake_module: 0.11.1 (/opt/ros/jazzy/share/python_cmake_module/cmake)
+[5.563s] -- Found PythonExtra: /usr/bin/python3  
+[6.414s] -- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter Development NumPy Development.Module Development.Embed 
+[6.543s] -- Configuring done (6.5s)
+[6.619s] -- Generating done (0.1s)
+[6.645s] CMake Warning:
+[6.645s]   Manually-specified variables were not used by the project:
+[6.645s] 
+[6.645s]     CATKIN_INSTALL_INTO_PREFIX_ROOT
+[6.645s]     CATKIN_SYMLINK_INSTALL
+[6.646s] 
+[6.646s] 
+[6.646s] -- Build files have been written to: /home/roy/biped_lower/deploy/biped_ws/build/biped_msgs
+[6.655s] Invoked command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_msgs' returned '0': /usr/bin/cmake /home/roy/biped_lower/deploy/biped_ws/src/biped_msgs -DCATKIN_INSTALL_INTO_PREFIX_ROOT=0 -DCATKIN_SYMLINK_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs
+[6.657s] Invoking command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_msgs': /usr/bin/cmake --build /home/roy/biped_lower/deploy/biped_ws/build/biped_msgs -- -j4 -l4
+[6.769s] [  1%] Generating type hashes for ROS interfaces
+[7.361s] [  1%] Built target biped_msgs__rosidl_generator_type_description
+[7.422s] [  1%] Built target ament_cmake_python_copy_biped_msgs
+[7.449s] [  2%] Generating C code for ROS interfaces
+[8.912s] [  4%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/mit_command__description.c.o
+[9.034s] [  5%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/mit_command__functions.c.o
+[9.120s] [  6%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/mit_command__type_support.c.o
+[9.198s] [  8%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/mit_command_array__description.c.o
+[9.288s] [  9%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/mit_command_array__functions.c.o
+[9.438s] [ 10%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/mit_command_array__type_support.c.o
+[9.503s] [ 12%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/motor_state__description.c.o
+[9.579s] [ 13%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/motor_state__functions.c.o
+[9.673s] [ 14%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/motor_state__type_support.c.o
+[9.740s] [ 16%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/motor_state_array__description.c.o
+[9.822s] [ 17%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/motor_state_array__functions.c.o
+[9.918s] [ 18%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/motor_state_array__type_support.c.o
+[9.981s] [ 20%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/robot_state__description.c.o
+[10.060s] [ 21%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/robot_state__functions.c.o
+[10.186s] [ 22%] Building C object CMakeFiles/biped_msgs__rosidl_generator_c.dir/rosidl_generator_c/biped_msgs/msg/detail/robot_state__type_support.c.o
+[10.265s] [ 24%] Linking C shared library libbiped_msgs__rosidl_generator_c.so
+[10.368s] [ 24%] Built target biped_msgs__rosidl_generator_c
+[10.669s] running egg_info
+[10.670s] creating biped_msgs.egg-info
+[10.704s] writing biped_msgs.egg-info/PKG-INFO
+[10.704s] writing dependency_links to biped_msgs.egg-info/dependency_links.txt
+[10.704s] writing top-level names to biped_msgs.egg-info/top_level.txt
+[10.704s] writing manifest file 'biped_msgs.egg-info/SOURCES.txt'
+[10.780s] reading manifest file 'biped_msgs.egg-info/SOURCES.txt'
+[10.781s] writing manifest file 'biped_msgs.egg-info/SOURCES.txt'
+[10.869s] [ 24%] Built target ament_cmake_python_build_biped_msgs_egg
+[10.901s] [ 25%] Generating C introspection for ROS interfaces
+[11.702s] [ 27%] Building C object CMakeFiles/biped_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/biped_msgs/msg/detail/mit_command__type_support.c.o
+[11.772s] [ 28%] Building C object CMakeFiles/biped_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/biped_msgs/msg/detail/mit_command_array__type_support.c.o
+[11.862s] [ 29%] Building C object CMakeFiles/biped_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/biped_msgs/msg/detail/motor_state__type_support.c.o
+[11.940s] [ 31%] Building C object CMakeFiles/biped_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/biped_msgs/msg/detail/motor_state_array__type_support.c.o
+[12.033s] [ 32%] Building C object CMakeFiles/biped_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/biped_msgs/msg/detail/robot_state__type_support.c.o
+[12.219s] [ 33%] Linking C shared library libbiped_msgs__rosidl_typesupport_introspection_c.so
+[12.284s] [ 33%] Built target biped_msgs__rosidl_typesupport_introspection_c
+[12.301s] [ 35%] Generating C type support dispatch for ROS interfaces
+[12.970s] [ 36%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/biped_msgs/msg/mit_command__type_support.cpp.o
+[13.053s] [ 37%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/biped_msgs/msg/mit_command_array__type_support.cpp.o
+[13.136s] [ 39%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/biped_msgs/msg/motor_state__type_support.cpp.o
+[13.208s] [ 40%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/biped_msgs/msg/motor_state_array__type_support.cpp.o
+[13.292s] [ 41%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/biped_msgs/msg/robot_state__type_support.cpp.o
+[13.368s] [ 43%] Linking CXX shared library libbiped_msgs__rosidl_typesupport_c.so
+[13.498s] [ 43%] Built target biped_msgs__rosidl_typesupport_c
+[13.517s] [ 44%] Generating C type support for eProsima Fast-RTPS
+[14.485s] [ 45%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/biped_msgs/msg/detail/mit_command__type_support_c.cpp.o
+[15.346s] [ 47%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/biped_msgs/msg/detail/motor_state__type_support_c.cpp.o
+[16.234s] [ 48%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/biped_msgs/msg/detail/motor_state_array__type_support_c.cpp.o
+[17.267s] [ 50%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/biped_msgs/msg/detail/robot_state__type_support_c.cpp.o
+[18.193s] [ 51%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/biped_msgs/msg/detail/mit_command_array__type_support_c.cpp.o
+[18.986s] [ 52%] Linking CXX shared library libbiped_msgs__rosidl_typesupport_fastrtps_c.so
+[19.250s] [ 52%] Built target biped_msgs__rosidl_typesupport_fastrtps_c
+[19.304s] [ 54%] Generating C++ code for ROS interfaces
+[20.453s] [ 54%] Built target biped_msgs__cpp
+[20.477s] [ 55%] Generating C++ type support dispatch for ROS interfaces
+[21.206s] [ 56%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/biped_msgs/msg/mit_command__type_support.cpp.o
+[21.752s] [ 58%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/biped_msgs/msg/mit_command_array__type_support.cpp.o
+[22.375s] [ 59%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/biped_msgs/msg/motor_state__type_support.cpp.o
+[22.945s] [ 60%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/biped_msgs/msg/motor_state_array__type_support.cpp.o
+[23.467s] [ 62%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/biped_msgs/msg/robot_state__type_support.cpp.o
+[24.006s] [ 63%] Linking CXX shared library libbiped_msgs__rosidl_typesupport_cpp.so
+[24.098s] [ 63%] Built target biped_msgs__rosidl_typesupport_cpp
+[24.118s] [ 64%] Generating C++ introspection for ROS interfaces
+[24.940s] [ 66%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/biped_msgs/msg/detail/mit_command__type_support.cpp.o
+[25.502s] [ 67%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/biped_msgs/msg/detail/motor_state__type_support.cpp.o
+[26.074s] [ 68%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/biped_msgs/msg/detail/motor_state_array__type_support.cpp.o
+[26.732s] [ 70%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/biped_msgs/msg/detail/robot_state__type_support.cpp.o
+[27.371s] [ 71%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/biped_msgs/msg/detail/mit_command_array__type_support.cpp.o
+[28.127s] [ 72%] Linking CXX shared library libbiped_msgs__rosidl_typesupport_introspection_cpp.so
+[28.327s] [ 72%] Built target biped_msgs__rosidl_typesupport_introspection_cpp
+[28.375s] [ 74%] Generating C++ type support for eProsima Fast-RTPS
+[29.325s] [ 75%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/biped_msgs/msg/detail/dds_fastrtps/mit_command__type_support.cpp.o
+[30.200s] [ 77%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/biped_msgs/msg/detail/dds_fastrtps/motor_state_array__type_support.cpp.o
+[31.118s] [ 78%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/biped_msgs/msg/detail/dds_fastrtps/robot_state__type_support.cpp.o
+[32.059s] [ 79%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/biped_msgs/msg/detail/dds_fastrtps/motor_state__type_support.cpp.o
+[32.974s] [ 81%] Building CXX object CMakeFiles/biped_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/biped_msgs/msg/detail/dds_fastrtps/mit_command_array__type_support.cpp.o
+[33.907s] [ 82%] Linking CXX shared library libbiped_msgs__rosidl_typesupport_fastrtps_cpp.so
+[34.131s] [ 82%] Built target biped_msgs__rosidl_typesupport_fastrtps_cpp
+[34.134s] [ 82%] Built target biped_msgs
+[34.192s] [ 83%] Generating Python code for ROS interfaces
+[35.834s] [ 83%] Built target biped_msgs__py
+[35.905s] [ 85%] Building C object CMakeFiles/biped_msgs__rosidl_generator_py.dir/rosidl_generator_py/biped_msgs/msg/_mit_command_s.c.o
+[36.153s] [ 86%] Building C object CMakeFiles/biped_msgs__rosidl_generator_py.dir/rosidl_generator_py/biped_msgs/msg/_motor_state_array_s.c.o
+[36.399s] [ 87%] Building C object CMakeFiles/biped_msgs__rosidl_generator_py.dir/rosidl_generator_py/biped_msgs/msg/_robot_state_s.c.o
+[36.686s] [ 89%] Building C object CMakeFiles/biped_msgs__rosidl_generator_py.dir/rosidl_generator_py/biped_msgs/msg/_motor_state_s.c.o
+[36.928s] [ 90%] Building C object CMakeFiles/biped_msgs__rosidl_generator_py.dir/rosidl_generator_py/biped_msgs/msg/_mit_command_array_s.c.o
+[37.162s] [ 91%] Linking C shared library libbiped_msgs__rosidl_generator_py.so
+[37.281s] [ 91%] Built target biped_msgs__rosidl_generator_py
+[37.327s] [ 93%] Building C object CMakeFiles/biped_msgs_s__rosidl_typesupport_fastrtps_c.dir/rosidl_generator_py/biped_msgs/_biped_msgs_s.ep.rosidl_typesupport_fastrtps_c.c.o
+[37.735s] [ 94%] Linking C shared module rosidl_generator_py/biped_msgs/biped_msgs_s__rosidl_typesupport_fastrtps_c.so
+[37.819s] [ 94%] Built target biped_msgs_s__rosidl_typesupport_fastrtps_c
+[37.843s] [ 95%] Building C object CMakeFiles/biped_msgs_s__rosidl_typesupport_c.dir/rosidl_generator_py/biped_msgs/_biped_msgs_s.ep.rosidl_typesupport_c.c.o
+[38.050s] [ 97%] Linking C shared module rosidl_generator_py/biped_msgs/biped_msgs_s__rosidl_typesupport_c.so
+[38.142s] [ 97%] Built target biped_msgs_s__rosidl_typesupport_c
+[38.185s] [ 98%] Building C object CMakeFiles/biped_msgs_s__rosidl_typesupport_introspection_c.dir/rosidl_generator_py/biped_msgs/_biped_msgs_s.ep.rosidl_typesupport_introspection_c.c.o
+[38.395s] [100%] Linking C shared module rosidl_generator_py/biped_msgs/biped_msgs_s__rosidl_typesupport_introspection_c.so
+[38.452s] [100%] Built target biped_msgs_s__rosidl_typesupport_introspection_c
+[38.474s] Invoked command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_msgs' returned '0': /usr/bin/cmake --build /home/roy/biped_lower/deploy/biped_ws/build/biped_msgs -- -j4 -l4
+[38.493s] Invoking command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_msgs': /usr/bin/cmake --install /home/roy/biped_lower/deploy/biped_ws/build/biped_msgs
+[38.510s] -- Install configuration: ""
+[38.512s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/ament_index/resource_index/rosidl_interfaces/biped_msgs
+[38.512s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/MITCommand.json
+[38.512s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/MITCommandArray.json
+[38.512s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/MotorState.json
+[38.513s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/MotorStateArray.json
+[38.514s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/RobotState.json
+[38.514s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs
+[38.515s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg
+[38.515s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/mit_command_array.h
+[38.516s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/motor_state.h
+[38.516s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail
+[38.517s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__type_support.c
+[38.519s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__description.c
+[38.519s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__type_support.c
+[38.520s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__type_support.h
+[38.520s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__functions.h
+[38.520s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__type_support.h
+[38.521s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__description.c
+[38.521s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__struct.h
+[38.522s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__functions.h
+[38.522s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__functions.c
+[38.523s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__functions.c
+[38.523s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__type_support.c
+[38.523s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__functions.h
+[38.524s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__functions.c
+[38.524s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__type_support.c
+[38.525s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__type_support.h
+[38.525s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__struct.h
+[38.525s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__functions.h
+[38.526s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__description.c
+[38.526s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__type_support.c
+[38.527s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__functions.c
+[38.527s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__type_support.h
+[38.528s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__functions.c
+[38.528s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__type_support.h
+[38.528s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__description.c
+[38.528s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__struct.h
+[38.529s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__description.c
+[38.529s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__functions.h
+[38.529s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__struct.h
+[38.529s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__struct.h
+[38.529s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/rosidl_generator_c__visibility_control.h
+[38.529s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/robot_state.h
+[38.529s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/mit_command.h
+[38.529s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/motor_state_array.h
+[38.529s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/environment/library_path.sh
+[38.529s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/environment/library_path.dsv
+[38.529s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_generator_c.so
+[38.530s] -- Set non-toolchain portion of runtime path of "/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_generator_c.so" to ""
+[38.532s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs
+[38.532s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg
+[38.532s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail
+[38.532s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__rosidl_typesupport_fastrtps_c.h
+[38.532s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__rosidl_typesupport_fastrtps_c.h
+[38.533s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__rosidl_typesupport_fastrtps_c.h
+[38.533s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__rosidl_typesupport_fastrtps_c.h
+[38.533s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__rosidl_typesupport_fastrtps_c.h
+[38.533s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/rosidl_typesupport_fastrtps_c__visibility_control.h
+[38.533s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_typesupport_fastrtps_c.so
+[38.533s] -- Set non-toolchain portion of runtime path of "/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_typesupport_fastrtps_c.so" to ""
+[38.533s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs
+[38.533s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg
+[38.533s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/rosidl_typesupport_introspection_c__visibility_control.h
+[38.533s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail
+[38.533s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__type_support.c
+[38.533s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__type_support.c
+[38.534s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__rosidl_typesupport_introspection_c.h
+[38.534s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__rosidl_typesupport_introspection_c.h
+[38.534s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__rosidl_typesupport_introspection_c.h
+[38.534s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__type_support.c
+[38.534s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__type_support.c
+[38.534s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__type_support.c
+[38.534s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__rosidl_typesupport_introspection_c.h
+[38.534s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__rosidl_typesupport_introspection_c.h
+[38.534s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_typesupport_introspection_c.so
+[38.534s] -- Set non-toolchain portion of runtime path of "/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_typesupport_introspection_c.so" to ""
+[38.534s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_typesupport_c.so
+[38.535s] -- Set non-toolchain portion of runtime path of "/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_typesupport_c.so" to ""
+[38.536s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs
+[38.536s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg
+[38.537s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/rosidl_generator_cpp__visibility_control.hpp
+[38.537s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/mit_command_array.hpp
+[38.537s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/motor_state.hpp
+[38.537s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/robot_state.hpp
+[38.537s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail
+[38.537s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__builder.hpp
+[38.538s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__traits.hpp
+[38.538s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__builder.hpp
+[38.538s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__builder.hpp
+[38.538s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__type_support.hpp
+[38.538s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__struct.hpp
+[38.538s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__traits.hpp
+[38.538s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__struct.hpp
+[38.538s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__struct.hpp
+[38.538s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__traits.hpp
+[38.538s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__builder.hpp
+[38.538s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__traits.hpp
+[38.539s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__struct.hpp
+[38.539s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__builder.hpp
+[38.539s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__traits.hpp
+[38.539s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__type_support.hpp
+[38.539s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__struct.hpp
+[38.539s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__type_support.hpp
+[38.539s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__type_support.hpp
+[38.539s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__type_support.hpp
+[38.539s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/mit_command.hpp
+[38.539s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/motor_state_array.hpp
+[38.539s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs
+[38.539s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg
+[38.540s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h
+[38.540s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail
+[38.540s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/dds_fastrtps
+[38.540s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__rosidl_typesupport_fastrtps_cpp.hpp
+[38.540s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__rosidl_typesupport_fastrtps_cpp.hpp
+[38.541s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__rosidl_typesupport_fastrtps_cpp.hpp
+[38.541s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__rosidl_typesupport_fastrtps_cpp.hpp
+[38.541s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__rosidl_typesupport_fastrtps_cpp.hpp
+[38.541s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_typesupport_fastrtps_cpp.so
+[38.541s] -- Set non-toolchain portion of runtime path of "/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_typesupport_fastrtps_cpp.so" to ""
+[38.541s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs
+[38.541s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg
+[38.541s] -- Up-to-date: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail
+[38.542s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__type_support.cpp
+[38.542s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__rosidl_typesupport_introspection_cpp.hpp
+[38.542s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__type_support.cpp
+[38.542s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command__type_support.cpp
+[38.542s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/robot_state__rosidl_typesupport_introspection_cpp.hpp
+[38.542s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state_array__rosidl_typesupport_introspection_cpp.hpp
+[38.542s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__rosidl_typesupport_introspection_cpp.hpp
+[38.542s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/mit_command_array__type_support.cpp
+[38.542s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__type_support.cpp
+[38.543s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/include/biped_msgs/biped_msgs/msg/detail/motor_state__rosidl_typesupport_introspection_cpp.hpp
+[38.543s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_typesupport_introspection_cpp.so
+[38.543s] -- Set non-toolchain portion of runtime path of "/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_typesupport_introspection_cpp.so" to ""
+[38.543s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_typesupport_cpp.so
+[38.543s] -- Set non-toolchain portion of runtime path of "/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_typesupport_cpp.so" to ""
+[38.543s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/environment/pythonpath.sh
+[38.544s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/environment/pythonpath.dsv
+[38.544s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs-0.1.0-py3.12.egg-info
+[38.544s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs-0.1.0-py3.12.egg-info/dependency_links.txt
+[38.545s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs-0.1.0-py3.12.egg-info/SOURCES.txt
+[38.546s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs-0.1.0-py3.12.egg-info/top_level.txt
+[38.546s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs-0.1.0-py3.12.egg-info/PKG-INFO
+[38.546s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs
+[38.546s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/_biped_msgs_s.ep.rosidl_typesupport_c.c
+[38.546s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/biped_msgs_s__rosidl_typesupport_fastrtps_c.so
+[38.546s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg
+[38.547s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_robot_state.py
+[38.547s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_mit_command.py
+[38.547s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_motor_state.py
+[38.547s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/__init__.py
+[38.547s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_motor_state_array_s.c
+[38.547s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_robot_state_s.c
+[38.547s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_mit_command_array.py
+[38.548s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_mit_command_s.c
+[38.548s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_mit_command_array_s.c
+[38.550s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_motor_state_s.c
+[38.551s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_motor_state_array.py
+[38.553s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/_biped_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
+[38.553s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/__init__.py
+[38.553s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/biped_msgs_s__rosidl_typesupport_introspection_c.so
+[38.554s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/biped_msgs_s__rosidl_typesupport_c.so
+[38.555s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/_biped_msgs_s.ep.rosidl_typesupport_introspection_c.c
+[38.639s] Listing '/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs'...
+[38.640s] Compiling '/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/__init__.py'...
+[38.641s] Listing '/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg'...
+[38.641s] Compiling '/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/__init__.py'...
+[38.641s] Compiling '/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_mit_command.py'...
+[38.641s] Compiling '/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_mit_command_array.py'...
+[38.641s] Compiling '/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_motor_state.py'...
+[38.641s] Compiling '/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_motor_state_array.py'...
+[38.641s] Compiling '/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/msg/_robot_state.py'...
+[38.660s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/biped_msgs_s__rosidl_typesupport_fastrtps_c.so
+[38.660s] -- Set non-toolchain portion of runtime path of "/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/biped_msgs_s__rosidl_typesupport_fastrtps_c.so" to ""
+[38.661s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/biped_msgs_s__rosidl_typesupport_introspection_c.so
+[38.661s] -- Set non-toolchain portion of runtime path of "/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/biped_msgs_s__rosidl_typesupport_introspection_c.so" to ""
+[38.662s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/biped_msgs_s__rosidl_typesupport_c.so
+[38.663s] -- Set non-toolchain portion of runtime path of "/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages/biped_msgs/biped_msgs_s__rosidl_typesupport_c.so" to ""
+[38.663s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_generator_py.so
+[38.664s] -- Set non-toolchain portion of runtime path of "/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/libbiped_msgs__rosidl_generator_py.so" to ""
+[38.664s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/MITCommand.idl
+[38.664s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/MITCommandArray.idl
+[38.665s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/MotorState.idl
+[38.665s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/MotorStateArray.idl
+[38.665s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/RobotState.idl
+[38.666s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/MITCommand.msg
+[38.666s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/MITCommandArray.msg
+[38.666s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/MotorState.msg
+[38.666s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/MotorStateArray.msg
+[38.666s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/msg/RobotState.msg
+[38.667s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/ament_index/resource_index/package_run_dependencies/biped_msgs
+[38.667s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/ament_index/resource_index/parent_prefix_path/biped_msgs
+[38.667s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/environment/ament_prefix_path.sh
+[38.667s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/environment/ament_prefix_path.dsv
+[38.667s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/environment/path.sh
+[38.667s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/environment/path.dsv
+[38.667s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/local_setup.bash
+[38.667s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/local_setup.sh
+[38.667s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/local_setup.zsh
+[38.667s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/local_setup.dsv
+[38.668s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/package.dsv
+[38.668s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/ament_index/resource_index/packages/biped_msgs
+[38.668s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/export_biped_msgs__rosidl_generator_cExport.cmake
+[38.668s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/export_biped_msgs__rosidl_generator_cExport-noconfig.cmake
+[38.669s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/export_biped_msgs__rosidl_typesupport_fastrtps_cExport.cmake
+[38.669s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/export_biped_msgs__rosidl_typesupport_fastrtps_cExport-noconfig.cmake
+[38.669s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/biped_msgs__rosidl_typesupport_introspection_cExport.cmake
+[38.669s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/biped_msgs__rosidl_typesupport_introspection_cExport-noconfig.cmake
+[38.669s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/biped_msgs__rosidl_typesupport_cExport.cmake
+[38.670s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/biped_msgs__rosidl_typesupport_cExport-noconfig.cmake
+[38.670s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/export_biped_msgs__rosidl_generator_cppExport.cmake
+[38.670s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/export_biped_msgs__rosidl_typesupport_fastrtps_cppExport.cmake
+[38.671s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/export_biped_msgs__rosidl_typesupport_fastrtps_cppExport-noconfig.cmake
+[38.671s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/biped_msgs__rosidl_typesupport_introspection_cppExport.cmake
+[38.671s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/biped_msgs__rosidl_typesupport_introspection_cppExport-noconfig.cmake
+[38.671s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/biped_msgs__rosidl_typesupport_cppExport.cmake
+[38.671s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/biped_msgs__rosidl_typesupport_cppExport-noconfig.cmake
+[38.671s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/export_biped_msgs__rosidl_generator_pyExport.cmake
+[38.672s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/export_biped_msgs__rosidl_generator_pyExport-noconfig.cmake
+[38.672s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/rosidl_cmake-extras.cmake
+[38.672s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/ament_cmake_export_dependencies-extras.cmake
+[38.672s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/ament_cmake_export_include_directories-extras.cmake
+[38.672s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/ament_cmake_export_libraries-extras.cmake
+[38.672s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/ament_cmake_export_targets-extras.cmake
+[38.672s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake
+[38.674s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake
+[38.674s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/biped_msgsConfig.cmake
+[38.674s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/cmake/biped_msgsConfig-version.cmake
+[38.674s] -- Installing: /home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share/biped_msgs/package.xml
+[38.680s] Invoked command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_msgs' returned '0': /usr/bin/cmake --install /home/roy/biped_lower/deploy/biped_ws/build/biped_msgs

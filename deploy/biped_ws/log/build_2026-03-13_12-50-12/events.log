@@ -1,0 +1,163 @@
+[0.000000] (-) TimerEvent: {}
+[0.000155] (-) JobUnselected: {'identifier': 'biped_control'}
+[0.000193] (-) JobUnselected: {'identifier': 'biped_driver'}
+[0.000213] (-) JobUnselected: {'identifier': 'biped_msgs'}
+[0.000230] (-) JobUnselected: {'identifier': 'biped_teleop'}
+[0.000246] (-) JobUnselected: {'identifier': 'biped_tools'}
+[0.000266] (biped_description) JobQueued: {'identifier': 'biped_description', 'dependencies': OrderedDict()}
+[0.000287] (biped_bringup) JobQueued: {'identifier': 'biped_bringup', 'dependencies': OrderedDict({'biped_description': '/home/roy/biped_lower/deploy/biped_ws/install/biped_description', 'biped_msgs': '/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs', 'biped_teleop': '/home/roy/biped_lower/deploy/biped_ws/install/biped_teleop', 'biped_control': '/home/roy/biped_lower/deploy/biped_ws/install/biped_control', 'biped_driver': '/home/roy/biped_lower/deploy/biped_ws/install/biped_driver', 'biped_tools': '/home/roy/biped_lower/deploy/biped_ws/install/biped_tools'})}
+[0.000977] (biped_description) JobStarted: {'identifier': 'biped_description'}
+[0.015345] (biped_description) JobProgress: {'identifier': 'biped_description', 'progress': 'cmake'}
+[0.016190] (biped_description) Command: {'cmd': ['/usr/bin/cmake', '/home/roy/biped_lower/deploy/biped_ws/src/biped_description', '-DAMENT_CMAKE_SYMLINK_INSTALL=1', '-DCMAKE_INSTALL_PREFIX=/home/roy/biped_lower/deploy/biped_ws/install/biped_description'], 'cwd': '/home/roy/biped_lower/deploy/biped_ws/build/biped_description', 'env': OrderedDict({'USER': 'roy', 'SSH_CLIENT': '100.109.2.50 52482 22', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/opt/ros/jazzy/lib/aarch64-linux-gnu:/opt/ros/jazzy/lib', 'HOME': '/home/roy', 'OLDPWD': '/home/roy/biped_lower', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'ROS_DISTRO': 'jazzy', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'PATH': '/opt/ros/jazzy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin', 'LANG': 'C.UTF-8', 'AMENT_PREFIX_PATH': '/opt/ros/jazzy', 'SHELL': '/bin/bash', 'ROS_AUTOMATIC_DISCOVERY_RANGE': 'SUBNET', 'PWD': '/home/roy/biped_lower/deploy/biped_ws/build/biped_description', 'SSH_CONNECTION': '100.109.2.50 52482 100.116.96.38 22', 'PYTHONPATH': '/opt/ros/jazzy/lib/python3.12/site-packages', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/opt/ros/jazzy'}), 'shell': False}
+[0.099598] (-) TimerEvent: {}
+[0.199787] (-) TimerEvent: {}
+[0.264717] (biped_description) StdoutLine: {'line': b'-- The C compiler identification is GNU 13.3.0\n'}
+[0.299926] (-) TimerEvent: {}
+[0.398495] (biped_description) StdoutLine: {'line': b'-- The CXX compiler identification is GNU 13.3.0\n'}
+[0.400043] (-) TimerEvent: {}
+[0.431085] (biped_description) StdoutLine: {'line': b'-- Detecting C compiler ABI info\n'}
+[0.500126] (-) TimerEvent: {}
+[0.600311] (-) TimerEvent: {}
+[0.666979] (biped_description) StdoutLine: {'line': b'-- Detecting C compiler ABI info - done\n'}
+[0.683566] (biped_description) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc - skipped\n'}
+[0.684350] (biped_description) StdoutLine: {'line': b'-- Detecting C compile features\n'}
+[0.684814] (biped_description) StdoutLine: {'line': b'-- Detecting C compile features - done\n'}
+[0.700569] (-) TimerEvent: {}
+[0.709223] (biped_description) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info\n'}
+[0.800585] (-) TimerEvent: {}
+[0.900776] (-) TimerEvent: {}
+[1.000979] (-) TimerEvent: {}
+[1.058716] (biped_description) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info - done\n'}
+[1.075503] (biped_description) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++ - skipped\n'}
+[1.076617] (biped_description) StdoutLine: {'line': b'-- Detecting CXX compile features\n'}
+[1.076984] (biped_description) StdoutLine: {'line': b'-- Detecting CXX compile features - done\n'}
+[1.080054] (biped_description) StdoutLine: {'line': b'-- Found ament_cmake: 2.5.5 (/opt/ros/jazzy/share/ament_cmake/cmake)\n'}
+[1.101281] (-) TimerEvent: {}
+[1.201707] (-) TimerEvent: {}
+[1.301993] (-) TimerEvent: {}
+[1.355450] (biped_description) StdoutLine: {'line': b'-- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter \n'}
+[1.402101] (-) TimerEvent: {}
+[1.502461] (-) TimerEvent: {}
+[1.505912] (biped_description) StdoutLine: {'line': b'-- Override CMake install command with custom implementation using symlinks instead of copying resources\n'}
+[1.602492] (-) TimerEvent: {}
+[1.702687] (-) TimerEvent: {}
+[1.738457] (biped_description) StdoutLine: {'line': b'-- Configuring done (1.7s)\n'}
+[1.744163] (biped_description) StdoutLine: {'line': b'-- Generating done (0.0s)\n'}
+[1.746854] (biped_description) StdoutLine: {'line': b'-- Build files have been written to: /home/roy/biped_lower/deploy/biped_ws/build/biped_description\n'}
+[1.757263] (biped_description) CommandEnded: {'returncode': 0}
+[1.757932] (biped_description) JobProgress: {'identifier': 'biped_description', 'progress': 'build'}
+[1.758983] (biped_description) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/roy/biped_lower/deploy/biped_ws/build/biped_description', '--', '-j4', '-l4'], 'cwd': '/home/roy/biped_lower/deploy/biped_ws/build/biped_description', 'env': OrderedDict({'USER': 'roy', 'SSH_CLIENT': '100.109.2.50 52482 22', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/opt/ros/jazzy/lib/aarch64-linux-gnu:/opt/ros/jazzy/lib', 'HOME': '/home/roy', 'OLDPWD': '/home/roy/biped_lower', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'ROS_DISTRO': 'jazzy', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'PATH': '/opt/ros/jazzy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin', 'LANG': 'C.UTF-8', 'AMENT_PREFIX_PATH': '/opt/ros/jazzy', 'SHELL': '/bin/bash', 'ROS_AUTOMATIC_DISCOVERY_RANGE': 'SUBNET', 'PWD': '/home/roy/biped_lower/deploy/biped_ws/build/biped_description', 'SSH_CONNECTION': '100.109.2.50 52482 100.116.96.38 22', 'PYTHONPATH': '/opt/ros/jazzy/lib/python3.12/site-packages', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/opt/ros/jazzy'}), 'shell': False}
+[1.802800] (-) TimerEvent: {}
+[1.825936] (biped_description) CommandEnded: {'returncode': 0}
+[1.826735] (biped_description) JobProgress: {'identifier': 'biped_description', 'progress': 'install'}
+[1.842852] (biped_description) Command: {'cmd': ['/usr/bin/cmake', '--install', '/home/roy/biped_lower/deploy/biped_ws/build/biped_description'], 'cwd': '/home/roy/biped_lower/deploy/biped_ws/build/biped_description', 'env': OrderedDict({'USER': 'roy', 'SSH_CLIENT': '100.109.2.50 52482 22', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/opt/ros/jazzy/lib/aarch64-linux-gnu:/opt/ros/jazzy/lib', 'HOME': '/home/roy', 'OLDPWD': '/home/roy/biped_lower', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'ROS_DISTRO': 'jazzy', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'PATH': '/opt/ros/jazzy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin', 'LANG': 'C.UTF-8', 'AMENT_PREFIX_PATH': '/opt/ros/jazzy', 'SHELL': '/bin/bash', 'ROS_AUTOMATIC_DISCOVERY_RANGE': 'SUBNET', 'PWD': '/home/roy/biped_lower/deploy/biped_ws/build/biped_description', 'SSH_CONNECTION': '100.109.2.50 52482 100.116.96.38 22', 'PYTHONPATH': '/opt/ros/jazzy/lib/python3.12/site-packages', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/opt/ros/jazzy'}), 'shell': False}
+[1.856703] (biped_description) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[1.857278] (biped_description) StdoutLine: {'line': b'-- Execute custom install script\n'}
+[1.858030] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/urdf/robot.urdf\n'}
+[1.875578] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/arb_uj111_cross_bearing.stl\n'}
+[1.891969] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/assy_formfg___kc_d_107l_l_cover.stl\n'}
+[1.902900] (-) TimerEvent: {}
+[1.909406] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/assy_formfg___kc_d_107r_r_cover.stl\n'}
+[1.927184] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/assy_formfg___kd_b_102b_torso_btm.stl\n'}
+[1.946177] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/ball_bearing_37x25x7.stl\n'}
+[1.963340] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/foot_6061.stl\n'}
+[1.992124] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_101l_6061.stl\n'}
+[2.003018] (-) TimerEvent: {}
+[2.040404] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_101r_6061.stl\n'}
+[2.089094] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_102l_6061.stl\n'}
+[2.103241] (-) TimerEvent: {}
+[2.108016] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_102r_6061.stl\n'}
+[2.131045] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_103l_6061.stl\n'}
+[2.149330] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_103r_6061.stl\n'}
+[2.165717] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_104l_sus304.stl\n'}
+[2.181882] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_104r_sus304.stl\n'}
+[2.199273] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_105_sus304.stl\n'}
+[2.203309] (-) TimerEvent: {}
+[2.214336] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_201l_6061.stl\n'}
+[2.240648] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_201r_6061.stl\n'}
+[2.248673] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_202l_6061.stl\n'}
+[2.271616] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_202r_6061.stl\n'}
+[2.302485] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_203_sus304.stl\n'}
+[2.303486] (-) TimerEvent: {}
+[2.320092] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_301l_6061.stl\n'}
+[2.336336] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_301r_6061.stl\n'}
+[2.372720] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_302l_6061.stl\n'}
+[2.373079] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_302r_6061.stl\n'}
+[2.401617] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_401l_6061.stl\n'}
+[2.403571] (-) TimerEvent: {}
+[2.406336] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_401r_6061.stl\n'}
+[2.423132] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_402l_6061.stl\n'}
+[2.442049] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_402r_6061.stl\n'}
+[2.459686] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_403_6061.stl\n'}
+[2.477986] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/kd_d_502_6061.stl\n'}
+[2.496378] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/l_end_stop_ankle_6061.stl\n'}
+[2.503684] (-) TimerEvent: {}
+[2.514380] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/r_end_stop_ankle_6061.stl\n'}
+[2.531817] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/rs02.stl\n'}
+[2.548998] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/rs03.stl\n'}
+[2.603777] (-) TimerEvent: {}
+[2.636087] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/meshes/rs04.stl\n'}
+[2.657581] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/ament_index/resource_index/package_run_dependencies/biped_description\n'}
+[2.676197] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/ament_index/resource_index/parent_prefix_path/biped_description\n'}
+[2.693856] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/environment/ament_prefix_path.sh\n'}
+[2.703884] (-) TimerEvent: {}
+[2.710153] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/environment/ament_prefix_path.dsv\n'}
+[2.739128] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/environment/path.sh\n'}
+[2.756880] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/environment/path.dsv\n'}
+[2.773795] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/local_setup.bash\n'}
+[2.792139] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/local_setup.sh\n'}
+[2.803989] (-) TimerEvent: {}
+[2.808579] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/local_setup.zsh\n'}
+[2.826722] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/local_setup.dsv\n'}
+[2.845748] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/package.dsv\n'}
+[2.865427] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/ament_index/resource_index/packages/biped_description\n'}
+[2.885088] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/cmake/biped_descriptionConfig.cmake\n'}
+[2.902227] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/cmake/biped_descriptionConfig-version.cmake\n'}
+[2.904192] (-) TimerEvent: {}
+[2.919978] (biped_description) StdoutLine: {'line': b'-- Symlinking: /home/roy/biped_lower/deploy/biped_ws/install/biped_description/share/biped_description/package.xml\n'}
+[2.941031] (biped_description) CommandEnded: {'returncode': 0}
+[2.967543] (biped_description) JobEnded: {'identifier': 'biped_description', 'rc': 0}
+[2.968943] (biped_bringup) JobStarted: {'identifier': 'biped_bringup'}
+[3.004286] (-) TimerEvent: {}
+[3.104576] (-) TimerEvent: {}
+[3.204754] (-) TimerEvent: {}
+[3.304934] (-) TimerEvent: {}
+[3.405119] (-) TimerEvent: {}
+[3.505309] (-) TimerEvent: {}
+[3.605500] (-) TimerEvent: {}
+[3.705697] (-) TimerEvent: {}
+[3.805877] (-) TimerEvent: {}
+[3.906061] (-) TimerEvent: {}
+[4.006291] (-) TimerEvent: {}
+[4.107354] (-) TimerEvent: {}
+[4.207551] (-) TimerEvent: {}
+[4.307895] (-) TimerEvent: {}
+[4.405285] (biped_bringup) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'develop', '--editable', '--build-directory', '/home/roy/biped_lower/deploy/biped_ws/build/biped_bringup/build', '--no-deps', 'symlink_data'], 'cwd': '/home/roy/biped_lower/deploy/biped_ws/build/biped_bringup', 'env': {'USER': 'roy', 'SSH_CLIENT': '100.109.2.50 52482 22', 'ROS_PACKAGE_PATH': '/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/share', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib:/opt/ros/jazzy/lib/aarch64-linux-gnu:/opt/ros/jazzy/lib', 'HOME': '/home/roy', 'OLDPWD': '/home/roy/biped_lower', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'ROS_DISTRO': 'jazzy', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'PKG_CONFIG_PATH': '/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/aarch64-linux-gnu/pkgconfig:/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/pkgconfig', 'PATH': '/opt/ros/jazzy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin', 'LANG': 'C.UTF-8', 'AMENT_PREFIX_PATH': '/home/roy/biped_lower/deploy/biped_ws/install/biped_tools:/home/roy/biped_lower/deploy/biped_ws/install/biped_driver:/home/roy/biped_lower/deploy/biped_ws/install/biped_control:/home/roy/biped_lower/deploy/biped_ws/install/biped_teleop:/home/roy/biped_lower/deploy/biped_ws/install/biped_description:/opt/ros/jazzy', 'SHELL': '/bin/bash', 'ROS_AUTOMATIC_DISCOVERY_RANGE': 'SUBNET', 'PWD': '/home/roy/biped_lower/deploy/biped_ws/build/biped_bringup', 'SSH_CONNECTION': '100.109.2.50 52482 100.116.96.38 22', 'PYTHONPATH': '/home/roy/biped_lower/deploy/biped_ws/build/biped_bringup/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/roy/biped_lower/deploy/biped_ws/install/biped_bringup/lib/python3.12/site-packages:/home/roy/biped_lower/deploy/biped_ws/build/biped_tools:/home/roy/biped_lower/deploy/biped_ws/install/biped_tools/lib/python3.12/site-packages:/home/roy/biped_lower/deploy/biped_ws/build/biped_driver:/home/roy/biped_lower/deploy/biped_ws/install/biped_driver/lib/python3.12/site-packages:/home/roy/biped_lower/deploy/biped_ws/build/biped_control:/home/roy/biped_lower/deploy/biped_ws/install/biped_control/lib/python3.12/site-packages:/home/roy/biped_lower/deploy/biped_ws/build/biped_teleop:/home/roy/biped_lower/deploy/biped_ws/install/biped_teleop/lib/python3.12/site-packages:/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs/lib/python3.12/site-packages:/opt/ros/jazzy/lib/python3.12/site-packages', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs:/home/roy/biped_lower/deploy/biped_ws/install/biped_description'}, 'shell': False}
+[4.407984] (-) TimerEvent: {}
+[4.508545] (-) TimerEvent: {}
+[4.609361] (-) TimerEvent: {}
+[4.709547] (-) TimerEvent: {}
+[4.812465] (-) TimerEvent: {}
+[4.912651] (-) TimerEvent: {}
+[5.012940] (-) TimerEvent: {}
+[5.025633] (biped_bringup) StdoutLine: {'line': b'running develop\n'}
+[5.112994] (-) TimerEvent: {}
+[5.213215] (-) TimerEvent: {}
+[5.289587] (biped_bringup) StdoutLine: {'line': b'running egg_info\n'}
+[5.311931] (biped_bringup) StdoutLine: {'line': b'writing biped_bringup.egg-info/PKG-INFO\n'}
+[5.312378] (biped_bringup) StdoutLine: {'line': b'writing dependency_links to biped_bringup.egg-info/dependency_links.txt\n'}
+[5.313265] (-) TimerEvent: {}
+[5.315772] (biped_bringup) StdoutLine: {'line': b'writing requirements to biped_bringup.egg-info/requires.txt\n'}
+[5.316058] (biped_bringup) StdoutLine: {'line': b'writing top-level names to biped_bringup.egg-info/top_level.txt\n'}
+[5.342394] (biped_bringup) StdoutLine: {'line': b"reading manifest file 'biped_bringup.egg-info/SOURCES.txt'\n"}
+[5.346916] (biped_bringup) StdoutLine: {'line': b"writing manifest file 'biped_bringup.egg-info/SOURCES.txt'\n"}
+[5.373003] (biped_bringup) StdoutLine: {'line': b'running build_ext\n'}
+[5.398873] (biped_bringup) StdoutLine: {'line': b'Creating /home/roy/biped_lower/deploy/biped_ws/install/biped_bringup/lib/python3.12/site-packages/biped-bringup.egg-link (link to .)\n'}
+[5.402655] (biped_bringup) StdoutLine: {'line': b'\n'}
+[5.416772] (-) TimerEvent: {}
+[5.416823] (biped_bringup) StdoutLine: {'line': b'Installed /home/roy/biped_lower/deploy/biped_ws/build/biped_bringup\n'}
+[5.416960] (biped_bringup) StdoutLine: {'line': b'running symlink_data\n'}
+[5.516985] (-) TimerEvent: {}
+[5.519530] (biped_bringup) CommandEnded: {'returncode': 0}
+[5.534738] (biped_bringup) JobEnded: {'identifier': 'biped_bringup', 'rc': 0}
+[5.537689] (-) EventReactorShutdown: {}

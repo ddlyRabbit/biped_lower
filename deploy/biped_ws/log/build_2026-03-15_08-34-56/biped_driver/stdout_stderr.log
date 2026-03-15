@@ -1,0 +1,16 @@
+running develop
+running egg_info
+writing biped_driver.egg-info/PKG-INFO
+writing dependency_links to biped_driver.egg-info/dependency_links.txt
+writing entry points to biped_driver.egg-info/entry_points.txt
+writing requirements to biped_driver.egg-info/requires.txt
+writing top-level names to biped_driver.egg-info/top_level.txt
+reading manifest file 'biped_driver.egg-info/SOURCES.txt'
+writing manifest file 'biped_driver.egg-info/SOURCES.txt'
+running build_ext
+Creating /home/roy/biped_lower/deploy/biped_ws/install/biped_driver/lib/python3.12/site-packages/biped-driver.egg-link (link to .)
+Installing can_bus_node script to /home/roy/biped_lower/deploy/biped_ws/install/biped_driver/lib/biped_driver
+Installing imu_node script to /home/roy/biped_lower/deploy/biped_ws/install/biped_driver/lib/biped_driver
+
+Installed /home/roy/biped_lower/deploy/biped_ws/build/biped_driver
+running symlink_data

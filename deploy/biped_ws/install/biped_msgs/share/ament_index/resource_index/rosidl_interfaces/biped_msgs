@@ -1,0 +1,10 @@
+msg/MITCommand.idl
+msg/MITCommand.msg
+msg/MITCommandArray.idl
+msg/MITCommandArray.msg
+msg/MotorState.idl
+msg/MotorState.msg
+msg/MotorStateArray.idl
+msg/MotorStateArray.msg
+msg/RobotState.idl
+msg/RobotState.msg

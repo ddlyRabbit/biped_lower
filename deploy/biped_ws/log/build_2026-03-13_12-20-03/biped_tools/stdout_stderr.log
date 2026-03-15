@@ -1,0 +1,23 @@
+running develop
+running egg_info
+creating biped_tools.egg-info
+writing biped_tools.egg-info/PKG-INFO
+writing dependency_links to biped_tools.egg-info/dependency_links.txt
+writing entry points to biped_tools.egg-info/entry_points.txt
+writing requirements to biped_tools.egg-info/requires.txt
+writing top-level names to biped_tools.egg-info/top_level.txt
+writing manifest file 'biped_tools.egg-info/SOURCES.txt'
+reading manifest file 'biped_tools.egg-info/SOURCES.txt'
+writing manifest file 'biped_tools.egg-info/SOURCES.txt'
+running build_ext
+Creating /home/roy/biped_lower/deploy/biped_ws/install/biped_tools/lib/python3.12/site-packages/biped-tools.egg-link (link to .)
+Installing calibrate_node script to /home/roy/biped_lower/deploy/biped_ws/install/biped_tools/lib/biped_tools
+Installing export_onnx script to /home/roy/biped_lower/deploy/biped_ws/install/biped_tools/lib/biped_tools
+
+Installed /home/roy/biped_lower/deploy/biped_ws/build/biped_tools
+running symlink_data
+creating /home/roy/biped_lower/deploy/biped_ws/install/biped_tools/share/ament_index
+creating /home/roy/biped_lower/deploy/biped_ws/install/biped_tools/share/ament_index/resource_index
+creating /home/roy/biped_lower/deploy/biped_ws/install/biped_tools/share/ament_index/resource_index/packages
+symbolically linking /home/roy/biped_lower/deploy/biped_ws/build/biped_tools/resource/biped_tools -> /home/roy/biped_lower/deploy/biped_ws/install/biped_tools/share/ament_index/resource_index/packages
+symbolically linking /home/roy/biped_lower/deploy/biped_ws/build/biped_tools/package.xml -> /home/roy/biped_lower/deploy/biped_ws/install/biped_tools/share/biped_tools

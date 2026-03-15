@@ -1,0 +1,9 @@
+source;share/biped_control/hook/pythonpath.ps1
+source;share/biped_control/hook/pythonpath.dsv
+source;share/biped_control/hook/pythonpath.sh
+source;share/biped_control/hook/ament_prefix_path.ps1
+source;share/biped_control/hook/ament_prefix_path.dsv
+source;share/biped_control/hook/ament_prefix_path.sh
+source;../../build/biped_control/share/biped_control/hook/pythonpath_develop.ps1
+source;../../build/biped_control/share/biped_control/hook/pythonpath_develop.dsv
+source;../../build/biped_control/share/biped_control/hook/pythonpath_develop.sh

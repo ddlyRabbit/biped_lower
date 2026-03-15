@@ -1,0 +1,38 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from biped_msgs/msg/MotorState.msg
+// generated code does not contain a copyright notice
+
+
+module biped_msgs {
+  module msg {
+    struct MotorState {
+      string joint_name;
+
+      uint8 can_id;
+
+      @verbatim (language="comment", text=
+        "absolute encoder position (rad, calibrated)")
+      float position;
+
+      @verbatim (language="comment", text=
+        "current velocity (rad/s)")
+      float velocity;
+
+      @verbatim (language="comment", text=
+        "current torque (Nm)")
+      float torque;
+
+      @verbatim (language="comment", text=
+        "motor temp (°C)")
+      float temperature;
+
+      @verbatim (language="comment", text=
+        "RS04 fault flags")
+      uint8 fault_code;
+
+      @verbatim (language="comment", text=
+        "0=Reset, 1=Calibration, 2=Run")
+      uint8 mode_status;
+    };
+  };
+};

@@ -1,0 +1,120 @@
+R_hip_pitch:
+  motor_min: -0.6397
+  motor_max: 2.6328
+  offset: 1.5769
+  limit_lo: -2.2166
+  limit_hi: 1.0472
+  urdf_lower: -2.2166
+  urdf_upper: 1.0472
+  default_pos: 0.2
+  direction: 1
+R_hip_roll:
+  motor_min: -2.1101
+  motor_max: 0.3735
+  offset: 0.1589
+  limit_lo: -2.2689
+  limit_hi: 0.2094
+  urdf_lower: -2.2689
+  urdf_upper: 0.2094
+  default_pos: 0.0
+  direction: 1
+R_hip_yaw:
+  motor_min: 2.4276
+  motor_max: 5.5831
+  offset: 3.9984
+  limit_lo: -1.5708
+  limit_hi: 1.5708
+  urdf_lower: -1.5708
+  urdf_upper: 1.5708
+  default_pos: 0.0
+  direction: 1
+R_knee:
+  motor_min: 1.4247
+  motor_max: 4.2013
+  offset: 1.4247
+  limit_lo: 0.0
+  limit_hi: 2.7053
+  urdf_lower: 0.0
+  urdf_upper: 2.7053
+  default_pos: 0.4
+  direction: -1
+R_foot_pitch:
+  motor_min: 3.7292
+  motor_max: 6.0214
+  offset: 3.7292
+  limit_lo: 3.7292
+  limit_hi: 6.0214
+  urdf_lower: -0.8727
+  urdf_upper: 0.5236
+  default_pos: -0.2
+  direction: -1
+R_foot_roll:
+  motor_min: 4.0188
+  motor_max: 6.2749
+  offset: 4.0188
+  limit_lo: 4.0188
+  limit_hi: 6.2749
+  urdf_lower: -0.2618
+  urdf_upper: 0.2618
+  default_pos: 0.0
+  direction: -1
+L_hip_pitch:
+  motor_min: -0.861
+  motor_max: 2.4245
+  offset: 0.1862
+  limit_lo: -1.0472
+  limit_hi: 2.2166
+  urdf_lower: -1.0472
+  urdf_upper: 2.2166
+  default_pos: -0.2
+  direction: 1
+L_hip_roll:
+  motor_min: 4.9384
+  motor_max: 7.427
+  offset: 5.1479
+  limit_lo: -0.2094
+  limit_hi: 2.2689
+  urdf_lower: -0.2094
+  urdf_upper: 2.2689
+  default_pos: 0.0
+  direction: 1
+L_hip_yaw:
+  motor_min: 3.0017
+  motor_max: 6.1622
+  offset: 4.5725
+  limit_lo: -1.5708
+  limit_hi: 1.5708
+  urdf_lower: -1.5708
+  urdf_upper: 1.5708
+  default_pos: 0.0
+  direction: 1
+L_knee:
+  motor_min: 0.2941
+  motor_max: 2.8882
+  offset: 0.2941
+  limit_lo: 0.0
+  limit_hi: 2.7053
+  urdf_lower: 0.0
+  urdf_upper: 2.7053
+  default_pos: 0.4
+  direction: 1
+L_foot_pitch:
+  motor_min: -0.7751
+  motor_max: 1.5056
+  offset: -0.7751
+  limit_lo: -0.7751
+  limit_hi: 1.5056
+  urdf_lower: -0.8727
+  urdf_upper: 0.5236
+  default_pos: -0.2
+  direction: -1
+L_foot_roll:
+  motor_min: 1.0071
+  motor_max: 3.2732
+  offset: 1.0071
+  limit_lo: 1.0071
+  limit_hi: 3.2732
+  urdf_lower: -0.2618
+  urdf_upper: 0.2618
+  default_pos: 0.0
+  direction: -1
