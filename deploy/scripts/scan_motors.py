@@ -23,6 +23,8 @@ from biped_driver.robstride_dynamics import RobstrideBus, Motor, CommunicationTy
 DEFAULT_CONFIG = os.path.join(os.path.dirname(__file__),
     "..", "biped_ws", "src", "biped_bringup", "config", "robot.yaml")
 
+SEP = "=" * 60
+
 
 def load_bus_map(config_path: str) -> dict[str, list[tuple[str, int, str]]]:
     """Parse robot.yaml into {bus_name: [(name, id, model), ...]}."""
@@ -36,9 +38,9 @@ def load_bus_map(config_path: str) -> dict[str, list[tuple[str, int, str]]]:
         for name, mcfg in bus_cfg.get("motors", {}).items():
             model = mcfg["type"].lower()
             if not model.startswith("rs-"):
-                model = f"rs-{model[2:]}"  # RS04 -> rs-04
+                model = "rs-" + model[2:]  # RS04 -> rs-04
             motors.append((name, mcfg["id"], model))
-        motors.sort(key=lambda m: m[1])  # sort by ID
+        motors.sort(key=lambda m: m[1])
         bus_map[interface] = motors
 
     return bus_map
@@ -46,9 +48,9 @@ def load_bus_map(config_path: str) -> dict[str, list[tuple[str, int, str]]]:
 
 def scan_bus(channel: str, motors: list):
     """Ping and read from each motor on one CAN bus. Read-only."""
-    print(f"\n{=*60}")
+    print(f"\n{SEP}")
     print(f"  Scanning {channel} — {len(motors)} expected motors")
-    print(f"{=*60}")
+    print(SEP)
 
     bus = RobstrideBus(channel=channel)
     bus.connect()
@@ -109,14 +111,15 @@ def main():
     for ch in channels:
         motors = bus_map.get(ch)
         if motors is None:
-            print(f"\n  ⚠️  Bus {ch} not in config — available: {, .join(bus_map.keys())}")
+            available = ", ".join(bus_map.keys())
+            print(f"\n  ⚠️  Bus '{ch}' not in config — available: {available}")
             continue
         found, failed = scan_bus(ch, motors)
         total_found += found
         total_failed += failed
 
     total = total_found + total_failed
-    print(f"\n{=*60}")
+    print(f"\n{SEP}")
     print(f"  TOTAL: {total_found}/{total} found, {total_failed} missing")
     if total_failed == 0 and total_found > 0:
         print("  ✅ All motors responding — ready for bringup")
@@ -124,7 +127,7 @@ def main():
         print("  ⚠️  Some motors missing — check wiring and CAN IDs")
     else:
         print("  ❌ No motors found — check power, CAN adapter, and wiring")
-    print(f"{=*60}")
+    print(SEP)
 
 
 if __name__ == "__main__":
