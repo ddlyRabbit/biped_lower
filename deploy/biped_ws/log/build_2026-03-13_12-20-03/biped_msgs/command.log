@@ -1,6 +1,0 @@
-Invoking command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_msgs': /usr/bin/cmake /home/roy/biped_lower/deploy/biped_ws/src/biped_msgs -DCATKIN_INSTALL_INTO_PREFIX_ROOT=0 -DCATKIN_SYMLINK_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs
-Invoked command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_msgs' returned '0': /usr/bin/cmake /home/roy/biped_lower/deploy/biped_ws/src/biped_msgs -DCATKIN_INSTALL_INTO_PREFIX_ROOT=0 -DCATKIN_SYMLINK_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/home/roy/biped_lower/deploy/biped_ws/install/biped_msgs
-Invoking command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_msgs': /usr/bin/cmake --build /home/roy/biped_lower/deploy/biped_ws/build/biped_msgs -- -j4 -l4
-Invoked command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_msgs' returned '0': /usr/bin/cmake --build /home/roy/biped_lower/deploy/biped_ws/build/biped_msgs -- -j4 -l4
-Invoking command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_msgs': /usr/bin/cmake --install /home/roy/biped_lower/deploy/biped_ws/build/biped_msgs
-Invoked command in '/home/roy/biped_lower/deploy/biped_ws/build/biped_msgs' returned '0': /usr/bin/cmake --install /home/roy/biped_lower/deploy/biped_ws/build/biped_msgs

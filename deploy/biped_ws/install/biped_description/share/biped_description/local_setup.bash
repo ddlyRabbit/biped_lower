@@ -1,1 +1,0 @@
-/home/roy/biped_lower/deploy/biped_ws/build/biped_description/ament_cmake_environment_hooks/local_setup.bash
