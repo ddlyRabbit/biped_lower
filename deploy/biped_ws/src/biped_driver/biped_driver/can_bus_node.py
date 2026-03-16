@@ -33,6 +33,12 @@ from biped_driver.robstride_can import (
     ANKLE_MOTOR_TO_JOINT,
 )
 
+# URDF joint-space limits for ankle joints (from robot.urdf)
+ANKLE_JOINT_LIMITS = {
+    "foot_pitch": (-0.87267, 0.52360),
+    "foot_roll":  (-0.26180, 0.26180),
+}
+
 
 class CanBusNode(Node):
     """ROS2 node controlling all RobStride motors across CAN buses.
@@ -270,11 +276,12 @@ class CanBusNode(Node):
     ):
         """Send/receive for an ankle pair with parallel linkage transform.
 
-        Flow: policy joint-space → Asimov forward → motor-space soft-stop → CAN
+        Flow: policy joint-space → URDF clamp → Asimov forward → motor-space clamp → CAN
         Feedback: CAN → Asimov inverse → joint-space → /joint_states
 
-        All clamping and soft-stop happens in motor command-space using
-        calibration limits.  No joint-space clamping.
+        Two levels of clamping:
+        1. Joint-space: URDF pitch/roll limits (before linkage forward)
+        2. Motor command-space: calibration limits + soft-stop (after linkage forward)
 
         top_name   → upper motor (knee-side CAN ID, motor A)
         bottom_name → lower motor (foot-side CAN ID, motor B)
@@ -296,9 +303,15 @@ class CanBusNode(Node):
 
         try:
             if pitch_cmd and roll_cmd:
-                # 1. Asimov forward: joint-space → motor-space
+                # 1. Clamp joint-space commands to URDF limits
+                pitch_lo, pitch_hi = ANKLE_JOINT_LIMITS["foot_pitch"]
+                roll_lo, roll_hi = ANKLE_JOINT_LIMITS["foot_roll"]
+                pitch_pos = max(pitch_lo, min(pitch_hi, pitch_cmd.position))
+                roll_pos = max(roll_lo, min(roll_hi, roll_cmd.position))
+
+                # 2. Asimov forward: joint-space → motor-space
                 motor_upper, motor_lower = ankle_command_to_motors(
-                    pitch_cmd.position, roll_cmd.position, pitch_sign)
+                    pitch_pos, roll_pos, pitch_sign)
 
                 # Average gains (both are RS02)
                 kp = (pitch_cmd.kp + roll_cmd.kp) / 2.0
