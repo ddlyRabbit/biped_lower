@@ -14,7 +14,7 @@
 #   DECIMATION:   4 (50 Hz control)
 #
 # DIFFERENCES FROM BERKELEY:
-#   ACTUATORS:    ImplicitActuator with joint friction for sim-to-real.
+#   ACTUATORS:    DelayedPDActuator with friction + action delay for sim-to-real.
 #                 Gains matched to deploy: hip_pitch/knee Kp=30, hip_roll/yaw Kp=20,
 #                 foot Kp=25. Friction: 1.0Nm (hip_pitch/knee), 0.75Nm (hip_roll/yaw),
 #                 0.5Nm (foot). Foot effort 30Nm (parallel linkage).
@@ -37,7 +37,7 @@ from typing import Literal, TYPE_CHECKING
 from collections.abc import Sequence
 
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import ImplicitActuatorCfg
+from isaaclab.actuators import DelayedPDActuatorCfg
 from isaaclab.assets import Articulation, ArticulationCfg, AssetBaseCfg
 from isaaclab.sim.converters.urdf_converter_cfg import UrdfConverterCfg
 from isaaclab.managers import EventTermCfg as EventTerm
@@ -352,7 +352,7 @@ def modify_command_velocity(
 
 
 ###############################################################################
-# Robot config — ImplicitActuator with friction for sim-to-real matching
+# Robot config — DelayedPDActuator with friction + 15-25ms action delay
 ###############################################################################
 
 BIPED_CFG = ArticulationCfg(
@@ -398,41 +398,47 @@ BIPED_CFG = ArticulationCfg(
     ),
     soft_joint_pos_limit_factor=0.9,
     actuators={
-        "hip_roll": ImplicitActuatorCfg(
+        "hip_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_roll.*"],
             effort_limit=50.0, velocity_limit=10.0,
             stiffness=20.0, damping=3.0, armature=0.0112,
             friction=0.75,
+            min_delay=3, max_delay=5,
         ),
-        "hip_yaw": ImplicitActuatorCfg(
+        "hip_yaw": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
             effort_limit=50.0, velocity_limit=10.0,
             stiffness=20.0, damping=3.0, armature=0.0112,
             friction=0.75,
+            min_delay=3, max_delay=5,
         ),
-        "hip_pitch": ImplicitActuatorCfg(
+        "hip_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
             effort_limit=100.0, velocity_limit=10.0,
             stiffness=30.0, damping=3.0, armature=0.0152,
             friction=1.0,
+            min_delay=3, max_delay=5,
         ),
-        "knee": ImplicitActuatorCfg(
+        "knee": DelayedPDActuatorCfg(
             joint_names_expr=[".*knee.*"],
             effort_limit=100.0, velocity_limit=10.0,
             stiffness=30.0, damping=3.0, armature=0.024,
             friction=1.0,
+            min_delay=3, max_delay=5,
         ),
-        "foot_pitch": ImplicitActuatorCfg(
+        "foot_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
             effort_limit=30.0, velocity_limit=10.0,
             stiffness=25.0, damping=0.4, armature=0.0112,
             friction=0.5,
+            min_delay=3, max_delay=5,
         ),
-        "foot_roll": ImplicitActuatorCfg(
+        "foot_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
             effort_limit=30.0, velocity_limit=10.0,
             stiffness=25.0, damping=0.4, armature=0.001,
             friction=0.5,
+            min_delay=3, max_delay=5,
         ),
     },
 )
