@@ -85,35 +85,6 @@ def ankle_motors_to_feedback(
     return foot_pitch, foot_roll
 
 
-def ankle_motor_cmd_at_encoder_min(is_upper: bool) -> float:
-    """Theoretical motor command at the encoder-minimum configuration.
-
-    Used by ``from_robot_yaml`` to compute the bus offset from calibration:
-        offset = encoder_min − cmd_at_encoder_min
-
-    During calibration the user exercises pitch and roll independently,
-    so the encoder minimum is at a single-DOF extreme (not a combined
-    pitch+roll extreme).  We take the min across both single-DOF cases
-    for robustness.
-
-    Upper (A): cmd = K_P × pitch − K_R × roll
-      → min at (pitch_min, roll=0) or (pitch=0, roll_max)
-    Lower (B): cmd = −K_P × pitch − K_R × roll
-      → min at (pitch_max, roll=0) or (pitch=0, roll_max)
-    """
-    pitch_min = -0.87267   # URDF foot_pitch lower
-    pitch_max =  0.52360   # URDF foot_pitch upper
-    roll_max  =  0.26180   # URDF foot_roll  upper
-
-    if is_upper:
-        at_pitch = _PITCH_GAIN * pitch_min       # pitch_min, roll≈0
-        at_roll  = -_ROLL_GAIN * roll_max         # pitch≈0, roll_max
-        return min(at_pitch, at_roll)
-    else:
-        at_pitch = -_PITCH_GAIN * pitch_max       # pitch_max, roll≈0
-        at_roll  = -_ROLL_GAIN * roll_max          # pitch≈0, roll_max
-        return min(at_pitch, at_roll)
-
 
 def ankle_motor_theoretical_limits(is_upper: bool) -> tuple[float, float]:
     """Theoretical motor command range from URDF joint limits.
@@ -199,14 +170,10 @@ class BipedMotorManager:
         "R_hip_roll":   (-2.26893, 0.20944),
         "R_hip_yaw":    (-1.57080, 1.57080),
         "R_knee":       ( 0.00000, 2.70526),
-        "R_foot_top": (-0.87267, 0.52360),    # joint-space pitch limits
-        "R_foot_bottom":  (-0.26180, 0.26180),    # joint-space roll limits
         "L_hip_pitch":  (-1.04720, 2.21657),
         "L_hip_roll":   (-0.20944, 2.26893),
         "L_hip_yaw":    (-1.57080, 1.57080),
         "L_knee":       ( 0.00000, 2.70526),
-        "L_foot_top": (-0.87267, 0.52360),    # joint-space pitch limits
-        "L_foot_bottom":  (-0.26180, 0.26180),    # joint-space roll limits
     }
 
     def __init__(self, joints: list[JointConfig]):
@@ -267,17 +234,7 @@ class BipedMotorManager:
                     m_min = cal.get("motor_min", 0.0)
                     m_max = cal.get("motor_max", 0.0)
                     direction = cal.get("direction", 1)
-
-                    if is_ankle:
-                        is_upper = name in ANKLE_TOP_MOTORS
-                        cmd_at_min = ankle_motor_cmd_at_encoder_min(is_upper)
-                        offset = m_min - cmd_at_min
-                    elif direction == -1:
-                        # Inverted motor: encoder decreases as joint increases.
-                        # offset = motor_max so pos = -(encoder - motor_max)
-                        offset = m_max
-                    else:
-                        offset = cal.get("offset", m_min - urdf[0])
+                    offset = cal.get("offset", 0.0)
 
                     # Limits from calibration (motor command-space)
                     if direction == -1:
@@ -441,7 +398,7 @@ __all__ = [
     "RobstrideBus", "Motor", "MotorFeedback",
     "BipedMotorManager", "JointConfig",
     "ankle_command_to_motors", "ankle_motors_to_feedback",
-    "ankle_motor_cmd_at_encoder_min", "ankle_motor_theoretical_limits",
+    "ankle_motor_theoretical_limits",
     "ANKLE_PAIRS", "ANKLE_ALL", "ANKLE_MOTOR_TO_JOINT",
     "_PITCH_GAIN", "_ROLL_GAIN", "_INV_PITCH", "_INV_ROLL",
     "SOFTSTOP_BUFFER_RAD", "SOFTSTOP_KP",

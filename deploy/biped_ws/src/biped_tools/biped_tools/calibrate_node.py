@@ -31,7 +31,11 @@ import rclpy
 from rclpy.node import Node
 
 from biped_driver.robstride_dynamics import RobstrideBus, Motor
-from biped_driver.robstride_can import ANKLE_PAIRS, ANKLE_ALL, _PITCH_GAIN, _ROLL_GAIN
+from biped_driver.robstride_can import (
+    ANKLE_PAIRS, ANKLE_ALL, ANKLE_TOP_MOTORS,
+    _PITCH_GAIN, _ROLL_GAIN,
+    ankle_motor_theoretical_limits,
+)
 
 # From URDF: urdf/heavy/robot.urdf joint limits (rad)
 # Format: (lower_rad, upper_rad, default_pos_rad)
@@ -351,9 +355,11 @@ class CalibrateNode(Node):
             is_ankle = name in ANKLE_ALL
 
             if is_ankle:
-                # Ankle offset = motor_min (raw encoder reference)
-                # Actual command-space limits computed at runtime in from_robot_yaml
-                cal['offset'] = round(float(mn), 4)
+                # Ankle offset: maps encoder minimum to theoretical command minimum.
+                # cmd = encoder - offset, so offset = encoder_min - cmd_min
+                is_upper = name in ANKLE_TOP_MOTORS
+                cmd_lo, _ = ankle_motor_theoretical_limits(is_upper)
+                cal['offset'] = round(float(mn - cmd_lo), 4)
             else:
                 if urdf:
                     offset = mn - urdf[0]
