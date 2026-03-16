@@ -38,7 +38,7 @@ R_knee:
   urdf_upper: 2.7053
   default_pos: 0.4
   direction: -1
-R_foot_pitch:
+R_foot_top:
   motor_min: 3.7292
   motor_max: 6.0214
   offset: 3.7292
@@ -48,7 +48,7 @@ R_foot_pitch:
   urdf_upper: 0.5236
   default_pos: -0.2
   direction: -1
-R_foot_roll:
+R_foot_bottom:
   motor_min: 4.0188
   motor_max: 6.2749
   offset: 4.0188
@@ -98,7 +98,7 @@ L_knee:
   urdf_upper: 2.7053
   default_pos: 0.4
   direction: 1
-L_foot_pitch:
+L_foot_top:
   motor_min: -0.7751
   motor_max: 1.5056
   offset: -0.7751
@@ -108,7 +108,7 @@ L_foot_pitch:
   urdf_upper: 0.5236
   default_pos: -0.2
   direction: -1
-L_foot_roll:
+L_foot_bottom:
   motor_min: 1.0071
   motor_max: 3.2732
   offset: 1.0071
