@@ -731,7 +731,7 @@ class EventsCfg:
         func=base_mdp.randomize_rigid_body_mass,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "mass_distribution_params": (0.9, 1.1),
+            "mass_distribution_params": (1.0, 1.2),
             "operation": "scale",
         },
         mode="startup",
