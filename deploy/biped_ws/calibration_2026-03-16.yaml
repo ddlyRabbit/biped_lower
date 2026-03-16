@@ -21,12 +21,12 @@ R_knee:
 R_foot_top:
   motor_min: 3.7292
   motor_max: 6.0214
-  offset: 5.0974
+  offset: 4.652
   direction: -1
 R_foot_bottom:
   motor_min: 4.0188
   motor_max: 6.2749
-  offset: 4.9416
+  offset: 5.387
   direction: -1
 L_hip_pitch:
   motor_min: -0.861
@@ -51,10 +51,10 @@ L_knee:
 L_foot_top:
   motor_min: -0.7751
   motor_max: 1.5056
-  offset: 0.5931
+  offset: 0.1477
   direction: -1
 L_foot_bottom:
   motor_min: 1.0071
   motor_max: 3.2732
-  offset: 1.9299
+  offset: 2.3753
   direction: -1
