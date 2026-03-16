@@ -86,26 +86,29 @@ def ankle_motors_to_feedback(
 
 
 
-def ankle_motor_theoretical_limits(is_upper: bool) -> tuple[float, float]:
+def ankle_motor_theoretical_limits(is_upper: bool, pitch_sign: int = 1) -> tuple[float, float]:
     """Theoretical motor command range from URDF joint limits.
 
     Fallback when no calibration is loaded.
     Returns (cmd_lo, cmd_hi) for the given ankle motor.
+
+    pitch_sign: +1 for R ankle, -1 for L ankle.
+    upper: cmd =  pitch_sign * K_P * pitch - K_R * roll
+    lower: cmd = -pitch_sign * K_P * pitch - K_R * roll
     """
     pitch_min = -0.87267
     pitch_max =  0.52360
     roll_min  = -0.26180
     roll_max  =  0.26180
 
-    if is_upper:
-        # motor_A = K_P × pitch − K_R × roll
-        cmd_lo = _PITCH_GAIN * pitch_min - _ROLL_GAIN * roll_max
-        cmd_hi = _PITCH_GAIN * pitch_max - _ROLL_GAIN * roll_min
-    else:
-        # motor_B = −K_P × pitch − K_R × roll
-        cmd_lo = -_PITCH_GAIN * pitch_max - _ROLL_GAIN * roll_max
-        cmd_hi = -_PITCH_GAIN * pitch_min - _ROLL_GAIN * roll_min
-    return cmd_lo, cmd_hi
+    # Sign flip changes which corners give min/max — enumerate all four
+    sign = pitch_sign if is_upper else -pitch_sign
+    corners = [
+        sign * _PITCH_GAIN * p - _ROLL_GAIN * r
+        for p in (pitch_min, pitch_max)
+        for r in (roll_min, roll_max)
+    ]
+    return min(corners), max(corners)
 
 
 # Ankle pairs: top_motor → bottom_motor (upper/knee-side → lower/foot-side)
@@ -254,7 +257,8 @@ class BipedMotorManager:
                     # No calibration — URDF / theoretical fallback
                     if is_ankle:
                         is_upper = name in ANKLE_TOP_MOTORS
-                        motor_cmd_lo, motor_cmd_hi = ankle_motor_theoretical_limits(is_upper)
+                        pitch_sign = -1 if name.startswith("L") else 1
+                        motor_cmd_lo, motor_cmd_hi = ankle_motor_theoretical_limits(is_upper, pitch_sign)
                     else:
                         motor_cmd_lo = urdf[0]
                         motor_cmd_hi = urdf[1]

@@ -361,7 +361,8 @@ class CalibrateNode(Node):
                 # dir=-1: pos = -(encoder - offset) → at m_min, pos = cmd_hi
                 #   offset = m_min + cmd_hi
                 is_upper = name in ANKLE_TOP_MOTORS
-                cmd_lo, cmd_hi = ankle_motor_theoretical_limits(is_upper)
+                pitch_sign = -1 if name.startswith("L") else 1
+                cmd_lo, cmd_hi = ankle_motor_theoretical_limits(is_upper, pitch_sign)
                 existing_dir = existing_cal.get(name, {}).get('direction', 1)
                 if existing_dir == -1:
                     cal['offset'] = round(float(mn + cmd_hi), 4)

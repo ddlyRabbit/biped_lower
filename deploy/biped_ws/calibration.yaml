@@ -14,9 +14,9 @@ R_hip_yaw:
   offset: 3.9984
   direction: 1
 R_knee:
-  motor_min: 1.4247
-  motor_max: 4.2013
-  offset: 1.4247
+  motor_min: 2.3175
+  motor_max: 4.925
+  offset: 2.3175
   direction: -1
 R_foot_top:
   motor_min: 1.6491
@@ -51,10 +51,10 @@ L_knee:
 L_foot_top:
   motor_min: -0.7751
   motor_max: 1.5056
-  offset: 0.1477
+  offset: 0.5931
   direction: -1
 L_foot_bottom:
   motor_min: 1.0071
   motor_max: 3.2732
-  offset: 2.3753
+  offset: 1.9299
   direction: -1
