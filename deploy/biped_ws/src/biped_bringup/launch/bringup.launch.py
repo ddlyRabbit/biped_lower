@@ -1,18 +1,39 @@
-"""Full robot bringup — all nodes.
+"""Full robot bringup — all nodes + automatic rosbag recording.
+
+Records MCAP bags to ~/biped_lower/bags/<timestamp>/ on every run.
+Open .mcap files directly in Foxglove Studio for playback.
 
 Usage:
     ros2 launch biped_bringup bringup.launch.py
     ros2 launch biped_bringup bringup.launch.py gain_scale:=0.3
     ros2 launch biped_bringup bringup.launch.py calibration_file:=calibration.yaml
+    ros2 launch biped_bringup bringup.launch.py record:=false  # disable recording
 """
 
 import os
+from datetime import datetime
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, ExecuteProcess
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
+
+# Topics to record (high-value, skip static/verbose topics)
+RECORD_TOPICS = [
+    '/joint_states',
+    '/motor_states',
+    '/joint_commands',
+    '/imu/data',
+    '/imu/gravity',
+    '/cmd_vel',
+    '/state_machine',
+    '/robot_state',
+    '/safety/status',
+    '/safety/fault',
+    '/tf',
+]
 
 
 def generate_launch_description():
@@ -24,6 +45,9 @@ def generate_launch_description():
         urdf_xml = f.read()
     robot_description = ParameterValue(urdf_xml, value_type=str)
 
+    bag_dir = os.path.expanduser(
+        f'~/biped_lower/bags/{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}')
+
     return LaunchDescription([
         DeclareLaunchArgument('calibration_file', default_value=''),
         DeclareLaunchArgument('robot_config', default_value=default_robot_config),
@@ -31,6 +55,8 @@ def generate_launch_description():
         DeclareLaunchArgument('gain_scale', default_value='1.0'),
         DeclareLaunchArgument('max_pitch_deg', default_value='85.0'),
         DeclareLaunchArgument('max_roll_deg', default_value='85.0'),
+        DeclareLaunchArgument('record', default_value='true',
+                              description='Enable rosbag recording (MCAP format)'),
 
         # Robot description (URDF → /tf, /tf_static, /robot_description)
         Node(
@@ -85,5 +111,16 @@ def generate_launch_description():
                 'gain_scale': LaunchConfiguration('gain_scale'),
                 'loop_rate': 50.0,
             }],
+        ),
+
+        # Rosbag recording (MCAP format — open directly in Foxglove)
+        ExecuteProcess(
+            condition=IfCondition(LaunchConfiguration('record')),
+            cmd=['ros2', 'bag', 'record',
+                 '--storage', 'mcap',
+                 '--max-bag-duration', '300',  # split every 5 min
+                 '-o', bag_dir,
+                 ] + RECORD_TOPICS,
+            output='log',
         ),
     ])
