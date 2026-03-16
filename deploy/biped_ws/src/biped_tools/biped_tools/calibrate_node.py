@@ -351,19 +351,15 @@ class CalibrateNode(Node):
             is_ankle = name in ANKLE_ALL
 
             if is_ankle:
+                # Ankle offset = motor_min (raw encoder reference)
+                # Actual command-space limits computed at runtime in from_robot_yaml
                 cal['offset'] = round(float(mn), 4)
-                cal['limit_lo'] = round(float(mn), 4)
-                cal['limit_hi'] = round(float(mx), 4)
             else:
                 if urdf:
                     offset = mn - urdf[0]
                     cal['offset'] = round(float(offset), 4)
-                    cal['limit_lo'] = round(float(urdf[0]), 4)
-                    cal['limit_hi'] = round(float(urdf[1]), 4)
                 else:
                     cal['offset'] = round(float(mn), 4)
-                    cal['limit_lo'] = round(float(mn), 4)
-                    cal['limit_hi'] = round(float(mx), 4)
 
             if urdf:
                 cal['urdf_lower'] = round(urdf[0], 4)
