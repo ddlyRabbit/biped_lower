@@ -361,10 +361,7 @@ class CalibrateNode(Node):
                 else:
                     cal['offset'] = round(float(mn), 4)
 
-            if urdf:
-                cal['urdf_lower'] = round(urdf[0], 4)
-                cal['urdf_upper'] = round(urdf[1], 4)
-                cal['default_pos'] = round(urdf[2], 4)
+
 
             # Preserve direction from existing calibration
             if name in existing_cal and 'direction' in existing_cal[name]:
