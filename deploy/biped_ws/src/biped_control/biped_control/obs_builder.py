@@ -53,8 +53,8 @@ DEFAULT_GAINS = {
     "L_hip_roll":  (10.0, 3.0), "R_hip_roll":  (10.0, 3.0),
     "L_hip_yaw":   (10.0, 3.0), "R_hip_yaw":   (10.0, 3.0),
     "L_knee":      (15.0, 3.0), "R_knee":      (15.0, 3.0),
-    "L_foot_pitch": (10.0, 0.2), "R_foot_pitch": (10.0, 0.2),
-    "L_foot_roll":  (10.0, 0.2), "R_foot_roll":  (10.0, 0.2),
+    "L_foot_pitch": (20.0, 0.4), "R_foot_pitch": (20.0, 0.4),
+    "L_foot_roll":  (20.0, 0.4), "R_foot_roll":  (20.0, 0.4),
 }
 
 
