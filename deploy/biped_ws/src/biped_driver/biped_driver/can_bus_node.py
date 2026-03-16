@@ -74,6 +74,8 @@ class CanBusNode(Node):
             joints = self._parse_param_strings(offsets)
             self._mgr = BipedMotorManager(joints)
 
+        # Reverse map: joint-space name → motor name (for ankle command lookup)
+        self._joint_to_motor = {v: k for k, v in ANKLE_MOTOR_TO_JOINT.items()}
         self._last_commands: dict[str, MITCommand] = {}
         # Last known motor-space positions (used for soft-stop torque).
         # For normal joints motor command-space = joint-space.
@@ -196,7 +198,8 @@ class CanBusNode(Node):
 
     def _cmd_callback(self, msg: MITCommandArray):
         for cmd in msg.commands:
-            if cmd.joint_name in self._mgr.joints:
+            # Accept both motor names (foot_top) and joint-space names (foot_pitch)
+            if cmd.joint_name in self._mgr.joints or cmd.joint_name in self._joint_to_motor:
                 self._last_commands[cmd.joint_name] = cmd
 
     # ── Main control loop ───────────────────────────────────────────
