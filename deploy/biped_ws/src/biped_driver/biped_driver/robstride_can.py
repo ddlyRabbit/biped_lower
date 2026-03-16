@@ -137,15 +137,21 @@ def ankle_motor_theoretical_limits(is_upper: bool) -> tuple[float, float]:
     return cmd_lo, cmd_hi
 
 
-# Ankle pairs: pitch_joint → roll_joint (upper_motor → lower_motor)
+# Ankle pairs: top_motor → bottom_motor (upper/knee-side → lower/foot-side)
 ANKLE_PAIRS = {
-    "L_foot_pitch": "L_foot_roll",
-    "R_foot_pitch": "R_foot_roll",
+    "L_foot_top": "L_foot_bottom",
+    "R_foot_top": "R_foot_bottom",
 }
 
-ANKLE_PITCH_MOTORS = set(ANKLE_PAIRS.keys())
-ANKLE_ROLL_MOTORS = set(ANKLE_PAIRS.values())
-ANKLE_ALL = ANKLE_PITCH_MOTORS | ANKLE_ROLL_MOTORS
+ANKLE_TOP_MOTORS = set(ANKLE_PAIRS.keys())       # upper / knee-side
+ANKLE_BOTTOM_MOTORS = set(ANKLE_PAIRS.values())   # lower / foot-side
+ANKLE_ALL = ANKLE_TOP_MOTORS | ANKLE_BOTTOM_MOTORS
+
+# Motor name → joint-space name (for /joint_states, policy compatibility)
+ANKLE_MOTOR_TO_JOINT = {
+    "L_foot_top": "L_foot_pitch",  "L_foot_bottom": "L_foot_roll",
+    "R_foot_top": "R_foot_pitch",  "R_foot_bottom": "R_foot_roll",
+}
 
 
 # ── Soft stop config ────────────────────────────────────────────────
@@ -193,14 +199,14 @@ class BipedMotorManager:
         "R_hip_roll":   (-2.26893, 0.20944),
         "R_hip_yaw":    (-1.57080, 1.57080),
         "R_knee":       ( 0.00000, 2.70526),
-        "R_foot_pitch": (-0.87267, 0.52360),
-        "R_foot_roll":  (-0.26180, 0.26180),
+        "R_foot_top": (-0.87267, 0.52360),    # joint-space pitch limits
+        "R_foot_bottom":  (-0.26180, 0.26180),    # joint-space roll limits
         "L_hip_pitch":  (-1.04720, 2.21657),
         "L_hip_roll":   (-0.20944, 2.26893),
         "L_hip_yaw":    (-1.57080, 1.57080),
         "L_knee":       ( 0.00000, 2.70526),
-        "L_foot_pitch": (-0.87267, 0.52360),
-        "L_foot_roll":  (-0.26180, 0.26180),
+        "L_foot_top": (-0.87267, 0.52360),    # joint-space pitch limits
+        "L_foot_bottom":  (-0.26180, 0.26180),    # joint-space roll limits
     }
 
     def __init__(self, joints: list[JointConfig]):
@@ -263,7 +269,7 @@ class BipedMotorManager:
                     direction = cal.get("direction", 1)
 
                     if is_ankle:
-                        is_upper = name in ANKLE_PITCH_MOTORS
+                        is_upper = name in ANKLE_TOP_MOTORS
                         cmd_at_min = ankle_motor_cmd_at_encoder_min(is_upper)
                         offset = m_min - cmd_at_min
                     elif direction == -1:
@@ -284,7 +290,7 @@ class BipedMotorManager:
                 else:
                     # No calibration — URDF / theoretical fallback
                     if is_ankle:
-                        is_upper = name in ANKLE_PITCH_MOTORS
+                        is_upper = name in ANKLE_TOP_MOTORS
                         motor_cmd_lo, motor_cmd_hi = ankle_motor_theoretical_limits(is_upper)
                     else:
                         motor_cmd_lo = urdf[0]
@@ -416,10 +422,10 @@ class BipedMotorManager:
 
     # ── Ankle helpers ───────────────────────────────────────────────
 
-    def is_ankle_pitch(self, name: str) -> bool:
+    def is_ankle_top(self, name: str) -> bool:
         return name in ANKLE_PAIRS
 
-    def is_ankle_roll(self, name: str) -> bool:
+    def is_ankle_bottom(self, name: str) -> bool:
         return name in ANKLE_PAIRS.values()
 
     def get_ankle_pair(self, name: str) -> Optional[tuple[str, str]]:
@@ -436,7 +442,7 @@ __all__ = [
     "BipedMotorManager", "JointConfig",
     "ankle_command_to_motors", "ankle_motors_to_feedback",
     "ankle_motor_cmd_at_encoder_min", "ankle_motor_theoretical_limits",
-    "ANKLE_PAIRS", "ANKLE_ALL",
+    "ANKLE_PAIRS", "ANKLE_ALL", "ANKLE_MOTOR_TO_JOINT",
     "_PITCH_GAIN", "_ROLL_GAIN", "_INV_PITCH", "_INV_ROLL",
     "SOFTSTOP_BUFFER_RAD", "SOFTSTOP_KP",
 ]

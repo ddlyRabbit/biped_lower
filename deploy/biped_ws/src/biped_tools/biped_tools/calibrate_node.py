@@ -3,7 +3,7 @@
 Continuously reads motor positions and tracks min/max.
 Joints auto-mark ✅ DONE when observed range matches expected within 5%.
 
-Ankle motors (foot_pitch/foot_roll) are shown in raw motor-space since
+Ankle motors (foot_top/foot_bottom (upper/lower motors)) are shown in raw motor-space since
 joint-space conversion requires offsets we don't have yet. The expected
 motor range is computed from URDF joint limits through the linkage forward.
 
@@ -31,7 +31,7 @@ import rclpy
 from rclpy.node import Node
 
 from biped_driver.robstride_dynamics import RobstrideBus, Motor
-from biped_driver.robstride_can import ANKLE_PAIRS, _PITCH_GAIN, _ROLL_GAIN
+from biped_driver.robstride_can import ANKLE_PAIRS, ANKLE_ALL, _PITCH_GAIN, _ROLL_GAIN
 
 # From URDF: urdf/heavy/robot.urdf joint limits (rad)
 # Format: (lower_rad, upper_rad, default_pos_rad)
@@ -40,36 +40,34 @@ URDF_LIMITS = {
     "R_hip_roll":   (-2.26893, 0.20944,  0.0),
     "R_hip_yaw":    (-1.57080, 1.57080,  0.0),
     "R_knee":       ( 0.00000, 2.70526,  0.4),
-    "R_foot_pitch": (-0.87267, 0.52360, -0.2),
-    "R_foot_roll":  (-0.26180, 0.26180,  0.0),
+    "R_foot_top": (-0.87267, 0.52360, -0.2),
+    "R_foot_bottom":  (-0.26180, 0.26180,  0.0),
     "L_hip_pitch":  (-1.04720, 2.21657, -0.2),
     "L_hip_roll":   (-0.20944, 2.26893,  0.0),
     "L_hip_yaw":    (-1.57080, 1.57080,  0.0),
     "L_knee":       ( 0.00000, 2.70526,  0.4),
-    "L_foot_pitch": (-0.87267, 0.52360, -0.2),
-    "L_foot_roll":  (-0.26180, 0.26180,  0.0),
+    "L_foot_top": (-0.87267, 0.52360, -0.2),
+    "L_foot_bottom":  (-0.26180, 0.26180,  0.0),
 }
 
 # Ankle motor names
-ANKLE_PITCH_MOTORS = set(ANKLE_PAIRS.keys())
-ANKLE_ROLL_MOTORS = set(ANKLE_PAIRS.values())
-ANKLE_ALL = ANKLE_PITCH_MOTORS | ANKLE_ROLL_MOTORS
+# ANKLE sets imported from robstride_can
 
 
 def _ankle_expected_motor_range(side_prefix):
     """Compute expected motor range for ankle motors from URDF joint limits."""
-    pitch_urdf = URDF_LIMITS[f"{side_prefix}_foot_pitch"]
-    roll_urdf = URDF_LIMITS[f"{side_prefix}_foot_roll"]
+    pitch_urdf = URDF_LIMITS[f"{side_prefix}_foot_top"]
+    roll_urdf = URDF_LIMITS[f"{side_prefix}_foot_bottom"]
     pitch_range = pitch_urdf[1] - pitch_urdf[0]
     roll_range = roll_urdf[1] - roll_urdf[0]
     return _PITCH_GAIN * pitch_range + _ROLL_GAIN * roll_range
 
 
 ANKLE_EXPECTED_RANGE = {
-    "R_foot_pitch": _ankle_expected_motor_range("R"),
-    "R_foot_roll":  _ankle_expected_motor_range("R"),
-    "L_foot_pitch": _ankle_expected_motor_range("L"),
-    "L_foot_roll":  _ankle_expected_motor_range("L"),
+    "R_foot_top": _ankle_expected_motor_range("R"),
+    "R_foot_bottom":  _ankle_expected_motor_range("R"),
+    "L_foot_top": _ankle_expected_motor_range("L"),
+    "L_foot_bottom":  _ankle_expected_motor_range("L"),
 }
 
 RANGE_MATCH_THRESHOLD = 0.05

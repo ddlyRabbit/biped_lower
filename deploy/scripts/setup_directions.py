@@ -2,7 +2,7 @@
 """Interactive motor direction setup — run alongside bringup.launch.py.
 
 For each joint, toggle direction (+1/-1) while watching Foxglove.
-For ankle motors (foot_pitch/foot_roll = upper/lower motor), shows
+For ankle motors (foot_top/foot_bottom = upper/lower motor), shows
 guidance since they are coupled through the parallel linkage.
 
 Saves direction per joint in calibration.yaml.
@@ -27,8 +27,8 @@ NORMAL_JOINTS = [
 ]
 
 ANKLE_PAIRS = [
-    ("R_foot_pitch", "R_foot_roll"),  # R upper, R lower
-    ("L_foot_pitch", "L_foot_roll"),  # L upper, L lower
+    ("R_foot_top", "R_foot_bottom"),  # R upper, R lower
+    ("L_foot_top", "L_foot_bottom"),  # L upper, L lower
 ]
 
 ALL_JOINTS = NORMAL_JOINTS + [j for pair in ANKLE_PAIRS for j in pair]

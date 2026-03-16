@@ -1,0 +1,18 @@
+R_foot_pitch:
+  motor_min: 1.6498
+  motor_max: 3.924
+  offset: 1.6498
+  limit_lo: 1.6498
+  limit_hi: 3.924
+  urdf_lower: -0.8727
+  urdf_upper: 0.5236
+  default_pos: -0.2
+R_foot_roll:
+  motor_min: 3.9555
+  motor_max: 6.2331
+  offset: 3.9555
+  limit_lo: 3.9555
+  limit_hi: 6.2331
+  urdf_lower: -0.2618
+  urdf_upper: 0.2618
+  default_pos: 0.0

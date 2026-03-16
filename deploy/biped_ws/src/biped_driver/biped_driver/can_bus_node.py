@@ -4,7 +4,7 @@ Uses robstride_dynamics (Seeed shared library) via BipedMotorManager.
 Handles ankle parallel linkage transparently.
 
 Hardware layout:
-    can0 → All 12 motors (Waveshare RS485 CAN HAT (B), MCP2515 on SPI0)
+    Dual CAN: can0 (right leg) + can1 (left leg) via Waveshare 2-CH CAN HAT
 
 Subscribes:
     /joint_commands   biped_msgs/MITCommandArray
@@ -30,6 +30,7 @@ from biped_driver.robstride_can import (
     ankle_command_to_motors,
     ankle_motors_to_feedback,
     ANKLE_PAIRS,
+    ANKLE_MOTOR_TO_JOINT,
 )
 
 
@@ -38,7 +39,7 @@ class CanBusNode(Node):
 
     Motor config comes from robot.yaml (or param strings as fallback).
     Ankle joints are transparently mapped through the parallel linkage
-    transform: policy sees foot_pitch/foot_roll, CAN sends motor_upper/lower.
+    transform: policy sees foot_pitch/foot_roll, CAN uses foot_top/foot_bottom motors.
 
     All soft-stop and clamping logic operates in motor command-space
     using calibration-derived limits.
@@ -173,7 +174,7 @@ class CanBusNode(Node):
         for bus_name in sorted(bus_groups):
             names = bus_groups[bus_name]
             # Separate ankle rolls (they'll be pulled in via their pitch pair)
-            ankle_rolls = {r for r in names if self._mgr.is_ankle_roll(r)}
+            ankle_rolls = {r for r in names if self._mgr.is_ankle_bottom(r)}
             ordered = []
             seen = set()
             for name in sorted(names):
@@ -272,15 +273,20 @@ class CanBusNode(Node):
         All clamping and soft-stop happens in motor command-space using
         calibration limits.  No joint-space clamping.
 
-        pitch_name → upper motor (knee-side CAN ID, motor A)
-        roll_name  → lower motor (foot-side CAN ID, motor B)
+        top_name   → upper motor (knee-side CAN ID, motor A)
+        bottom_name → lower motor (foot-side CAN ID, motor B)
+
+        Publishes joint-space names (foot_pitch/foot_roll) on /joint_states.
         """
-        pitch_name, roll_name = pair
-        pitch_cmd = self._last_commands.get(pitch_name)
-        roll_cmd = self._last_commands.get(roll_name)
+        top_name, bottom_name = pair
+        # Joint-space names for /joint_states (policy compatibility)
+        pitch_joint = ANKLE_MOTOR_TO_JOINT[top_name]
+        roll_joint = ANKLE_MOTOR_TO_JOINT[bottom_name]
+        pitch_cmd = self._last_commands.get(pitch_joint)
+        roll_cmd = self._last_commands.get(roll_joint)
 
         # L ankle has mirrored pitch axis
-        pitch_sign = -1 if pitch_name.startswith("L") else 1
+        pitch_sign = -1 if top_name.startswith("L") else 1
 
         fb_upper = None
         fb_lower = None
@@ -298,20 +304,20 @@ class CanBusNode(Node):
 
                 # 2. Send with per-motor soft-stop in motor command-space
                 self._mgr.send_ankle_mit_command(
-                    pitch_name, motor_upper, kp, kd, 0.0, tff,
-                    actual_pos=self._last_positions.get(pitch_name))
-                fb_upper = self._mgr.read_feedback(pitch_name)
+                    top_name, motor_upper, kp, kd, 0.0, tff,
+                    actual_pos=self._last_positions.get(top_name))
+                fb_upper = self._mgr.read_feedback(top_name)
 
                 self._mgr.send_ankle_mit_command(
-                    roll_name, motor_lower, kp, kd, 0.0, tff,
-                    actual_pos=self._last_positions.get(roll_name))
-                fb_lower = self._mgr.read_feedback(roll_name)
+                    bottom_name, motor_lower, kp, kd, 0.0, tff,
+                    actual_pos=self._last_positions.get(bottom_name))
+                fb_lower = self._mgr.read_feedback(bottom_name)
             else:
                 # No commands — zero stiffness, just read
-                self._mgr.send_ankle_mit_command(pitch_name, 0.0, 0.0, 0.0)
-                fb_upper = self._mgr.read_feedback(pitch_name)
-                self._mgr.send_ankle_mit_command(roll_name, 0.0, 0.0, 0.0)
-                fb_lower = self._mgr.read_feedback(roll_name)
+                self._mgr.send_ankle_mit_command(top_name, 0.0, 0.0, 0.0)
+                fb_upper = self._mgr.read_feedback(top_name)
+                self._mgr.send_ankle_mit_command(bottom_name, 0.0, 0.0, 0.0)
+                fb_lower = self._mgr.read_feedback(bottom_name)
         except Exception as e:
             self.get_logger().warn(
                 f"Ankle {pitch_name}/{roll_name}: CAN error: {e}",
@@ -319,9 +325,9 @@ class CanBusNode(Node):
 
         # Store raw motor positions for next cycle's soft-stop torque
         if fb_upper is not None:
-            self._last_positions[pitch_name] = fb_upper.position
+            self._last_positions[top_name] = fb_upper.position
         if fb_lower is not None:
-            self._last_positions[roll_name] = fb_lower.position
+            self._last_positions[bottom_name] = fb_lower.position
 
         if fb_upper is not None and fb_lower is not None:
             # Asimov inverse: motor-space → joint-space for /joint_states
@@ -330,12 +336,13 @@ class CanBusNode(Node):
             foot_pitch_vel, foot_roll_vel = ankle_motors_to_feedback(
                 fb_upper.velocity, fb_lower.velocity, pitch_sign)
 
-            for jname, pos, vel, fb in [
-                (pitch_name, foot_pitch, foot_pitch_vel, fb_upper),
-                (roll_name, foot_roll, foot_roll_vel, fb_lower),
+            for jname, motor_name, pos, vel, fb in [
+                (pitch_joint, top_name, foot_pitch, foot_pitch_vel, fb_upper),
+                (roll_joint, bottom_name, foot_roll, foot_roll_vel, fb_lower),
             ]:
                 self._append_feedback(jname, fb, joint_msg, motor_msg,
-                                      override_pos=pos, override_vel=vel)
+                                      override_pos=pos, override_vel=vel,
+                                      motor_name=motor_name)
 
     def _append_feedback(
         self,
@@ -345,8 +352,13 @@ class CanBusNode(Node):
         motor_msg: MotorStateArray,
         override_pos: float = None,
         override_vel: float = None,
+        motor_name: str = None,
     ):
-        """Append motor feedback to both JointState and MotorStateArray messages."""
+        """Append motor feedback to both JointState and MotorStateArray messages.
+
+        name: joint-space name (published on /joint_states)
+        motor_name: CAN motor name (for can_id lookup, defaults to name)
+        """
         if fb is None:
             return
 
@@ -360,7 +372,8 @@ class CanBusNode(Node):
 
         ms = MotorState()
         ms.joint_name = name
-        ms.can_id = self._mgr.joints[name].can_id
+        mn = motor_name or name
+        ms.can_id = self._mgr.joints[mn].can_id
         ms.position = pos
         ms.velocity = vel
         ms.torque = fb.torque
