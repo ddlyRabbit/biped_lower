@@ -431,9 +431,9 @@ class BipedMotorManager:
     def get_ankle_pair(self, name: str) -> Optional[tuple[str, str]]:
         if name in ANKLE_PAIRS:
             return (name, ANKLE_PAIRS[name])
-        for p, r in ANKLE_PAIRS.items():
-            if name == r:
-                return (p, r)
+        for t, b in ANKLE_PAIRS.items():
+            if name == b:
+                return (t, b)
         return None
 
 

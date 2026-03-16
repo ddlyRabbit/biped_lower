@@ -1,4 +1,4 @@
-"""ROS2 CAN bus node — single node managing all 12 motors on can0.
+"""ROS2 CAN bus node — node managing all 12 motors across dual CAN buses.
 
 Uses robstride_dynamics (Seeed shared library) via BipedMotorManager.
 Handles ankle parallel linkage transparently.
@@ -35,7 +35,7 @@ from biped_driver.robstride_can import (
 
 
 class CanBusNode(Node):
-    """Single ROS2 node controlling all RobStride motors on can0.
+    """ROS2 node controlling all RobStride motors across CAN buses.
 
     Motor config comes from robot.yaml (or param strings as fallback).
     Ankle joints are transparently mapped through the parallel linkage
@@ -163,7 +163,7 @@ class CanBusNode(Node):
     def _build_bus_joint_order(self) -> list[list[str]]:
         """Group joints by bus. Returns [[joints_on_bus0], ...].
 
-        Within each bus group, ankle pairs are kept adjacent (pitch before roll)
+        Within each bus group, ankle pairs are kept adjacent (top before bottom)
         and non-ankle joints are sorted alphabetically.
         """
         bus_groups = defaultdict(list)
@@ -173,7 +173,7 @@ class CanBusNode(Node):
         result = []
         for bus_name in sorted(bus_groups):
             names = bus_groups[bus_name]
-            # Separate ankle rolls (they'll be pulled in via their pitch pair)
+            # Separate ankle bottoms (they.ll be pulled in via their top pair)
             ankle_rolls = {r for r in names if self._mgr.is_ankle_bottom(r)}
             ordered = []
             seen = set()
@@ -182,8 +182,8 @@ class CanBusNode(Node):
                     continue
                 pair = self._mgr.get_ankle_pair(name)
                 if pair:
-                    ordered.append(pair[0])  # pitch
-                    ordered.append(pair[1])  # roll
+                    ordered.append(pair[0])  # top
+                    ordered.append(pair[1])  # bottom
                     seen.add(pair[0])
                     seen.add(pair[1])
                 else:
@@ -320,7 +320,7 @@ class CanBusNode(Node):
                 fb_lower = self._mgr.read_feedback(bottom_name)
         except Exception as e:
             self.get_logger().warn(
-                f"Ankle {pitch_name}/{roll_name}: CAN error: {e}",
+                f"Ankle {top_name}/{bottom_name}: CAN error: {e}",
                 throttle_duration_sec=1.0)
 
         # Store raw motor positions for next cycle's soft-stop torque
