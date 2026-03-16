@@ -354,14 +354,17 @@ class CanBusNode(Node):
         override_vel: float = None,
         motor_name: str = None,
     ):
-        """Append motor feedback to both JointState and MotorStateArray messages.
+        """Append feedback to /joint_states (joint-space) and /motor_states (motor command-space).
 
         name: joint-space name (published on /joint_states)
-        motor_name: CAN motor name (for can_id lookup, defaults to name)
+        motor_name: CAN motor name (for /motor_states, defaults to name)
+        override_pos/vel: joint-space values for ankle joints (from linkage inverse)
+        fb.position/velocity: motor command-space (raw from RobstrideBus, offset+direction applied)
         """
         if fb is None:
             return
 
+        # /joint_states: joint-space (with linkage inverse for ankles)
         pos = override_pos if override_pos is not None else fb.position
         vel = override_vel if override_vel is not None else fb.velocity
 
@@ -370,12 +373,13 @@ class CanBusNode(Node):
         joint_msg.velocity.append(vel)
         joint_msg.effort.append(fb.torque)
 
+        # /motor_states: motor command-space (raw from bus, no linkage inverse)
         ms = MotorState()
-        ms.joint_name = name
         mn = motor_name or name
+        ms.joint_name = mn
         ms.can_id = self._mgr.joints[mn].can_id
-        ms.position = pos
-        ms.velocity = vel
+        ms.position = fb.position
+        ms.velocity = fb.velocity
         ms.torque = fb.torque
         ms.temperature = fb.temperature
         ms.fault_code = fb.fault_code
