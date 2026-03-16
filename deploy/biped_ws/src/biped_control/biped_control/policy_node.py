@@ -14,6 +14,7 @@ Usage:
         -p gain_scale:=0.3
 """
 
+import time
 import numpy as np
 import yaml
 import onnxruntime as ort
@@ -31,6 +32,7 @@ from biped_control.obs_builder import ObsBuilder, ISAAC_JOINT_ORDER, DEFAULT_POS
 # Soft start timing
 SOFT_START_POSITION_SECS = 2.0  # interpolate current → target over this
 SOFT_START_GAIN_SECS = 1.0       # ramp gains from 10% → 100% after position interp
+WALK_GAIN_RAMP_SECS = 0.5        # ramp gains from 10% → 100% on WALK entry
 
 
 class PolicyNode(Node):
@@ -73,6 +75,7 @@ class PolicyNode(Node):
         self._joint_positions = {}  # populated from /joint_states
         self._joint_velocities = {}
         self._fsm_state = "IDLE"
+        self._walk_start_time = None  # set on WALK entry for gain ramp
 
         # QoS
         sensor_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
@@ -136,6 +139,8 @@ class PolicyNode(Node):
         new_state = msg.data.strip().upper()
         if new_state != self._fsm_state:
             self.get_logger().info(f'FSM: {self._fsm_state} → {new_state}')
+            if new_state == "WALK":
+                self._walk_start_time = time.time()
             self._fsm_state = new_state
 
     # --- Main loop ---
@@ -179,6 +184,12 @@ class PolicyNode(Node):
         cmd_msg = MITCommandArray()
         cmd_msg.header.stamp = self.get_clock().now().to_msg()
 
+        # Gain ramp on WALK entry — prevent violent transition from STAND
+        walk_ramp = 1.0
+        if self._walk_start_time is not None:
+            walk_elapsed = time.time() - self._walk_start_time
+            walk_ramp = min(1.0, 0.1 + 0.9 * (walk_elapsed / WALK_GAIN_RAMP_SECS))
+
         for name in ISAAC_JOINT_ORDER:
             cmd = MITCommand()
             cmd.joint_name = name
@@ -186,8 +197,8 @@ class PolicyNode(Node):
             cmd.velocity = 0.0
             kp, kd = self._gains[name]
             gs = float(self.get_parameter("gain_scale").value)
-            cmd.kp = kp * gs
-            cmd.kd = kd * gs
+            cmd.kp = kp * gs * walk_ramp
+            cmd.kd = kd * gs * walk_ramp
             cmd.torque_ff = 0.0
             cmd_msg.commands.append(cmd)
 
