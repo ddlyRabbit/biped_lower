@@ -18,6 +18,7 @@ import numpy as np
 import yaml
 import onnxruntime as ort
 import rclpy
+import rcl_interfaces.msg
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Imu, JointState
@@ -41,7 +42,8 @@ class PolicyNode(Node):
         self.declare_parameter('onnx_model', 'student_flat.onnx')
         self.declare_parameter('loop_rate', 50.0)
         self.declare_parameter('gains_file', '')
-        self.declare_parameter('gain_scale', 1.0)
+        self.declare_parameter('gain_scale', 1.0,
+            rcl_interfaces.msg.ParameterDescriptor(dynamic_typing=True))
 
         model_path = str(self.get_parameter('onnx_model').value)
         self._rate = float(self.get_parameter('loop_rate').value)
