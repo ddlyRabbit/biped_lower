@@ -128,10 +128,10 @@ class CalibrateNode(Node):
                 return
             target_joints = [self._joint_filter]
             # For ankle joints, must calibrate both in the pair together
-            for pitch, roll in ANKLE_PAIRS.items():
-                if self._joint_filter in (pitch, roll):
-                    target_joints = [pitch, roll]
-                    print(f"  ℹ️  Ankle joints are coupled — calibrating both: {pitch}, {roll}")
+            for top, bottom in ANKLE_PAIRS.items():
+                if self._joint_filter in (top, bottom):
+                    target_joints = [top, bottom]
+                    print(f"  ℹ️  Ankle joints are coupled — calibrating both: {top}, {bottom}")
                     break
         else:
             target_joints = all_names
