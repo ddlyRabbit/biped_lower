@@ -1,22 +1,32 @@
 """Live joint calibration — LeRobot-style real-time display.
 
-Continuously reads all motor positions and tracks min/max.
-Joints auto-mark ✅ DONE when observed range matches expected within 20%.
+Continuously reads motor positions and tracks min/max.
+Joints auto-mark ✅ DONE when observed range matches expected within 5%.
 
 Ankle motors (foot_pitch/foot_roll) are shown in raw motor-space since
 joint-space conversion requires offsets we don't have yet. The expected
 motor range is computed from URDF joint limits through the linkage forward.
 
-Press Ctrl+C when all joints are done (or early) to save calibration.yaml.
+Press Enter (or Ctrl+C in non-TTY) when done to save.
 
 Usage:
+    # Calibrate all joints (both CAN buses):
     ros2 run biped_tools calibrate_node --ros-args \
-        -p can_channel:=can0
+        -p robot_config:=<path/to/robot.yaml>
+
+    # Calibrate a single joint (merges into existing file):
+    ros2 run biped_tools calibrate_node --ros-args \
+        -p joint:=R_knee
+
+    # Via launch file:
+    ros2 launch biped_bringup calibrate.launch.py
+    ros2 launch biped_bringup calibrate.launch.py joint:=L_hip_pitch
 """
 
 import yaml
 import time
 import sys
+import os
 import rclpy
 from rclpy.node import Node
 
@@ -40,33 +50,12 @@ URDF_LIMITS = {
     "L_foot_roll":  (-0.26180, 0.26180,  0.0),
 }
 
-MOTOR_LIST = [
-    ("R_hip_pitch",   1, "rs-04"),
-    ("R_hip_roll",    2, "rs-03"),
-    ("R_hip_yaw",     3, "rs-03"),
-    ("R_knee",        4, "rs-04"),
-    ("R_foot_pitch",  5, "rs-02"),
-    ("R_foot_roll",   6, "rs-02"),
-    ("L_hip_pitch",   7, "rs-04"),
-    ("L_hip_roll",    8, "rs-03"),
-    ("L_hip_yaw",     9, "rs-03"),
-    ("L_knee",       10, "rs-04"),
-    ("L_foot_pitch", 11, "rs-02"),
-    ("L_foot_roll",  12, "rs-02"),
-]
-
-DISPLAY_JOINTS = [name for name, _, _ in MOTOR_LIST]
-
-# Ankle motor names (these are in ANKLE_PAIRS.keys() or .values())
-ANKLE_PITCH_MOTORS = set(ANKLE_PAIRS.keys())       # foot_pitch = upper motor
-ANKLE_ROLL_MOTORS = set(ANKLE_PAIRS.values())       # foot_roll = lower motor
+# Ankle motor names
+ANKLE_PITCH_MOTORS = set(ANKLE_PAIRS.keys())
+ANKLE_ROLL_MOTORS = set(ANKLE_PAIRS.values())
 ANKLE_ALL = ANKLE_PITCH_MOTORS | ANKLE_ROLL_MOTORS
 
-# Expected motor range for each ankle motor (Asimov convention):
-# motor_A (upper) =  K_P × pitch − K_R × roll
-# motor_B (lower) = −K_P × pitch − K_R × roll
-# Both motors have the same total range = K_P × pitch_range + K_R × roll_range
-# (the sign differences cancel when computing max − min)
+
 def _ankle_expected_motor_range(side_prefix):
     """Compute expected motor range for ankle motors from URDF joint limits."""
     pitch_urdf = URDF_LIMITS[f"{side_prefix}_foot_pitch"]
@@ -74,6 +63,7 @@ def _ankle_expected_motor_range(side_prefix):
     pitch_range = pitch_urdf[1] - pitch_urdf[0]
     roll_range = roll_urdf[1] - roll_urdf[0]
     return _PITCH_GAIN * pitch_range + _ROLL_GAIN * roll_range
+
 
 ANKLE_EXPECTED_RANGE = {
     "R_foot_pitch": _ankle_expected_motor_range("R"),
@@ -85,52 +75,122 @@ ANKLE_EXPECTED_RANGE = {
 RANGE_MATCH_THRESHOLD = 0.05
 
 
+def load_robot_yaml(path):
+    """Parse robot.yaml → list of (name, id, model, bus) tuples."""
+    with open(path) as f:
+        config = yaml.safe_load(f) or {}
+
+    motors = []
+    for bus_key, bus_cfg in config.items():
+        interface = bus_cfg.get("interface", bus_key)
+        for name, mcfg in bus_cfg.get("motors", {}).items():
+            model = mcfg["type"].lower()
+            if not model.startswith("rs-"):
+                model = "rs-" + model[2:]
+            motors.append((name, mcfg["id"], model, interface))
+    motors.sort(key=lambda m: m[1])
+    return motors
+
+
 class CalibrateNode(Node):
     def __init__(self):
         super().__init__('calibrate_node')
 
-        self.declare_parameter('can_channel', 'can0')
+        self.declare_parameter('robot_config', '')
         self.declare_parameter('output_file', 'calibration.yaml')
+        self.declare_parameter('joint', '')  # empty = all joints
 
-        self._channel = str(self.get_parameter('can_channel').value)
+        self._robot_config = str(self.get_parameter('robot_config').value)
         self._output = str(self.get_parameter('output_file').value)
+        self._joint_filter = str(self.get_parameter('joint').value).strip()
+
+        # Find robot.yaml if not provided
+        if not self._robot_config:
+            candidates = [
+                os.path.expanduser("~/biped_lower/deploy/biped_ws/src/biped_bringup/config/robot.yaml"),
+            ]
+            for c in candidates:
+                if os.path.isfile(c):
+                    self._robot_config = c
+                    break
+            else:
+                self.get_logger().error("No robot_config found. Pass robot_config param.")
+                raise RuntimeError("No robot_config")
 
     def run_calibration(self):
-        motors = {}
-        for name, mid, model in MOTOR_LIST:
-            motors[name] = Motor(id=mid, model=model)
+        # Load motor list from robot.yaml
+        all_motors = load_robot_yaml(self._robot_config)
+        all_names = [name for name, _, _, _ in all_motors]
 
-        bus = RobstrideBus(
-            channel=self._channel,
-            motors=motors,
-        )
-        bus.connect()
+        # Validate joint filter
+        if self._joint_filter:
+            if self._joint_filter not in all_names:
+                print(f"\n❌ Unknown joint '{self._joint_filter}'")
+                print(f"   Available: {', '.join(all_names)}")
+                return
+            target_joints = [self._joint_filter]
+            # For ankle joints, must calibrate both in the pair together
+            for pitch, roll in ANKLE_PAIRS.items():
+                if self._joint_filter in (pitch, roll):
+                    target_joints = [pitch, roll]
+                    print(f"  ℹ️  Ankle joints are coupled — calibrating both: {pitch}, {roll}")
+                    break
+        else:
+            target_joints = all_names
 
-        print(f"\nEnabling {len(MOTOR_LIST)} motors (zero torque)...")
-        for name, mid, _ in MOTOR_LIST:
+        # Determine which motors to enable (target joints only)
+        target_motors = [(n, mid, mdl, bus) for n, mid, mdl, bus in all_motors
+                         if n in target_joints]
+
+        # Group by bus
+        buses_needed = set(bus for _, _, _, bus in target_motors)
+
+        # Open CAN buses
+        bus_handles = {}
+        for bus_name in sorted(buses_needed):
+            bus_motors = {n: Motor(id=mid, model=mdl)
+                          for n, mid, mdl, bus in target_motors if bus == bus_name}
+            b = RobstrideBus(channel=bus_name, motors=bus_motors)
+            b.connect()
+            bus_handles[bus_name] = b
+
+        # Motor → bus lookup
+        motor_bus = {n: bus for n, _, _, bus in target_motors}
+
+        mode_str = f"joint={self._joint_filter}" if self._joint_filter else "all joints"
+        print(f"\nCalibrating: {mode_str}")
+        print(f"Buses: {', '.join(sorted(buses_needed))}")
+        print(f"Config: {self._robot_config}")
+        print(f"\nEnabling {len(target_motors)} motors (zero torque)...")
+
+        for name, mid, _, bus_name in target_motors:
+            b = bus_handles[bus_name]
             try:
-                bus.enable(name)
+                b.enable(name)
                 time.sleep(0.02)
-                bus.set_mode(name, 0)
+                b.set_mode(name, 0)
                 time.sleep(0.02)
             except Exception as e:
                 print(f"  ✗ {name}: {e}")
-                bus.disconnect()
+                for bh in bus_handles.values():
+                    bh.disconnect()
                 return
-        bus.flush_rx()
-        print("All motors enabled. Move each joint to both limits.\n")
 
-        # Track raw motor encoder positions for ALL joints
-        motor_cur = {n: 0.0 for n in DISPLAY_JOINTS}
-        motor_min = {n: float('inf') for n in DISPLAY_JOINTS}
-        motor_max = {n: float('-inf') for n in DISPLAY_JOINTS}
-        done = {n: False for n in DISPLAY_JOINTS}
+        for b in bus_handles.values():
+            b.flush_rx()
+        print("Motors enabled. Move each joint to both limits.\n")
 
-        n_joints = len(DISPLAY_JOINTS)
+        # Track raw motor encoder positions
+        motor_cur = {n: 0.0 for n in target_joints}
+        motor_min = {n: float('inf') for n in target_joints}
+        motor_max = {n: float('-inf') for n in target_joints}
+        done = {n: False for n in target_joints}
+
+        n_joints = len(target_joints)
 
         # Compute expected ranges
         expected_range = {}
-        for name in DISPLAY_JOINTS:
+        for name in target_joints:
             if name in ANKLE_ALL:
                 expected_range[name] = ANKLE_EXPECTED_RANGE[name]
             else:
@@ -145,8 +205,6 @@ class CalibrateNode(Node):
         for _ in range(n_joints + 2):
             print()
 
-        # Non-blocking stdin: detect Enter while the read loop runs.
-        # Falls back to Ctrl+C if stdin is not a real terminal (e.g. ros2 launch).
         import select
         has_tty = sys.stdin.isatty()
         old_settings = None
@@ -159,17 +217,19 @@ class CalibrateNode(Node):
             user_done = False
 
             while not user_done:
-                # Check for Enter (non-blocking) — only if stdin is a TTY
                 if has_tty and select.select([sys.stdin], [], [], 0)[0]:
                     ch = sys.stdin.read(1)
                     if ch in ('\n', '\r'):
                         user_done = True
 
-                # Read all motor positions
-                for name, _, _ in MOTOR_LIST:
+                # Read motor positions
+                for name, _, _, bus_name in target_motors:
+                    if name not in target_joints:
+                        continue
+                    b = bus_handles[bus_name]
                     try:
-                        bus.write_operation_frame(name, 0.0, 0.0, 0.0, 0.0, 0.0)
-                        fb = bus.read_operation_frame(name, timeout=0.01)
+                        b.write_operation_frame(name, 0.0, 0.0, 0.0, 0.0, 0.0)
+                        fb = b.read_operation_frame(name, timeout=0.01)
                         if fb:
                             motor_cur[name] = fb.position
                             if fb.position < motor_min[name]:
@@ -179,9 +239,9 @@ class CalibrateNode(Node):
                     except Exception:
                         pass
 
-                # Check done (indicative only — ticks don't gate saving)
+                # Check done
                 n_done = 0
-                for name in DISPLAY_JOINTS:
+                for name in target_joints:
                     if done[name]:
                         n_done += 1
                         continue
@@ -200,7 +260,7 @@ class CalibrateNode(Node):
                 # Render
                 sys.stdout.write(f"\033[{n_joints + 2}A")
 
-                for name in DISPLAY_JOINTS:
+                for name in target_joints:
                     cur = motor_cur[name]
                     mn = motor_min[name] if motor_min[name] != float('inf') else 0.0
                     mx = motor_max[name] if motor_max[name] != float('-inf') else 0.0
@@ -236,19 +296,19 @@ class CalibrateNode(Node):
 
         except KeyboardInterrupt:
             if not has_tty:
-                # Non-TTY mode: Ctrl+C means "save and exit"
                 print("\n")
             else:
                 print("\n\nAborted — calibration NOT saved.")
                 if old_settings:
                     import termios
                     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
-                for name, _, _ in MOTOR_LIST:
+                for name, _, _, bus_name in target_motors:
                     try:
-                        bus.disable(name)
+                        bus_handles[bus_name].disable(name)
                     except Exception:
                         pass
-                bus.disconnect()
+                for b in bus_handles.values():
+                    b.disconnect()
                 return
         finally:
             if old_settings:
@@ -257,16 +317,30 @@ class CalibrateNode(Node):
 
         # Disable
         print("\nDisabling motors...")
-        for name, _, _ in MOTOR_LIST:
+        for name, _, _, bus_name in target_motors:
             try:
-                bus.disable(name)
+                bus_handles[bus_name].disable(name)
             except Exception:
                 pass
-        bus.disconnect()
+        for b in bus_handles.values():
+            b.disconnect()
 
-        # Save calibration
-        calibration = {}
-        for name, _, _ in MOTOR_LIST:
+        # Load existing calibration (for merge in single-joint mode)
+        existing_cal = {}
+        if self._joint_filter and os.path.isfile(self._output):
+            try:
+                with open(self._output) as f:
+                    existing_cal = yaml.safe_load(f) or {}
+                print(f"  Merging into existing {self._output}")
+            except Exception:
+                pass
+
+        # Build calibration for target joints
+        new_cal = {}
+        for name, _, _, _ in target_motors:
+            if name not in target_joints:
+                continue
+
             mn = motor_min[name] if motor_min[name] != float('inf') else 0.0
             mx = motor_max[name] if motor_max[name] != float('-inf') else 0.0
 
@@ -279,18 +353,13 @@ class CalibrateNode(Node):
             is_ankle = name in ANKLE_ALL
 
             if is_ankle:
-                # Ankle: offset = motor_min (raw motor-space zero reference)
-                # Joint-space limits computed at runtime via linkage inverse
                 cal['offset'] = round(float(mn), 4)
-                # Store raw motor limits for soft stops in motor-space
                 cal['limit_lo'] = round(float(mn), 4)
                 cal['limit_hi'] = round(float(mx), 4)
             else:
-                # Normal joint: offset maps encoder → URDF frame
                 if urdf:
                     offset = mn - urdf[0]
                     cal['offset'] = round(float(offset), 4)
-                    # Joint-space limits from URDF (validated by range check)
                     cal['limit_lo'] = round(float(urdf[0]), 4)
                     cal['limit_hi'] = round(float(urdf[1]), 4)
                 else:
@@ -303,14 +372,25 @@ class CalibrateNode(Node):
                 cal['urdf_upper'] = round(urdf[1], 4)
                 cal['default_pos'] = round(urdf[2], 4)
 
-            calibration[name] = cal
+            # Preserve direction from existing calibration
+            if name in existing_cal and 'direction' in existing_cal[name]:
+                cal['direction'] = existing_cal[name]['direction']
+
+            new_cal[name] = cal
+
+        # Merge: existing + new (new overwrites target joints only)
+        calibration = dict(existing_cal)
+        calibration.update(new_cal)
 
         print(f"\nSaving to {self._output}...")
         with open(self._output, 'w') as f:
             yaml.dump(calibration, f, default_flow_style=False, sort_keys=False)
 
         done_count = sum(1 for v in done.values() if v)
-        print(f"\n✅ Calibration saved! ({done_count}/{n_joints} joints calibrated)")
+        if self._joint_filter:
+            print(f"\n✅ Joint '{self._joint_filter}' calibration updated! ({done_count}/{n_joints} ✅)")
+        else:
+            print(f"\n✅ Calibration saved! ({done_count}/{n_joints} joints calibrated)")
         print(f"   File: {self._output}")
 
 
