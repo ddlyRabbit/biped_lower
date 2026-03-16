@@ -49,12 +49,12 @@ L_knee:
   offset: 0.2941
   direction: 1
 L_foot_top:
-  motor_min: -0.7751
-  motor_max: 1.5056
-  offset: 0.3382
+  motor_min: 5.4983
+  motor_max: 7.7806
+  offset: 6.8665
   direction: -1
 L_foot_bottom:
-  motor_min: 1.0071
-  motor_max: 3.2732
-  offset: 1.6751
+  motor_min: 1.0243
+  motor_max: 3.2893
+  offset: 1.9472
   direction: -1
