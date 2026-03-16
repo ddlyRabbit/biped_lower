@@ -71,6 +71,9 @@ def generate_launch_description():
         Node(
             package='biped_control', executable='state_machine_node',
             name='state_machine_node', output='screen',
+            parameters=[{
+                'gain_scale': LaunchConfiguration('gain_scale'),
+            }],
         ),
 
         # Policy

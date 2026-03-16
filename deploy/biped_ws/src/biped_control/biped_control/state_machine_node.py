@@ -11,6 +11,7 @@ States:
 """
 
 import time
+import rcl_interfaces.msg
 import numpy as np
 import rclpy
 from rclpy.node import Node
@@ -38,6 +39,8 @@ class StateMachineNode(Node):
         self.declare_parameter('stand_ramp_time', 2.0)      # seconds to ramp to default pose
         self.declare_parameter('stand_gain_ramp_time', 1.0)  # seconds to ramp gains
         self.declare_parameter('stand_stable_time', 2.0)     # seconds stable before WALK allowed
+        self.declare_parameter('gain_scale', 1.0,
+            rcl_interfaces.msg.ParameterDescriptor(dynamic_typing=True))
 
         self._ramp_time = float(self.get_parameter('stand_ramp_time').value)
         self._gain_ramp_time = float(self.get_parameter('stand_gain_ramp_time').value)
@@ -153,8 +156,9 @@ class StateMachineNode(Node):
             cmd.joint_name = name
             cmd.position = current_target
             cmd.velocity = 0.0
-            cmd.kp = kp_base * soft_kp_scale
-            cmd.kd = kd_base * soft_kd_scale
+            gs = float(self.get_parameter("gain_scale").value)
+            cmd.kp = kp_base * soft_kp_scale * gs
+            cmd.kd = kd_base * soft_kd_scale * gs
             cmd.torque_ff = 0.0
             cmd_msg.commands.append(cmd)
 
