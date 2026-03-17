@@ -44,8 +44,12 @@ DEFAULT_POSITIONS = {
     "L_foot_roll":  0.0,  "R_foot_roll":  0.0,
 }
 
-# Action scale (from training config)
+# Action scale (from training config, per-joint)
 ACTION_SCALE = 0.5
+ACTION_SCALE_OVERRIDES = {
+    "L_foot_roll": 0.25,
+    "R_foot_roll": 0.25,
+}
 
 # Default PD gains (from training config, halved Berkeley values)
 DEFAULT_GAINS = {
@@ -131,5 +135,6 @@ class ObsBuilder:
         """
         targets = {}
         for i, name in enumerate(ISAAC_JOINT_ORDER):
-            targets[name] = DEFAULT_POSITIONS[name] + float(action[i]) * ACTION_SCALE
+            scale = ACTION_SCALE_OVERRIDES.get(name, ACTION_SCALE)
+            targets[name] = DEFAULT_POSITIONS[name] + float(action[i]) * scale
         return targets
