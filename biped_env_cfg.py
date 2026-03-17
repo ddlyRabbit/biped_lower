@@ -602,7 +602,13 @@ class ActionsCfg:
     joint_pos = base_mdp.JointPositionActionCfg(
         asset_name="robot",
         joint_names=ALL_JOINTS,
-        scale={".*foot_roll.*": 0.25, ".*": 0.5},
+        scale={
+            "right_foot_roll_02": 0.25, "left_foot_roll_02": 0.25,
+            "right_hip_yaw_03": 0.5, "right_hip_roll_03": 0.5, "right_hip_pitch_04": 0.5,
+            "right_knee_04": 0.5, "right_foot_pitch_02": 0.5,
+            "left_hip_yaw_03": 0.5, "left_hip_roll_03": 0.5, "left_hip_pitch_04": 0.5,
+            "left_knee_04": 0.5, "left_foot_pitch_02": 0.5,
+        },
         preserve_order=True,
         use_default_offset=True,
     )
