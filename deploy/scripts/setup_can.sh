@@ -6,7 +6,7 @@
 set -e
 
 BITRATE=1000000
-TXQLEN=1000
+TXQLEN=100
 
 echo "Setting up dual CAN interfaces..."
 
