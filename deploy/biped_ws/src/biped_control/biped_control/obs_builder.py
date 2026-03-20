@@ -36,11 +36,11 @@ FOOT_ROLL_ORDER = ["L_foot_roll", "R_foot_roll"]
 
 # Default joint positions (+X forward, from biped_env_cfg.py)
 DEFAULT_POSITIONS = {
-    "L_hip_pitch": -0.2,  "R_hip_pitch":  0.2,
+    "L_hip_pitch": -0.08, "R_hip_pitch":  0.08,
     "L_hip_roll":   0.0,  "R_hip_roll":   0.0,
     "L_hip_yaw":    0.0,  "R_hip_yaw":    0.0,
-    "L_knee":       0.4,  "R_knee":       0.4,
-    "L_foot_pitch": -0.2, "R_foot_pitch": -0.2,
+    "L_knee":       0.25, "R_knee":       0.25,
+    "L_foot_pitch": -0.17,"R_foot_pitch": -0.17,
     "L_foot_roll":  0.0,  "R_foot_roll":  0.0,
 }
 

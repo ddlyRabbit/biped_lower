@@ -27,6 +27,7 @@ setup(
         'console_scripts': [
             'imu_node = biped_driver.imu_node:main',
             'can_bus_node = biped_driver.can_bus_node:main',
+            'can_bus_node_async = biped_driver.can_bus_node_async:main',
         ],
     },
 )
