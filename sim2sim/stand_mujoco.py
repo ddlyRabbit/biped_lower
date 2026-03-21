@@ -19,9 +19,9 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MJCF_PATH = os.path.join(REPO_ROOT, "mjcf", "sim2sim", "robot.mjcf")
 
 # ─── Physics ───────────────────────────────────────────────────────────────────
-PHYSICS_DT = 0.002        # MuJoCo timestep (500 Hz)
+PHYSICS_DT = 0.0005       # MuJoCo timestep (2000 Hz, matches Berkeley Lite)
 POLICY_DT = 0.02           # PD loop (50 Hz)
-SUBSTEPS = int(round(POLICY_DT / PHYSICS_DT))  # = 10
+SUBSTEPS = int(round(POLICY_DT / PHYSICS_DT))  # = 40
 
 # ─── Joint ordering (matches actuator order in robot.mjcf) ────────────────────
 JOINT_NAMES = [
