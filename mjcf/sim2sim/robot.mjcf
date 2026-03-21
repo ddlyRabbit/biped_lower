@@ -1,5 +1,5 @@
 <mujoco model="biped">
-  <option iterations="50" timestep="0.002" solver="PGS" gravity="0 0 -9.81"><flag filterparent="enable" /></option>
+  <option iterations="50" timestep="0.0005" solver="PGS" gravity="0 0 -9.81"><flag filterparent="enable" /></option>
 
   <compiler angle="radian" meshdir="meshes" eulerseq="zyx" autolimits="true" />
 

@@ -19,9 +19,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MJCF_PATH = os.path.join(REPO_ROOT, "mjcf", "sim2sim", "robot.mjcf")
 
 # ─── Physics ───────────────────────────────────────────────────────────────────
-PHYSICS_DT = 0.0005       # MuJoCo timestep (2000 Hz, matches Berkeley Lite)
 POLICY_DT = 0.02           # PD loop (50 Hz)
-SUBSTEPS = int(round(POLICY_DT / PHYSICS_DT))  # = 40
 
 # ─── Joint ordering (matches actuator order in robot.mjcf) ────────────────────
 JOINT_NAMES = [
@@ -69,8 +67,9 @@ def main():
 
     model = mujoco.MjModel.from_xml_path(MJCF_PATH)
     data = mujoco.MjData(model)
-    model.opt.timestep = PHYSICS_DT
     assert model.nu == 12
+    PHYSICS_DT = model.opt.timestep
+    SUBSTEPS = int(round(POLICY_DT / PHYSICS_DT))
 
     qp_idx = np.array([
         model.jnt_qposadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)]
@@ -90,7 +89,7 @@ def main():
     total_mass = sum(model.body_mass[i] for i in range(model.nbody))
     print(f"MJCF: {MJCF_PATH}")
     print(f"Mass: {total_mass:.1f}kg, Spawn z: {BASE_HEIGHT}")
-    print(f"Physics: {1/PHYSICS_DT:.0f}Hz, PD: {1/POLICY_DT:.0f}Hz")
+    print(f"Physics: {1/PHYSICS_DT:.0f}Hz ({SUBSTEPS} substeps), PD: {1/POLICY_DT:.0f}Hz")
 
     if not args.headless:
         viewer = mujoco.viewer.launch_passive(model, data)

@@ -20,9 +20,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MJCF_PATH = os.path.join(REPO_ROOT, "mjcf", "sim2sim", "robot.mjcf")
 
 # ─── Physics ───────────────────────────────────────────────────────────────────
-PHYSICS_DT = 0.0005       # 2000 Hz (matches Berkeley Lite)
 POLICY_DT = 0.02           # 50 Hz
-SUBSTEPS = int(round(POLICY_DT / PHYSICS_DT))  # = 40
 
 # ─── MuJoCo joint names (actuator order) ──────────────────────────────────────
 MJ_JOINTS = [
@@ -190,7 +188,6 @@ def main():
     # Load MuJoCo model
     model = mujoco.MjModel.from_xml_path(MJCF_PATH)
     data = mujoco.MjData(model)
-    model.opt.timestep = PHYSICS_DT
 
     qp_idx = np.array([model.jnt_qposadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)] for n in MJ_JOINTS])
     qv_idx = np.array([model.jnt_dofadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)] for n in MJ_JOINTS])
@@ -211,7 +208,7 @@ def main():
     last_action = np.zeros(12, dtype=np.float32)
 
     print(f"Commands: vx={cmd_vel[0]:.2f} vy={cmd_vel[1]:.2f} wz={cmd_vel[2]:.2f}")
-    print(f"Physics: {1/PHYSICS_DT:.0f}Hz, Policy: {1/POLICY_DT:.0f}Hz")
+    print(f"Physics: {1/PHYSICS_DT:.0f}Hz ({SUBSTEPS} substeps), Policy: {1/POLICY_DT:.0f}Hz")
 
     if not args.headless:
         viewer = mujoco.viewer.launch_passive(model, data)
