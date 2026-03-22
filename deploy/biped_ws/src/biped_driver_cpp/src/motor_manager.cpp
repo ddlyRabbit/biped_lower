@@ -258,7 +258,7 @@ void BipedMotorManager::send_ankle_mit_command(
 
 std::optional<MotorFeedback> BipedMotorManager::read_feedback(
     const std::string& name, double timeout) {
-    return bus_for(name).read_operation_frame(name, timeout);
+    return bus_for(name).receive_feedback(name, timeout);
 }
 
 // ── Ankle helpers ────────────────────────────────────────────────

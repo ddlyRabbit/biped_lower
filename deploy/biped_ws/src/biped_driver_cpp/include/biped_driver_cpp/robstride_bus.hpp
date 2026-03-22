@@ -104,7 +104,7 @@ public:
                                double position, double kp, double kd,
                                double velocity = 0.0, double torque = 0.0);
 
-    std::optional<MotorFeedback> read_operation_frame(const std::string& name,
+    std::optional<MotorFeedback> receive_feedback(const std::string& name,
                                                        double timeout_sec = 0.01);
 
     // ── Bulk operations ──────────────────────────────────────────

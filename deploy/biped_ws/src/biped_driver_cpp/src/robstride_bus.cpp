@@ -412,7 +412,7 @@ void RobstrideBus::enable_and_set_mit_all() {
         // 4. Verify with zero-torque MIT command
         flush_rx();
         write_operation_frame(name, 0.0, 0.0, 0.0, 0.0, 0.0);
-        auto fb = read_operation_frame(name, 0.05);
+        auto fb = receive_feedback(name, 0.05);
         (void)fb;  // verification only
     }
 }
