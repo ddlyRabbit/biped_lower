@@ -418,3 +418,23 @@ biped_driver_cpp/
 
 Based on [Seeed RobStride_Control](https://github.com/Seeed-Projects/RobStride_Control) C++ library.
 Extended with: multi-bus, per-model scaling, calibration, ankle linkage, ROS2 integration.
+
+## State Machine States
+
+```
+IDLE → STAND → WALK         (policy-driven locomotion)
+              → WIGGLE_SEQ  (sequential joint sine sweep)
+              → WIGGLE_ALL  (simultaneous joint sine sweep)
+              → ESTOP       (zero torque, emergency)
+```
+
+### WIGGLE_SEQ
+Cycles through each joint one at a time. Active joint follows sine wave
+between `default + neg` and `default + pos`. All other joints hold default.
+Automatically returns to STAND after all 12 joints complete.
+
+### WIGGLE_ALL
+All joints wiggle simultaneously at their configured frequency/range.
+Runs until STOP command.
+
+Config: `biped_bringup/config/wiggle.yaml` (read from source tree, no rebuild needed).

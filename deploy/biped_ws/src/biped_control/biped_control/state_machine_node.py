@@ -61,8 +61,8 @@ class StateMachineNode(Node):
         self._gain_ramp_time = float(self.get_parameter('stand_gain_ramp_time').value)
         self._stable_time = float(self.get_parameter('stand_stable_time').value)
 
-        # Load wiggle config
-        self._wiggle_cfg = self._load_wiggle_config()
+        # Wiggle state (config loaded on first use)
+        self._wiggle_cfg = None
         self._wiggle_start = 0.0
         self._wiggle_joint_idx = 0
 
@@ -175,6 +175,7 @@ class StateMachineNode(Node):
             self._stand_start_positions = dict(self._current_positions)
 
         elif new_state in ("WIGGLE_SEQ", "WIGGLE_ALL"):
+            self._wiggle_cfg = self._load_wiggle_config()
             self._wiggle_start = time.time()
             self._wiggle_joint_idx = 0
 

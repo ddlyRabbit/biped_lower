@@ -192,3 +192,47 @@ source /opt/ros/jazzy/setup.bash
 colcon build --packages-select biped_driver_cpp biped_bringup
 source setup_biped.bash
 ```
+
+## Wiggle Test
+
+Test individual or all joints with sine wave sweeps. Robot must be in STAND state first.
+
+### Config
+
+Edit `deploy/biped_ws/src/biped_bringup/config/wiggle.yaml`:
+```yaml
+wiggle:
+  duration_per_joint: 3.0    # seconds per joint in sequential mode
+
+  joints:
+    R_hip_pitch:   { pos: 0.087, neg: -0.087, freq: 1.0 }
+    R_knee:        { pos: 0.15,  neg: -0.05,  freq: 0.5 }
+    # pos: max offset above default (rad)
+    # neg: max offset below default (rad, negative value)
+    # freq: sine wave frequency (Hz)
+```
+
+Config is **re-read on each WIGGLE command** — edit and re-trigger without restart.
+
+### Commands
+
+```bash
+# Start robot
+ros2 topic pub --once /state_command std_msgs/String "data: START"
+# Wait for STAND to stabilize, then:
+
+# Sequential: one joint at a time (cycles through all 12)
+ros2 topic pub --once /state_command std_msgs/String "data: WIGGLE_SEQ"
+
+# All joints simultaneously
+ros2 topic pub --once /state_command std_msgs/String "data: WIGGLE_ALL"
+
+# Stop wiggling, return to STAND
+ros2 topic pub --once /state_command std_msgs/String "data: STOP"
+```
+
+### Safety
+- Joint targets clamped to URDF limits
+- Config validated at load (warns if range exceeds limits)
+- ESTOP always available
+- gain_scale from launch applies to wiggle PD gains
