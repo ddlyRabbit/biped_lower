@@ -110,12 +110,12 @@ class StateMachineNode(Node):
                     raw = yaml.safe_load(f)
                 if raw and 'wiggle' in raw:
                     w = raw['wiggle']
-                    cfg['frequency'] = w.get('frequency', 1.0)
+                    
                     cfg['duration_per_joint'] = w.get('duration_per_joint', 3.0)
                     for name, params in w.get('joints', {}).items():
                         pos = params.get('pos', 0.087)
                         neg = params.get('neg', -0.087)
-                        freq = params.get('freq', cfg['frequency'])
+                        freq = params.get('freq', 1.0)
                         # Validate against joint limits
                         if name in JOINT_LIMITS:
                             lo, hi = JOINT_LIMITS[name]

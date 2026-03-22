@@ -4,7 +4,6 @@
 # duration_per_joint: seconds per joint in sequential mode
 
 wiggle:
-  frequency: 1.0
   duration_per_joint: 3.0
 
   joints:
