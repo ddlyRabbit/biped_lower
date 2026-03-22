@@ -128,8 +128,6 @@ private:
     };
     std::optional<RxFrame> receive(double timeout_sec);
 
-    std::optional<MotorFeedback> receive_feedback(const std::string& name,
-                                                   double timeout_sec = 0.01);
 
     std::optional<float> read_parameter_float(const std::string& name, uint16_t param_id);
 
