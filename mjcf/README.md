@@ -182,3 +182,77 @@ The MJCF defaults match the Isaac training config:
 - **Air time reward:** Berkeley impact-based (contact sensor)
 - **Symmetry:** data augmentation + mirror loss (coeff=1.0)
 - **Joint deviations:** hip=-0.1, knee=-0.01, hip_pitch=-0.01, ankle_pitch=-0.01, ankle_roll=-0.1
+
+## System Identification
+
+Actuator characterization pipeline to match sim dynamics to real hardware.
+
+### Scripts
+
+```
+deploy/scripts/
+├── motor_sysid.py          ← Real robot recording
+└── motor_sysid_isaac.py    ← Isaac Sim recording (copy to GCP)
+```
+
+### Pipeline
+
+**Step 1: Real Robot Recording**
+```bash
+# On Pi — robot SUSPENDED, powered
+cd ~/biped_lower
+python deploy/scripts/motor_sysid.py --all
+
+# Or single joint:
+python deploy/scripts/motor_sysid.py --joint R_hip_pitch --kp 250 --kd 5
+```
+
+Records step response + sine sweeps (0.5/1/2/5/10Hz) per motor type:
+- RS04 (hip_pitch, knee): Kp=250, Kd=5
+- RS03 (hip_roll, hip_yaw): Kp=150, Kd=5
+- RS02 (ankle): Kp=40, Kd=5
+
+Single motor active per test for max CAN rate (~500-1000Hz).
+Ankle joints use parallel linkage transform (commands in joint space,
+recorded in joint space via inverse transform).
+
+**Step 2: Isaac Sim Recording**
+```bash
+# On GCP
+python motor_sysid_isaac.py --all --actuator delayed
+python motor_sysid_isaac.py --all --actuator implicit  # for comparison
+```
+
+Same tests, gravity disabled, fixed base. 200Hz sim rate.
+Output format matches real robot CSVs.
+
+**Step 3: Compare & Fit**
+
+Overlay real vs sim step/sine responses. Adjust Isaac actuator parameters
+(stiffness, damping, friction, delay, armature) until responses match.
+
+Key metrics:
+- Step response: rise time, overshoot, settling time
+- Sine tracking: gain and phase lag per frequency (Bode plot)
+- Friction: hysteresis loop width
+- Delay: command-response cross-correlation
+
+### Output Format
+
+```
+motor_sysid_data/
+├── R_hip_pitch_RS04/           ← real robot
+│   ├── metadata.yaml
+│   ├── step_response.csv       ← time, cmd_pos, pos, vel, torque, temp
+│   ├── sine_0.5hz.csv
+│   ├── sine_1hz.csv
+│   ├── sine_2hz.csv
+│   ├── sine_5hz.csv
+│   └── sine_10hz.csv
+├── isaac_delayed/              ← Isaac DelayedPDActuator
+│   └── R_hip_pitch_RS04/
+│       └── (same CSV format)
+└── isaac_implicit/             ← Isaac ImplicitActuator
+    └── R_hip_pitch_RS04/
+        └── (same CSV format)
+```

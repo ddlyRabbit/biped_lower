@@ -31,7 +31,11 @@ import numpy as np
 
 # Add parent paths for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "biped_ws", "src", "biped_driver", "biped_driver"))
-from robstride_can import BipedMotorManager, JointConfig
+from robstride_can import (
+    BipedMotorManager, JointConfig,
+    ankle_command_to_motors, ankle_motors_to_feedback,
+    ANKLE_PAIRS, ANKLE_MOTOR_TO_JOINT,
+)
 
 # ─── Default test configs per motor type ────────────────────────────────────
 
@@ -45,7 +49,18 @@ MOTOR_TYPE_GAINS = {
 DEFAULT_TEST_JOINTS = {
     "RS04": "R_hip_pitch",
     "RS03": "R_hip_roll",
-    "RS02": "R_foot_top",  # foot_pitch motor
+    "RS02": "R_foot_pitch",  # ankle joint-space (uses both foot_top + foot_bottom)
+}
+
+# Ankle joints need special handling (parallel linkage)
+ANKLE_JOINTS = {"R_foot_pitch", "L_foot_pitch", "R_foot_roll", "L_foot_roll"}
+
+# Map ankle joint-space names to motor pair names
+ANKLE_JOINT_TO_PAIR = {
+    "R_foot_pitch": ("R_foot_top", "R_foot_bottom"),
+    "R_foot_roll":  ("R_foot_top", "R_foot_bottom"),
+    "L_foot_pitch": ("L_foot_top", "L_foot_bottom"),
+    "L_foot_roll":  ("L_foot_top", "L_foot_bottom"),
 }
 
 # Joint range limits (70% of URDF limits, in radians)
@@ -81,7 +96,12 @@ class SysIdConfig:
 
 def get_motor_type(joint_name: str, mgr: BipedMotorManager) -> str:
     """Get RS02/RS03/RS04 from joint config."""
-    jcfg = mgr.joints.get(joint_name)
+    # Ankle joint-space names map to motor names
+    if joint_name in ANKLE_JOINT_TO_PAIR:
+        top_name = ANKLE_JOINT_TO_PAIR[joint_name][0]
+        jcfg = mgr.joints.get(top_name)
+    else:
+        jcfg = mgr.joints.get(joint_name)
     if jcfg is None:
         raise ValueError(f"Joint {joint_name} not found")
     model = jcfg.model.upper().replace("-", "").replace("RS0", "RS0")
@@ -139,15 +159,54 @@ class SysIdRecorder:
             "temp": fb.temperature if fb else 0,
         })
 
+    def _is_ankle(self) -> bool:
+        return self.cfg.joint_name in ANKLE_JOINTS
+
+    def _get_pitch_sign(self) -> int:
+        return -1 if self.cfg.joint_name.startswith("L") else 1
+
     def _send_and_record(self, cmd_pos: float, t0: float) -> float:
-        """Send MIT command to test motor, record feedback. Returns current time."""
+        """Send MIT command, record feedback. Handles ankle linkage transform."""
         t = time.monotonic() - t0
         fb = None
         try:
-            self.mgr.send_mit_command(
-                self.cfg.joint_name, cmd_pos,
-                self.cfg.kp, self.cfg.kd, 0.0, 0.0)
-            fb = self.mgr.read_feedback(self.cfg.joint_name)
+            if self._is_ankle():
+                top_name, bottom_name = ANKLE_JOINT_TO_PAIR[self.cfg.joint_name]
+                pitch_sign = self._get_pitch_sign()
+                # Determine if testing pitch or roll
+                is_pitch = "pitch" in self.cfg.joint_name
+                if is_pitch:
+                    motor_upper, motor_lower = ankle_command_to_motors(cmd_pos, 0.0, pitch_sign)
+                else:
+                    motor_upper, motor_lower = ankle_command_to_motors(0.0, cmd_pos, pitch_sign)
+                # Send to both motors
+                self.mgr.send_ankle_mit_command(
+                    top_name, motor_upper, self.cfg.kp, self.cfg.kd, 0.0, 0.0)
+                fb_upper = self.mgr.read_feedback(top_name)
+                self.mgr.send_ankle_mit_command(
+                    bottom_name, motor_lower, self.cfg.kp, self.cfg.kd, 0.0, 0.0)
+                fb_lower = self.mgr.read_feedback(bottom_name)
+                # Transform back to joint space
+                if fb_upper and fb_lower:
+                    joint_pitch, joint_roll = ankle_motors_to_feedback(
+                        fb_upper.position, fb_lower.position, pitch_sign)
+                    joint_pitch_vel, joint_roll_vel = ankle_motors_to_feedback(
+                        fb_upper.velocity, fb_lower.velocity, pitch_sign)
+                    # Create synthetic feedback in joint space
+                    from robstride_dynamics.bus import MotorFeedback as MF
+                    if is_pitch:
+                        fb = MF(position=joint_pitch, velocity=joint_pitch_vel,
+                                torque=(fb_upper.torque + fb_lower.torque) / 2,
+                                temperature=max(fb_upper.temperature, fb_lower.temperature))
+                    else:
+                        fb = MF(position=joint_roll, velocity=joint_roll_vel,
+                                torque=(fb_upper.torque + fb_lower.torque) / 2,
+                                temperature=max(fb_upper.temperature, fb_lower.temperature))
+            else:
+                self.mgr.send_mit_command(
+                    self.cfg.joint_name, cmd_pos,
+                    self.cfg.kp, self.cfg.kd, 0.0, 0.0)
+                fb = self.mgr.read_feedback(self.cfg.joint_name)
         except Exception as e:
             print(f"  CAN error: {e}")
         self._record_point(t, cmd_pos, fb)
@@ -176,7 +235,12 @@ class SysIdRecorder:
                 bus.write_operation_frame(name, 0.0, 0.0, 0.0, 0.0, 0.0)
                 bus._receive_feedback(name)
 
-        print("Setup complete — only test motor active")
+        # For ankle joints, also keep the paired motor active
+        if self.cfg.joint_name in ANKLE_JOINTS:
+            pair = ANKLE_JOINT_TO_PAIR[self.cfg.joint_name]
+            print(f"  Ankle mode: activating pair {pair}")
+
+        print("Setup complete — test motor(s) active")
 
     def run_step_response(self, target: float = None, duration: float = 2.0):
         """Step response: 0 → target, hold, target → 0."""
