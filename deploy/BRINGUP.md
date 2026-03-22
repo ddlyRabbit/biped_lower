@@ -41,6 +41,13 @@ All 12 motors should respond with position/velocity/voltage readings.
 ros2 launch biped_bringup calibrate.launch.py
 ```
 
+To recalibrate a single joint (merges into existing calibration):
+```bash
+ros2 launch biped_bringup calibrate.launch.py joint:=R_knee
+ros2 launch biped_bringup calibrate.launch.py joint:=L_foot_top    # left ankle upper motor
+ros2 launch biped_bringup calibrate.launch.py joint:=L_foot_bottom # left ankle lower motor
+```
+
 Move each joint to both mechanical limits. Joints auto-mark ✅ when range matches
 URDF limits ±20%. Press Ctrl+C to save `calibration.yaml`.
 
