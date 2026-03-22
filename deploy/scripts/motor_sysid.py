@@ -42,7 +42,7 @@ from robstride_can import (
 MOTOR_TYPE_GAINS = {
     "RS04": {"kp": 1, "kd": 0.1, "effort": 60},
     "RS03": {"kp": 1, "kd": 0.1, "effort": 40},
-    "RS02": {"kp": 40,  "kd": 5, "effort": 14},
+    "RS02": {"kp": 1, "kd": 0.1, "effort": 14},
 }
 
 # Representative joints per motor type
