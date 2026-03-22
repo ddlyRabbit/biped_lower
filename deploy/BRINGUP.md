@@ -148,3 +148,47 @@ Safety pitch/roll limits default to 85° (adjustable via `max_pitch_deg` / `max_
 | Foxglove won't connect | Check Pi IP, ensure port 8765 not blocked |
 | TX buffer full errors | Normal at startup (MCP2515 has 3 slots), retries handle it |
 | Ankle motors track poorly | Re-calibrate ankles, check linkage rod lengths match CAD |
+
+## CAN Driver Options
+
+Three CAN driver implementations available:
+
+| Driver | Language | Loop Rate | Launch Param |
+|--------|----------|-----------|--------------|
+| `can_bus_node` | Python (sync) | ~50Hz | `can_driver:=can_bus_node` (default) |
+| `can_bus_node_async` | Python (async) | ~200Hz | `can_driver:=can_bus_node_async` |
+| `can_bus_node_cpp` | C++ | ~300Hz | `can_driver:=can_bus_node_cpp` |
+
+```bash
+# Default (Python sync):
+ros2 launch biped_bringup bringup.launch.py \
+  calibration_file:=calibration.yaml
+
+# C++ driver (recommended):
+ros2 launch biped_bringup bringup.launch.py \
+  can_driver:=can_bus_node_cpp \
+  calibration_file:=calibration.yaml
+
+# Python async:
+ros2 launch biped_bringup bringup.launch.py \
+  can_driver:=can_bus_node_async \
+  calibration_file:=calibration.yaml
+```
+
+All drivers share the same ROS2 interface:
+- Sub: `/joint_commands` (biped_msgs/MITCommandArray)
+- Pub: `/joint_states` (sensor_msgs/JointState)
+- Pub: `/motor_states` (biped_msgs/MotorStateArray)
+
+The C++ driver (`biped_driver_cpp` package) uses direct SocketCAN syscalls
+with two worker threads (one per CAN bus) for lowest latency.
+Stats printed every 5s showing actual loop Hz per bus.
+
+### Build
+
+```bash
+cd ~/biped_lower/deploy/biped_ws
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select biped_driver_cpp biped_bringup
+source setup_biped.bash
+```

@@ -397,3 +397,24 @@ source ~/biped_lower/deploy/biped_ws/setup_biped.bash
 | `scan_motors.py` | Read-only motor scan |
 | `test_hip_yaw.py` | Jog test with soft stop verification |
 | `setup_directions.py` | Interactive motor direction setup (Foxglove) |
+
+## C++ CAN Driver (`biped_driver_cpp`)
+
+Drop-in replacement for Python `biped_driver` CAN node.
+
+```
+biped_driver_cpp/
+├── include/biped_driver_cpp/
+│   ├── robstride_bus.hpp      ← SocketCAN + MIT protocol (RS02/03/04)
+│   ├── motor_manager.hpp      ← Multi-bus management + calibration
+│   └── ankle_linkage.hpp      ← Parallel linkage transform
+├── src/
+│   ├── robstride_bus.cpp      ← Direct AF_CAN, MIT encode/decode
+│   ├── motor_manager.cpp      ← YAML loading, soft-stop, clamping
+│   └── can_bus_node.cpp       ← ROS2 node, 2 worker threads
+├── CMakeLists.txt
+└── package.xml
+```
+
+Based on [Seeed RobStride_Control](https://github.com/Seeed-Projects/RobStride_Control) C++ library.
+Extended with: multi-bus, per-model scaling, calibration, ankle linkage, ROS2 integration.

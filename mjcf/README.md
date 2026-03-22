@@ -256,3 +256,12 @@ motor_sysid_data/
     └── R_hip_pitch_RS04/
         └── (same CSV format)
 ```
+
+## Deploy CAN Drivers
+
+Three options for motor control:
+- **Python sync** (`can_bus_node`): Original, 50Hz. Good for debugging.
+- **Python async** (`can_bus_node_async`): Threaded, ~200Hz.
+- **C++ (`can_bus_node_cpp`)**: Direct SocketCAN, ~300Hz. Recommended for deployment.
+
+Select via launch param: `can_driver:=can_bus_node_cpp`
