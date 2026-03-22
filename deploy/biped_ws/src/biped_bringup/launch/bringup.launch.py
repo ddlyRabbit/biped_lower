@@ -51,6 +51,8 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('calibration_file', default_value=''),
         DeclareLaunchArgument('robot_config', default_value=default_robot_config),
+        DeclareLaunchArgument('can_driver', default_value='can_bus_node',
+                              description='CAN driver: can_bus_node (sync) or can_bus_node_async'),
         DeclareLaunchArgument('onnx_model', default_value='student_flat.onnx'),
         DeclareLaunchArgument('gain_scale', default_value='1.0'),
         DeclareLaunchArgument('max_pitch_deg', default_value='85.0'),
@@ -74,12 +76,14 @@ def generate_launch_description():
 
         # CAN bus — motor config from robot.yaml
         Node(
-            package='biped_driver', executable='can_bus_node',
+            package='biped_driver',
+            executable=LaunchConfiguration('can_driver'),
             name='can_bus_node', output='screen',
             parameters=[{
                 'robot_config': LaunchConfiguration('robot_config'),
                 'calibration_file': LaunchConfiguration('calibration_file'),
                 'loop_rate': 50.0,
+                'publish_rate': 50.0,
             }],
         ),
 
