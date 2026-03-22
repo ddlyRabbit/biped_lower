@@ -99,6 +99,7 @@ class StateMachineNode(Node):
     def _load_wiggle_config(self) -> dict:
         """Load wiggle.yaml config. Returns per-joint wiggle params."""
         path = str(self.get_parameter('wiggle_config').value)
+        self.get_logger().info(f'Wiggle config path: {path}')
         cfg = {
             'frequency': 1.0,
             'duration_per_joint': 3.0,
@@ -128,6 +129,8 @@ class StateMachineNode(Node):
                                 self.get_logger().warn(f'{name}: neg clamped to {neg:.3f} (limit {lo:.3f})')
                         cfg['joints'][name] = {'pos': pos, 'neg': neg, 'freq': freq}
                 self.get_logger().info(f'Wiggle config loaded: {len(cfg["joints"])} joints')
+                for n, p in cfg['joints'].items():
+                    self.get_logger().info(f'  {n}: pos={p["pos"]:.4f} neg={p["neg"]:.4f} freq={p["freq"]}')
             except Exception as e:
                 self.get_logger().warn(f'Failed to load wiggle config: {e}')
         # Fill missing joints with defaults
