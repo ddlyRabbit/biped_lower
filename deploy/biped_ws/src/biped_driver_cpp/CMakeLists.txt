@@ -1,0 +1,61 @@
+cmake_minimum_required(VERSION 3.14)
+project(biped_driver_cpp)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ── Dependencies ──────────────────────────────────────────────────
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(biped_msgs REQUIRED)
+find_package(yaml-cpp REQUIRED)
+
+# ── Library: biped_driver_cpp_lib ─────────────────────────────────
+add_library(biped_driver_cpp_lib STATIC
+  src/robstride_bus.cpp
+  src/motor_manager.cpp
+)
+
+target_include_directories(biped_driver_cpp_lib PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(biped_driver_cpp_lib
+  yaml-cpp
+)
+
+ament_target_dependencies(biped_driver_cpp_lib
+  rclcpp
+)
+
+# ── Executable: can_bus_node_cpp ──────────────────────────────────
+add_executable(can_bus_node_cpp
+  src/can_bus_node.cpp
+)
+
+target_link_libraries(can_bus_node_cpp
+  biped_driver_cpp_lib
+  yaml-cpp
+  pthread
+)
+
+ament_target_dependencies(can_bus_node_cpp
+  rclcpp
+  sensor_msgs
+  std_msgs
+  biped_msgs
+)
+
+# ── Install ───────────────────────────────────────────────────────
+install(TARGETS can_bus_node_cpp
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY include/
+  DESTINATION include
+)
+
+ament_package()

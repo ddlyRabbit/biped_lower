@@ -8,13 +8,14 @@ Usage:
     ros2 launch biped_bringup bringup.launch.py gain_scale:=0.3
     ros2 launch biped_bringup bringup.launch.py calibration_file:=calibration.yaml
     ros2 launch biped_bringup bringup.launch.py record:=false  # disable recording
+    ros2 launch biped_bringup bringup.launch.py can_driver:=can_bus_node_cpp  # C++ driver
 """
 
 import os
 from datetime import datetime
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -36,6 +37,28 @@ RECORD_TOPICS = [
 ]
 
 
+def _make_can_driver_node(context):
+    """Select CAN driver package based on can_driver arg."""
+    driver = LaunchConfiguration('can_driver').perform(context)
+    if driver == 'can_bus_node_cpp':
+        pkg = 'biped_driver_cpp'
+        exe = 'can_bus_node_cpp'
+    else:
+        pkg = 'biped_driver'
+        exe = driver
+    return [Node(
+        package=pkg,
+        executable=exe,
+        name='can_bus_node', output='screen',
+        parameters=[{
+            'robot_config': LaunchConfiguration('robot_config').perform(context),
+            'calibration_file': LaunchConfiguration('calibration_file').perform(context),
+            'loop_rate': 50.0,
+            'publish_rate': 50.0,
+        }],
+    )]
+
+
 def generate_launch_description():
     bringup_dir = get_package_share_directory('biped_bringup')
     description_dir = get_package_share_directory('biped_description')
@@ -52,7 +75,7 @@ def generate_launch_description():
         DeclareLaunchArgument('calibration_file', default_value=''),
         DeclareLaunchArgument('robot_config', default_value=default_robot_config),
         DeclareLaunchArgument('can_driver', default_value='can_bus_node',
-                              description='CAN driver: can_bus_node (sync) or can_bus_node_async'),
+                              description='CAN driver: can_bus_node | can_bus_node_async | can_bus_node_cpp'),
         DeclareLaunchArgument('onnx_model', default_value='student_flat.onnx'),
         DeclareLaunchArgument('gain_scale', default_value='1.0'),
         DeclareLaunchArgument('max_pitch_deg', default_value='85.0'),
@@ -75,17 +98,8 @@ def generate_launch_description():
         ),
 
         # CAN bus — motor config from robot.yaml
-        Node(
-            package='biped_driver',
-            executable=LaunchConfiguration('can_driver'),
-            name='can_bus_node', output='screen',
-            parameters=[{
-                'robot_config': LaunchConfiguration('robot_config'),
-                'calibration_file': LaunchConfiguration('calibration_file'),
-                'loop_rate': 50.0,
-                'publish_rate': 50.0,
-            }],
-        ),
+        # Package depends on driver: can_bus_node_cpp uses biped_driver_cpp
+        OpaqueFunction(function=_make_can_driver_node),
 
         # Safety
         Node(
