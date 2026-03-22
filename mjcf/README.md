@@ -265,3 +265,34 @@ Three options for motor control:
 - **C++ (`can_bus_node_cpp`)**: Direct SocketCAN, ~300Hz. Recommended for deployment.
 
 Select via launch param: `can_driver:=can_bus_node_cpp`
+
+### Ankle Motor Limit Calculation
+
+Ankle motors (foot_top, foot_bottom) operate in **motor command space**, not joint space.
+The parallel linkage maps between them:
+
+```
+motor_upper =  pitch_sign × K_P × pitch − K_R × roll
+motor_lower = −pitch_sign × K_P × pitch − K_R × roll
+```
+
+Where `K_P = 1.276`, `K_R = 0.974`, `pitch_sign = +1 (R) / -1 (L)`.
+
+Motor command limits are computed by evaluating all four URDF corner combinations:
+```python
+corners = [sign * K_P * p - K_R * r
+           for p in (pitch_min, pitch_max)    # -0.873, 0.524
+           for r in (roll_min, roll_max)]      # -0.262, 0.262
+motor_cmd_lo = min(corners)
+motor_cmd_hi = max(corners)
+```
+
+This gives the theoretical motor range without calibration.
+With calibration, the actual encoder min/max are recorded and used instead.
+
+Calibration offset formula:
+- If `direction = -1`: `offset = motor_min + cmd_hi`
+- If `direction = +1`: `offset = motor_min - cmd_lo`
+
+See `robstride_can.py:ankle_motor_theoretical_limits()` and
+`calibrate_node.py` for implementation.
