@@ -49,7 +49,7 @@ def _make_can_driver_node(context):
     return [Node(
         package=pkg,
         executable=exe,
-        name='can_bus_node', output='screen',
+        name='can_bus_node_cpp', output='screen',
         parameters=[{
             'robot_config': LaunchConfiguration('robot_config').perform(context),
             'calibration_file': LaunchConfiguration('calibration_file').perform(context),
