@@ -78,7 +78,6 @@ def generate_launch_description():
                               description='CAN driver: can_bus_node | can_bus_node_async | can_bus_node_cpp'),
         DeclareLaunchArgument('onnx_model', default_value='student_flat.onnx'),
         DeclareLaunchArgument('gain_scale', default_value='1.0'),
-        DeclareLaunchArgument('wiggle_config', default_value=os.path.join(bringup_dir, 'config', 'wiggle.yaml')),
         DeclareLaunchArgument('max_pitch_deg', default_value='85.0'),
         DeclareLaunchArgument('max_roll_deg', default_value='85.0'),
         DeclareLaunchArgument('record', default_value='true',
