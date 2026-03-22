@@ -117,6 +117,7 @@ def generate_launch_description():
             name='state_machine_node', output='screen',
             parameters=[{
                 'gain_scale': LaunchConfiguration('gain_scale'),
+                'wiggle_config': os.path.join(os.path.expanduser('~'), 'biped_lower', 'deploy', 'biped_ws', 'src', 'biped_bringup', 'config', 'wiggle.yaml'),
             }],
         ),
 
