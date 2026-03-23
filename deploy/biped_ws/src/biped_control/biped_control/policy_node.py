@@ -87,8 +87,9 @@ class PolicyNode(Node):
         self.create_subscription(Twist, '/cmd_vel', self._cmd_cb, 10)
         self.create_subscription(String, '/state_machine', self._fsm_cb, 10)
 
-        # Publisher
+        # Publishers
         self._pub_cmd = self.create_publisher(MITCommandArray, '/joint_commands', 10)
+        self._pub_viz = self.create_publisher(MITCommandArray, '/policy_viz', 10)
 
         # Timer
         self._timer = self.create_timer(1.0 / self._rate, self._loop)
@@ -139,7 +140,7 @@ class PolicyNode(Node):
         new_state = msg.data.strip().upper()
         if new_state != self._fsm_state:
             self.get_logger().info(f'FSM: {self._fsm_state} → {new_state}')
-            if new_state == "WALK":
+            if new_state in ("WALK", "SIM_WALK"):
                 self._walk_start_time = time.time()
             self._fsm_state = new_state
 
@@ -149,8 +150,8 @@ class PolicyNode(Node):
         if self._session is None:
             return
 
-        # Only run during WALK — state_machine_node handles STAND soft start
-        if self._fsm_state != "WALK":
+        # Run during WALK (motors) or SIM_WALK (viz only)
+        if self._fsm_state not in ("WALK", "SIM_WALK"):
             return
 
         # Need joint state data before we can build obs
@@ -202,7 +203,10 @@ class PolicyNode(Node):
             cmd.torque_ff = 0.0
             cmd_msg.commands.append(cmd)
 
-        self._pub_cmd.publish(cmd_msg)
+        if self._fsm_state == "SIM_WALK":
+            self._pub_viz.publish(cmd_msg)  # viz only, motors hold STAND
+        else:
+            self._pub_cmd.publish(cmd_msg)  # actual motor commands
 
 
 def main(args=None):

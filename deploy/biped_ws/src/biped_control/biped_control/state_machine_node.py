@@ -1,4 +1,4 @@
-"""State machine node — IDLE → STAND → WALK / WIGGLE_SEQ / WIGGLE_ALL → ESTOP.
+"""State machine node — IDLE → STAND → WALK / SIM_WALK / WIGGLE_SEQ / WIGGLE_ALL → ESTOP.
 
 Manages robot lifecycle transitions. Publishes current state.
 Reads safety status and gamepad buttons for transitions.
@@ -8,6 +8,7 @@ States:
     STAND       — soft start, then policy with zero velocity
     WALK        — policy with cmd_vel input
     WIGGLE_SEQ  — sequential sine sweep, one joint at a time
+    SIM_WALK    — motors hold STAND, policy runs for viz only (/policy_viz)
     WIGGLE_ALL  — all joints wiggle simultaneously
     ESTOP       — zero torque, requires manual reset
 """
@@ -195,6 +196,8 @@ class StateMachineNode(Node):
         elif self._state == "WALK":
             # Policy node handles WALK — just ensure zero cmd if needed
             pass
+        elif self._state == "SIM_WALK":
+            self._handle_stand_hold()
         elif self._state == "WIGGLE_SEQ":
             self._handle_wiggle_sequential()
         elif self._state == "WIGGLE_ALL":
@@ -243,6 +246,25 @@ class StateMachineNode(Node):
         # Publish zero velocity during stand
         vel_msg = Twist()
         self._pub_vel.publish(vel_msg)
+
+    def _handle_stand_hold(self):
+        """Hold default stand position with full gains. Used during SIM_WALK."""
+        cmd_msg = MITCommandArray()
+        cmd_msg.header.stamp = self.get_clock().now().to_msg()
+        gs = float(self.get_parameter("gain_scale").value)
+
+        for name in ISAAC_JOINT_ORDER:
+            kp_base, kd_base = DEFAULT_GAINS[name]
+            cmd = MITCommand()
+            cmd.joint_name = name
+            cmd.position = DEFAULT_POSITIONS[name]
+            cmd.velocity = 0.0
+            cmd.kp = kp_base * gs
+            cmd.kd = kd_base * gs
+            cmd.torque_ff = 0.0
+            cmd_msg.commands.append(cmd)
+
+        self._pub_cmd.publish(cmd_msg)
 
     def _handle_wiggle_sequential(self):
         """One joint at a time through sine wave. Others hold default."""
