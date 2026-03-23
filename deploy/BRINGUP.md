@@ -214,7 +214,7 @@ Default PD gains (V72):
 | foot_pitch | 8 | 0.2 |
 | foot_roll | 8 | 0.2 |
 
-Safety pitch/roll limits default to 85° (adjustable via `max_pitch_deg` / `max_roll_deg` launch args).
+Safety ESTOP triggers on base tilt: pitch > 45° or roll > 30° (adjustable via `max_pitch_deg` / `max_roll_deg` launch args). These are torso orientation limits, not joint limits.
 
 ## Launch Files
 
