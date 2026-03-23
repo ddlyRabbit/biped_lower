@@ -25,23 +25,31 @@ import select
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
+from std_msgs.msg import String
 
 BANNER = """
-┌─────────────────────────────────────────┐
-│        Biped Keyboard Teleop            │
-│                                         │
-│   w/s : forward / backward              │
-│   a/d : left / right                    │
-│   q/e : yaw left / yaw right            │
-│                                         │
-│   x   : STOP (zero all velocities)      │
-│   1-5 : speed presets                   │
-│         1=0.1  2=0.3  3=0.5             │
-│         4=0.8  5=1.0  m/s               │
-│   +/- : increase/decrease step size     │
-│                                         │
-│   ESC / Ctrl+C : quit                   │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│         Biped Keyboard Teleop            │
+│                                          │
+│  ── State Transitions ──                 │
+│   SPACE : IDLE → STAND (enable motors)   │
+│   g     : STAND → WALK (policy active)   │
+│   v     : STAND → SIM_WALK (viz only)    │
+│   t     : STAND → WIGGLE_SEQ             │
+│   y     : STAND → WIGGLE_ALL             │
+│   b     : any → STAND (stop walk/wiggle) │
+│   ESC   : any → ESTOP (emergency)        │
+│                                          │
+│  ── Velocity (during WALK/SIM_WALK) ──   │
+│   w/s : forward / backward               │
+│   a/d : left / right                     │
+│   q/e : yaw left / yaw right             │
+│   x   : zero all velocities              │
+│   1-5 : speed presets (0.1-1.0 m/s)      │
+│   +/- : increase/decrease step size      │
+│                                          │
+│   Ctrl+C : quit                          │
+└──────────────────────────────────────────┘
 """
 
 # Check if we have a real terminal
@@ -88,6 +96,8 @@ class KeyboardTeleop(Node):
         self._max_ang = float(self.get_parameter('max_angular').value)
 
         self._pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self._pub_fsm = self.create_publisher(String, '/state_machine_cmd', 10)
+        self._fsm_state = 'IDLE'
 
         self._vx = 0.0
         self._vy = 0.0
@@ -95,6 +105,28 @@ class KeyboardTeleop(Node):
         self._running = True
 
         self._presets = {'1': 0.1, '2': 0.3, '3': 0.5, '4': 0.8, '5': 1.0}
+
+        # FSM state tracking
+        self.create_subscription(String, '/state_machine', self._fsm_cb, 10)
+
+        # State transition key map
+        self._state_keys = {
+            ' ': 'START',       # IDLE → STAND
+            'g': 'WALK',        # STAND → WALK
+            'v': 'SIM_WALK',    # STAND → SIM_WALK
+            't': 'WIGGLE_SEQ',  # STAND → WIGGLE_SEQ
+            'y': 'WIGGLE_ALL',  # STAND → WIGGLE_ALL
+            'b': 'STOP',        # any → STAND
+        }
+
+    def _fsm_cb(self, msg: String):
+        self._fsm_state = msg.data.strip().upper()
+
+    def _send_fsm(self, cmd: str):
+        msg = String()
+        msg.data = cmd
+        self._pub_fsm.publish(msg)
+        self.get_logger().info(f'FSM cmd: {cmd} (state: {self._fsm_state})')
 
     def _clamp(self, val, limit):
         return max(-limit, min(limit, val))
@@ -111,7 +143,7 @@ class KeyboardTeleop(Node):
 
     def _print_status(self):
         sys.stdout.write(
-            f'\r  vx={self._vx:+.2f}  vy={self._vy:+.2f}  '
+            f'\r  [{self._fsm_state:>10}]  vx={self._vx:+.2f}  vy={self._vy:+.2f}  '
             f'wz={self._wz:+.2f}  step={self._lin_step:.2f}    '
         )
         sys.stdout.flush()
@@ -161,8 +193,15 @@ class KeyboardTeleop(Node):
                 elif key == '-':
                     self._lin_step = max(self._lin_step - 0.05, 0.01)
                     self._ang_step = max(self._ang_step - 0.05, 0.01)
-                elif key in ('\x1b', '\x03'):
+                elif key == '\x1b':  # ESC → ESTOP
+                    self._send_fsm('ESTOP')
+                    self._vx = self._vy = self._wz = 0.0
+                elif key == '\x03':  # Ctrl+C → quit
                     break
+                elif key in self._state_keys:
+                    self._send_fsm(self._state_keys[key])
+                    if key == 'b':  # STOP also zeros velocity
+                        self._vx = self._vy = self._wz = 0.0
                 else:
                     changed = False
 

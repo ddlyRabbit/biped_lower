@@ -5,7 +5,7 @@
 - RPi 5 with Ubuntu 24.04 + ROS2 Jazzy
 - Waveshare RS485 CAN HAT (B) — MCP2515 on SPI0
 - BNO085 IMU on I2C bus 1 (addr 0x4B, RST on GPIO 4)
-- All 12 motors on single CAN bus (can0), IDs 1–12
+- All 12 motors on dual CAN bus (can0=right, can1=left), IDs 1–12
 - Student policy exported as ONNX (`student_flat.onnx`)
 
 ## CAN HAT Setup (one-time)
@@ -14,8 +14,9 @@ Add to `/boot/firmware/config.txt`:
 ```
 dtparam=spi=on
 dtoverlay=mcp2515-can0,oscillator=12000000,interrupt=25
+dtoverlay=mcp2515-can1,oscillator=12000000,interrupt=24
 ```
-Reboot. Verify: `ls /sys/class/net/ | grep can` → should show `can0`.
+Reboot. Verify: `ls /sys/class/net/ | grep can` → should show `can0` and `can1`.
 
 ## Step 1: Bring Up CAN (every boot)
 
@@ -24,7 +25,7 @@ cd ~/biped_lower/deploy
 ./scripts/setup_can.sh
 ```
 
-Verify: `candump can0` — shows nothing if no motors powered, frames if powered.
+Verify: `candump can0` / `candump can1` — shows frames if motors powered.
 
 ## Step 2: Scan Motors
 
@@ -44,8 +45,8 @@ ros2 launch biped_bringup calibrate.launch.py
 To recalibrate a single joint (merges into existing calibration):
 ```bash
 ros2 launch biped_bringup calibrate.launch.py joint:=R_knee
-ros2 launch biped_bringup calibrate.launch.py joint:=L_foot_top    # left ankle upper motor
-ros2 launch biped_bringup calibrate.launch.py joint:=L_foot_bottom # left ankle lower motor
+ros2 launch biped_bringup calibrate.launch.py joint:=L_foot_top
+ros2 launch biped_bringup calibrate.launch.py joint:=L_foot_bottom
 ```
 
 Move each joint to both mechanical limits. Joints auto-mark ✅ when range matches
@@ -74,45 +75,111 @@ ros2 launch biped_bringup bringup.launch.py \
   onnx_model:=~/biped_lower/deploy/student_flat.onnx \
   gain_scale:=0.3
 
-# Terminal 2: monitoring
+# Terminal 2: keyboard teleop
+ros2 run biped_teleop keyboard_teleop
+
+# Terminal 3: monitoring (optional)
 ros2 launch biped_bringup record.launch.py
-
-# Terminal 3: start standing
-ros2 topic pub --once /state_command std_msgs/String "data: START"
-
-# Connect Foxglove Studio on desktop to ws://<pi-ip>:8765
 ```
 
-Robot should slowly move to standing pose over 2 seconds (soft start).
+Use keyboard teleop to transition states (see State Machine section below).
+
+## State Machine
+
+```
+              ┌──────────────────────────────────────┐
+              │                                      │
+ IDLE ──SPACE──▶ STAND ──g──▶ WALK ──b──▶ STAND     │
+                  │                                  │
+                  ├──v──▶ SIM_WALK ──b──▶ STAND      │
+                  │                                  │
+                  ├──t──▶ WIGGLE_SEQ ──(auto)──▶ STAND
+                  │                                  │
+                  └──y──▶ WIGGLE_ALL ──b──▶ STAND    │
+                                                     │
+              ESC ── any state ──▶ ESTOP ◀───────────┘
+```
+
+### States
+
+| State | Description | Motors |
+|-------|-------------|--------|
+| **IDLE** | Motors disabled, waiting | Off |
+| **STAND** | Soft start → hold default pose | PD hold at defaults |
+| **WALK** | Policy active, responds to cmd_vel | Policy output → motors |
+| **SIM_WALK** | Policy runs for visualization only | PD hold at defaults (STAND) |
+| **WIGGLE_SEQ** | Sequential sine sweep, one joint at a time | Sine wave per joint |
+| **WIGGLE_ALL** | All joints wiggle simultaneously | Sine wave all joints |
+| **ESTOP** | Emergency stop, zero torque | Zero torque |
+
+### SIM_WALK (Visualization Mode)
+
+SIM_WALK keeps the motors safely in STAND position while running the ONNX policy
+in the background. Policy output publishes to `/policy_viz` instead of `/joint_commands`.
+
+Use this to:
+- Verify policy behavior before enabling real walking
+- Compare policy targets vs actual joint positions in Foxglove
+- Test with real IMU/sensor data without risk
+
+**Topics:**
+- `/policy_viz` (MITCommandArray) — what the policy *would* command
+- `/joint_commands` (MITCommandArray) — actual STAND commands to motors
+- `/joint_states` (JointState) — real motor feedback
+
+### Keyboard Teleop Keys
+
+| Key | Action |
+|-----|--------|
+| **SPACE** | IDLE → STAND (enable motors) |
+| **g** | STAND → WALK (policy active) |
+| **v** | STAND → SIM_WALK (viz only) |
+| **t** | STAND → WIGGLE_SEQ |
+| **y** | STAND → WIGGLE_ALL |
+| **b** | any → STAND (stop) |
+| **ESC** | any → ESTOP (emergency) |
+| w/s | forward / backward velocity |
+| a/d | left / right velocity |
+| q/e | yaw left / yaw right |
+| x | zero all velocities |
+| 1-5 | speed presets (0.1–1.0 m/s) |
+| +/- | adjust step size |
+| Ctrl+C | quit teleop |
+
+### Manual State Commands (without teleop)
+
+```bash
+ros2 topic pub --once /state_command std_msgs/String "data: START"
+ros2 topic pub --once /state_command std_msgs/String "data: WALK"
+ros2 topic pub --once /state_command std_msgs/String "data: SIM_WALK"
+ros2 topic pub --once /state_command std_msgs/String "data: WIGGLE_SEQ"
+ros2 topic pub --once /state_command std_msgs/String "data: WIGGLE_ALL"
+ros2 topic pub --once /state_command std_msgs/String "data: STOP"
+ros2 topic pub --once /state_command std_msgs/String "data: ESTOP"
+```
 
 ## Step 6: Ground Test
 
 After suspended test looks good:
 ```bash
-# Same as Step 5 but increase gains
 ros2 launch biped_bringup bringup.launch.py \
   calibration_file:=calibration.yaml \
   onnx_model:=~/biped_lower/deploy/student_flat.onnx \
   gain_scale:=0.5
 
-# Start standing, then walking:
-ros2 topic pub --once /state_command std_msgs/String "data: START"
-# Wait for stable stand...
-ros2 topic pub --once /state_command std_msgs/String "data: WALK"
-
-# Keyboard teleop:
+# Start teleop, press SPACE to stand, then g to walk
 ros2 run biped_teleop keyboard_teleop
-# Press 1 for 0.1 m/s, then w to go forward
 ```
 
-## Step 7: Emergency Stop
+## Emergency Stop
 
+ESC key in teleop, or:
 ```bash
 ros2 topic pub --once /state_command std_msgs/String "data: ESTOP"
 ```
 
 Also triggers automatically on pitch/roll violation or motor fault.
-Reset: `ros2 topic pub --once /state_command std_msgs/String "data: RESET"`
+Reset: power cycle or `ros2 topic pub --once /state_command std_msgs/String "data: RESET"`
 
 ## Gain Tuning
 
@@ -125,6 +192,16 @@ Use `gain_scale` launch argument to scale all PD gains uniformly:
 | 0.7 | Ground standing test |
 | 1.0 | Full sim gains |
 
+Default PD gains (V72):
+| Joint | Kp | Kd |
+|-------|----|----|
+| hip_pitch | 15 | 3.0 |
+| hip_roll | 10 | 3.0 |
+| hip_yaw | 10 | 3.0 |
+| knee | 15 | 3.0 |
+| foot_pitch | 8 | 0.2 |
+| foot_roll | 8 | 0.2 |
+
 Safety pitch/roll limits default to 85° (adjustable via `max_pitch_deg` / `max_roll_deg` launch args).
 
 ## Launch Files
@@ -135,6 +212,50 @@ Safety pitch/roll limits default to 85° (adjustable via `max_pitch_deg` / `max_
 | `calibrate.launch.py` | Interactive joint calibration |
 | `bringup.launch.py` | Full robot (all nodes) |
 | `record.launch.py` | Foxglove bridge + rosbag recording |
+
+## CAN Driver Options
+
+| Driver | Language | Loop Rate | Launch Param |
+|--------|----------|-----------|--------------|
+| `can_bus_node` | Python (sync) | ~50Hz | `can_driver:=can_bus_node` (default) |
+| `can_bus_node_async` | Python (async) | ~200Hz | `can_driver:=can_bus_node_async` |
+| `can_bus_node_cpp` | C++ | ~300Hz | `can_driver:=can_bus_node_cpp` |
+
+```bash
+# C++ driver (recommended):
+ros2 launch biped_bringup bringup.launch.py \
+  can_driver:=can_bus_node_cpp \
+  calibration_file:=calibration.yaml
+```
+
+All drivers share the same ROS2 interface:
+- Sub: `/joint_commands` (biped_msgs/MITCommandArray)
+- Pub: `/joint_states` (sensor_msgs/JointState)
+- Pub: `/motor_states` (biped_msgs/MotorStateArray)
+
+## Wiggle Test
+
+Test individual or all joints with sine wave sweeps. Robot must be in STAND state first.
+
+### Config
+
+Edit `deploy/biped_ws/src/biped_bringup/config/wiggle.yaml`:
+```yaml
+wiggle:
+  duration_per_joint: 3.0
+
+  joints:
+    R_hip_pitch:   { pos: 0.087, neg: -0.087, freq: 1.0 }
+    R_knee:        { pos: 0.15,  neg: -0.05,  freq: 0.5 }
+```
+
+Config is **re-read on each WIGGLE command** — edit and re-trigger without restart.
+
+### Safety
+- Joint targets clamped to URDF limits
+- Config validated at load (warns if range exceeds limits)
+- ESTOP always available
+- gain_scale applies to wiggle PD gains
 
 ## Troubleshooting
 
@@ -148,91 +269,3 @@ Safety pitch/roll limits default to 85° (adjustable via `max_pitch_deg` / `max_
 | Foxglove won't connect | Check Pi IP, ensure port 8765 not blocked |
 | TX buffer full errors | Normal at startup (MCP2515 has 3 slots), retries handle it |
 | Ankle motors track poorly | Re-calibrate ankles, check linkage rod lengths match CAD |
-
-## CAN Driver Options
-
-Three CAN driver implementations available:
-
-| Driver | Language | Loop Rate | Launch Param |
-|--------|----------|-----------|--------------|
-| `can_bus_node` | Python (sync) | ~50Hz | `can_driver:=can_bus_node` (default) |
-| `can_bus_node_async` | Python (async) | ~200Hz | `can_driver:=can_bus_node_async` |
-| `can_bus_node_cpp` | C++ | ~300Hz | `can_driver:=can_bus_node_cpp` |
-
-```bash
-# Default (Python sync):
-ros2 launch biped_bringup bringup.launch.py \
-  calibration_file:=calibration.yaml
-
-# C++ driver (recommended):
-ros2 launch biped_bringup bringup.launch.py \
-  can_driver:=can_bus_node_cpp \
-  calibration_file:=calibration.yaml
-
-# Python async:
-ros2 launch biped_bringup bringup.launch.py \
-  can_driver:=can_bus_node_async \
-  calibration_file:=calibration.yaml
-```
-
-All drivers share the same ROS2 interface:
-- Sub: `/joint_commands` (biped_msgs/MITCommandArray)
-- Pub: `/joint_states` (sensor_msgs/JointState)
-- Pub: `/motor_states` (biped_msgs/MotorStateArray)
-
-The C++ driver (`biped_driver_cpp` package) uses direct SocketCAN syscalls
-with two worker threads (one per CAN bus) for lowest latency.
-Stats printed every 5s showing actual loop Hz per bus.
-
-### Build
-
-```bash
-cd ~/biped_lower/deploy/biped_ws
-source /opt/ros/jazzy/setup.bash
-colcon build --packages-select biped_driver_cpp biped_bringup
-source setup_biped.bash
-```
-
-## Wiggle Test
-
-Test individual or all joints with sine wave sweeps. Robot must be in STAND state first.
-
-### Config
-
-Edit `deploy/biped_ws/src/biped_bringup/config/wiggle.yaml`:
-```yaml
-wiggle:
-  duration_per_joint: 3.0    # seconds per joint in sequential mode
-
-  joints:
-    R_hip_pitch:   { pos: 0.087, neg: -0.087, freq: 1.0 }
-    R_knee:        { pos: 0.15,  neg: -0.05,  freq: 0.5 }
-    # pos: max offset above default (rad)
-    # neg: max offset below default (rad, negative value)
-    # freq: sine wave frequency (Hz)
-```
-
-Config is **re-read on each WIGGLE command** — edit and re-trigger without restart.
-
-### Commands
-
-```bash
-# Start robot
-ros2 topic pub --once /state_command std_msgs/String "data: START"
-# Wait for STAND to stabilize, then:
-
-# Sequential: one joint at a time (cycles through all 12)
-ros2 topic pub --once /state_command std_msgs/String "data: WIGGLE_SEQ"
-
-# All joints simultaneously
-ros2 topic pub --once /state_command std_msgs/String "data: WIGGLE_ALL"
-
-# Stop wiggling, return to STAND
-ros2 topic pub --once /state_command std_msgs/String "data: STOP"
-```
-
-### Safety
-- Joint targets clamped to URDF limits
-- Config validated at load (warns if range exceeds limits)
-- ESTOP always available
-- gain_scale from launch applies to wiggle PD gains

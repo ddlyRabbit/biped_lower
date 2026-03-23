@@ -419,14 +419,45 @@ biped_driver_cpp/
 Based on [Seeed RobStride_Control](https://github.com/Seeed-Projects/RobStride_Control) C++ library.
 Extended with: multi-bus, per-model scaling, calibration, ankle linkage, ROS2 integration.
 
-## State Machine States
+## State Machine
+
+### State Diagram
 
 ```
-IDLE → STAND → WALK         (policy-driven locomotion)
-              → WIGGLE_SEQ  (sequential joint sine sweep)
-              → WIGGLE_ALL  (simultaneous joint sine sweep)
-              → ESTOP       (zero torque, emergency)
+              ┌──────────────────────────────────────┐
+              │                                      │
+ IDLE ─SPACE─▶ STAND ──g──▶ WALK ──b──▶ STAND       │
+                  │                                  │
+                  ├──v──▶ SIM_WALK ──b──▶ STAND      │
+                  │                                  │
+                  ├──t──▶ WIGGLE_SEQ ──(auto)──▶ STAND
+                  │                                  │
+                  └──y──▶ WIGGLE_ALL ──b──▶ STAND    │
+                                                     │
+              ESC ── any state ──▶ ESTOP ◀───────────┘
 ```
+
+### States
+
+| State | Motors | Policy | Description |
+|-------|--------|--------|-------------|
+| **IDLE** | Off | Off | Waiting for START |
+| **STAND** | PD hold defaults | Off | Soft start → hold pose |
+| **WALK** | Policy output | Active → `/joint_commands` | Real locomotion |
+| **SIM_WALK** | PD hold defaults | Active → `/policy_viz` | Viz-only, motors safe |
+| **WIGGLE_SEQ** | Sine sweep (1 joint) | Off | Sequential joint test |
+| **WIGGLE_ALL** | Sine sweep (all) | Off | Simultaneous joint test |
+| **ESTOP** | Zero torque | Off | Emergency, requires reset |
+
+### SIM_WALK
+
+Motors hold STAND position while the ONNX policy runs inference at 50Hz
+using real sensor data. Policy output publishes to `/policy_viz` (not `/joint_commands`).
+
+Use for:
+- Pre-flight check before real walking
+- Foxglove visualization of policy targets vs actual positions
+- Debugging policy behavior with real IMU data
 
 ### WIGGLE_SEQ
 Cycles through each joint one at a time. Active joint follows sine wave
@@ -438,3 +469,18 @@ All joints wiggle simultaneously at their configured frequency/range.
 Runs until STOP command.
 
 Config: `biped_bringup/config/wiggle.yaml` (read from source tree, no rebuild needed).
+
+### Keyboard Teleop
+
+| Key | Action |
+|-----|--------|
+| SPACE | IDLE → STAND |
+| g | STAND → WALK |
+| v | STAND → SIM_WALK |
+| t | STAND → WIGGLE_SEQ |
+| y | STAND → WIGGLE_ALL |
+| b | → STAND (stop) |
+| ESC | → ESTOP |
+| w/s/a/d/q/e | velocity control |
+| x | zero velocity |
+| 1-5 | speed presets |
