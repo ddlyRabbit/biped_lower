@@ -183,7 +183,11 @@ def main():
         actor_sd = {}
         for k, v in model_sd.items():
             if k.startswith("actor."):
-                actor_sd[k.replace("actor.", "")] = v
+                clean_k = k.replace("actor.", "")
+                # Tanh wrapper adds "0." prefix to inner MLP keys (actor.0.X → 0.X)
+                if clean_k.startswith("0.") and args_cli.tanh:
+                    clean_k = clean_k[2:]  # strip "0." → flat sequential keys
+                actor_sd[clean_k] = v
     actor.load_state_dict(actor_sd)
     actor.eval()
     print("[INFO] Actor loaded successfully")
