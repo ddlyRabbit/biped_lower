@@ -131,12 +131,37 @@ MOTOR_TYPES = {
     "R_knee": "RS04", "R_foot_pitch": "RS02", "R_foot_roll": "RS02",
 }
 
-# Test parameters per joint
-TEST_PARAMS = {
-    "R_hip_pitch": {"step": 0.4, "amp": 0.3, "freqs": [0.5, 1.0, 2.0, 5.0, 10.0]},
-    "R_hip_roll": {"step": -0.3, "amp": 0.3, "freqs": [0.5, 1.0, 2.0, 5.0, 10.0]},
-    "R_hip_yaw": {"step": 0.3, "amp": 0.3, "freqs": [0.5, 1.0, 2.0, 5.0, 10.0]},
-    "R_knee": {"step": 0.8, "amp": 0.3, "freqs": [0.5, 1.0, 2.0, 5.0, 10.0]},
-    "R_foot_pitch": {"step": 0.1, "amp": 0.15, "freqs": [0.5, 1.0, 2.0, 5.0, 10.0]},
-    "R_foot_roll": {"step": 0.1, "amp": 0.1, "freqs": [0.5, 1.0, 2.0, 5.0, 10.0]},
+# 70% of URDF joint limits (matches deploy/scripts/motor_sysid.py)
+JOINT_LIMITS_70PCT = {
+    "R_hip_pitch":  (-1.55, 0.73),
+    "R_hip_roll":   (-1.59, 0.15),
+    "R_hip_yaw":    (-1.10, 1.10),
+    "R_knee":       (0.0,   1.89),
+    "R_foot_pitch": (-0.61, 0.37),
+    "R_foot_roll":  (-0.18, 0.18),
 }
+
+SINE_FREQS = [0.5, 1.0, 2.0, 5.0, 10.0]
+
+
+def compute_test_params(joint_name):
+    """Compute step target and sine amplitude from 70% URDF limits.
+
+    Matches deploy/scripts/motor_sysid.py exactly:
+        mid = (lo + hi) / 2
+        half_range = (hi - lo) / 2
+        step_target = mid + half_range * 0.5
+        sine_amplitude = half_range * 0.5
+    """
+    lo, hi = JOINT_LIMITS_70PCT.get(joint_name, (-0.5, 0.5))
+    mid = (lo + hi) / 2.0
+    half_range = (hi - lo) / 2.0
+    return {
+        "step": mid + half_range * 0.5,
+        "amp": half_range * 0.5,
+        "freqs": SINE_FREQS,
+    }
+
+
+# Pre-computed for reference
+TEST_PARAMS = {name: compute_test_params(name) for name in JOINT_LIMITS_70PCT}
