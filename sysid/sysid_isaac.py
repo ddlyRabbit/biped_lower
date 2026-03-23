@@ -33,9 +33,14 @@ simulation_app = app_launcher.app
 # --- Post-launch imports ---
 import torch
 import yaml
+import numpy as np
 import isaaclab.sim as sim_utils
 from isaaclab.assets import Articulation
 from isaaclab.sim import SimulationCfg, SimulationContext
+
+if args.video:
+    from isaaclab.sensors import CameraCfg, Camera
+    import imageio
 
 from sysid_config import (
     SYSID_ROBOT_CFG, SIM_DT, DECIMATION, CONTROL_DT,
@@ -68,13 +73,14 @@ def step_control(robot, sim, targets, decimation=DECIMATION):
     robot.update(SIM_DT * decimation)
 
 
-def step_control_render(robot, sim, targets, decimation=DECIMATION):
-    """Same as step_control but renders on last substep."""
+def step_control_render(robot, sim, targets, decimation=DECIMATION, camera=None, video_writer=None):
+    """Same as step_control but renders on last substep + captures frame."""
     robot.set_joint_position_target(targets.unsqueeze(0))
     robot.write_data_to_sim()
     for i in range(decimation):
         sim.step(render=(i == decimation - 1))
     robot.update(SIM_DT * decimation)
+    capture_frame(camera, video_writer)
 
 
 def read_joint(robot, jidx):
@@ -82,6 +88,19 @@ def read_joint(robot, jidx):
     pos = robot.data.joint_pos[0, jidx].item()
     vel = robot.data.joint_vel[0, jidx].item()
     return pos, vel
+
+
+def capture_frame(camera, video_writer):
+    """Capture one frame from camera and write to video."""
+    if camera is None or video_writer is None:
+        return
+    camera.update(dt=CONTROL_DT)
+    rgb = camera.data.output["rgb"]
+    if rgb is not None and rgb.numel() > 0:
+        frame = rgb[0].cpu().numpy()
+        if frame.shape[-1] == 4:  # RGBA → RGB
+            frame = frame[:, :, :3]
+        video_writer.append_data(frame)
 
 
 # --- Main ---
@@ -119,12 +138,46 @@ def main():
     ground_cfg = sim_utils.GroundPlaneCfg()
     ground_cfg.func("/World/ground", ground_cfg)
 
+    # Spawn light
+    light_cfg = sim_utils.DistantLightCfg(intensity=3000.0, color=(0.75, 0.75, 0.75))
+    light_cfg.func("/World/light", light_cfg, translation=(0, 0, 10))
+
     # Spawn robot
     robot = Articulation(SYSID_ROBOT_CFG)
+
+    # Spawn camera for video
+    camera = None
+    video_writer = None
+    if args.video:
+        camera_cfg = CameraCfg(
+            prim_path="/World/Camera",
+            update_period=CONTROL_DT,
+            height=480,
+            width=640,
+            data_types=["rgb"],
+            spawn=sim_utils.PinholeCameraCfg(
+                focal_length=24.0,
+                focus_distance=400.0,
+                horizontal_aperture=20.955,
+                clipping_range=(0.1, 100.0),
+            ),
+            offset=CameraCfg.OffsetCfg(
+                pos=(3.0, 3.0, 2.0),
+                rot=(0.36, 0.11, -0.28, 0.88),
+                convention="world",
+            ),
+        )
+        camera = Camera(camera_cfg)
+        video_path = os.path.join(out_dir, "sysid_video.mp4")
+        os.makedirs(out_dir, exist_ok=True)
+        video_writer = imageio.get_writer(video_path, fps=int(1.0 / CONTROL_DT), codec="h264")
+        print("Video recording to: %s" % video_path)
 
     # Reset sim
     sim.reset()
     robot.reset()
+    if camera is not None:
+        camera.reset()
 
     # Print joint names for verification
     print("Joint names:", robot.data.joint_names)
@@ -136,13 +189,11 @@ def main():
     print("Default positions:", defaults.cpu().numpy())
 
     # Choose step function based on video flag
-    do_step = step_control_render if args.video else step_control
-
-    # Video setup
     if args.video:
-        # TODO: camera-based recording for standalone mode
-        # For now, Isaac renders to viewport which can be captured externally
-        pass
+        def do_step(robot, sim, targets, decimation=DECIMATION):
+            step_control_render(robot, sim, targets, decimation, camera, video_writer)
+    else:
+        do_step = step_control
 
     # --- Warmup: let robot settle at defaults for 1s ---
     print("Warmup: settling at defaults...")
@@ -246,6 +297,11 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     with open(os.path.join(out_dir, "metadata.yaml"), "w") as f:
         yaml.dump(meta, f)
+
+    # Close video
+    if video_writer is not None:
+        video_writer.close()
+        print("Video saved: %s" % os.path.join(out_dir, "sysid_video.mp4"))
 
     print("\nDone! Output: %s" % out_dir)
     simulation_app.close()
