@@ -56,6 +56,7 @@ URDF limits ±20%. Press Ctrl+C to save `calibration.yaml`.
 
 ```bash
 ros2 launch biped_bringup hardware.launch.py \
+  can_driver:=can_bus_node_cpp \
   calibration_file:=calibration.yaml
 
 # In another terminal:
@@ -69,20 +70,21 @@ ros2 topic echo /safety/status    # should be True
 ⚠️ **Robot must be suspended!**
 
 ```bash
-# Terminal 1: full robot with low gains
+# Terminal 1: full robot with C++ CAN driver
 ros2 launch biped_bringup bringup.launch.py \
+  can_driver:=can_bus_node_cpp \
   calibration_file:=calibration.yaml \
-  onnx_model:=~/biped_lower/deploy/student_flat.onnx \
+  onnx_model:=~/biped_lower/deploy/v68b_student_flat.onnx \
   gain_scale:=0.3
 
-# Terminal 2: keyboard teleop
+# Terminal 2: keyboard teleop (state transitions + velocity)
 ros2 run biped_teleop keyboard_teleop
 
 # Terminal 3: monitoring (optional)
 ros2 launch biped_bringup record.launch.py
 ```
 
-Use keyboard teleop to transition states (see State Machine section below).
+Press SPACE to stand, then `v` for SIM_WALK (safe viz test) before `g` for real WALK.
 
 ## State Machine
 
@@ -168,13 +170,17 @@ ros2 topic pub --once /state_command std_msgs/String "data: ESTOP"
 
 After suspended test looks good:
 ```bash
+# Terminal 1: full robot with higher gains
 ros2 launch biped_bringup bringup.launch.py \
+  can_driver:=can_bus_node_cpp \
   calibration_file:=calibration.yaml \
-  onnx_model:=~/biped_lower/deploy/student_flat.onnx \
+  onnx_model:=~/biped_lower/deploy/v68b_student_flat.onnx \
   gain_scale:=0.5
 
-# Start teleop, press SPACE to stand, then g to walk
+# Terminal 2: teleop
 ros2 run biped_teleop keyboard_teleop
+# SPACE → stand, v → SIM_WALK (verify policy), g → WALK (real walking)
+# w/1-5 for velocity, ESC for emergency stop
 ```
 
 ## Emergency Stop
@@ -223,16 +229,9 @@ Safety pitch/roll limits default to 85° (adjustable via `max_pitch_deg` / `max_
 
 | Driver | Language | Loop Rate | Launch Param |
 |--------|----------|-----------|--------------|
-| `can_bus_node` | Python (sync) | ~50Hz | `can_driver:=can_bus_node` (default) |
+| `can_bus_node_cpp` | C++ | ~300Hz | `can_driver:=can_bus_node_cpp` **(recommended)** |
 | `can_bus_node_async` | Python (async) | ~200Hz | `can_driver:=can_bus_node_async` |
-| `can_bus_node_cpp` | C++ | ~300Hz | `can_driver:=can_bus_node_cpp` |
-
-```bash
-# C++ driver (recommended):
-ros2 launch biped_bringup bringup.launch.py \
-  can_driver:=can_bus_node_cpp \
-  calibration_file:=calibration.yaml
-```
+| `can_bus_node` | Python (sync) | ~50Hz | `can_driver:=can_bus_node` |
 
 All drivers share the same ROS2 interface:
 - Sub: `/joint_commands` (biped_msgs/MITCommandArray)
@@ -241,11 +240,11 @@ All drivers share the same ROS2 interface:
 
 ## Wiggle Test
 
-Test individual or all joints with sine wave sweeps. Robot must be in STAND state first.
+Test individual or all joints with sine wave sweeps. Press `t` (sequential) or `y` (all) in teleop from STAND state.
 
 ### Config
 
-Edit `deploy/biped_ws/src/biped_bringup/config/wiggle.yaml`:
+Edit `deploy/biped_ws/src/biped_bringup/config/wiggle.yaml` (no rebuild needed):
 ```yaml
 wiggle:
   duration_per_joint: 3.0
@@ -260,8 +259,17 @@ Config is **re-read on each WIGGLE command** — edit and re-trigger without res
 ### Safety
 - Joint targets clamped to URDF limits
 - Config validated at load (warns if range exceeds limits)
-- ESTOP always available
+- ESTOP always available (ESC key)
 - gain_scale applies to wiggle PD gains
+
+## Build (on Pi)
+
+```bash
+cd ~/biped_lower/deploy/biped_ws
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select biped_msgs biped_driver biped_driver_cpp biped_control biped_teleop biped_bringup
+source setup_biped.bash
+```
 
 ## Troubleshooting
 
