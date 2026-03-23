@@ -1,265 +1,255 @@
-"""Motor SysID — combined video + CSV recording.
+"""Motor SysID — standalone Isaac Sim.
 
-Suspended robot (fixed base, gravity ON), same actuator model as training.
-Records video via gymnasium RecordVideo + CSV data for each joint test.
+No ManagerBasedRLEnv. Direct SimulationContext + Articulation.
+No randomization, no events, no rewards. Pure actuator response.
 
 Usage:
-    /isaac-sim/python.sh motor_sysid_combined.py --all --headless
-    /isaac-sim/python.sh motor_sysid_combined.py --joint R_hip_pitch --headless
+    /isaac-sim/python.sh sysid_isaac.py --joint R_hip_pitch --headless
+    /isaac-sim/python.sh sysid_isaac.py --joint R_hip_pitch --headless --video
 """
-import argparse, csv, math, sys, os
-sys.path.insert(0, '/workspace/biped_locomotion')
+import argparse
+import csv
+import math
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(__file__))
 
 from isaaclab.app import AppLauncher
+
 parser = argparse.ArgumentParser()
-parser.add_argument('--joint', type=str, help='Single joint to test')
-parser.add_argument('--all', action='store_true', help='Test all 3 representative joints')
-parser.add_argument('--output', type=str, default='/results/motor_sysid')
+parser.add_argument("--joint", type=str, required=True, help="Joint name (e.g. R_hip_pitch)")
+parser.add_argument("--output", type=str, default="/results/motor_sysid")
+parser.add_argument("--video", action="store_true", help="Record video")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
-args.enable_cameras = True
+
+if args.video:
+    args.enable_cameras = True
+
 app_launcher = AppLauncher(args)
 simulation_app = app_launcher.app
 
+# --- Post-launch imports ---
 import torch
 import yaml
-from biped_env_cfg import BipedFlatEnvCfg
-from isaaclab.envs import ManagerBasedRLEnv
-from gymnasium.wrappers import RecordVideo
+import isaaclab.sim as sim_utils
+from isaaclab.assets import Articulation
+from isaaclab.sim import SimulationCfg, SimulationContext
 
-# Joint index in the 12-action vector (Isaac joint order)
-FRIENDLY_TO_IDX = {
-    'R_hip_pitch': 5, 'L_hip_pitch': 4,
-    'R_hip_roll': 1, 'L_hip_roll': 0,
-    'R_hip_yaw': 3, 'L_hip_yaw': 2,
-    'R_knee': 7, 'L_knee': 6,
-    'R_foot_pitch': 9, 'L_foot_pitch': 8,
-    'R_foot_roll': 11, 'L_foot_roll': 10,
-}
+from sysid_config import (
+    SYSID_ROBOT_CFG, SIM_DT, DECIMATION, CONTROL_DT,
+    JOINT_INDEX, DEFAULT_POS, MOTOR_TYPES, TEST_PARAMS,
+)
 
-MOTOR_TYPES = {
-    'R_hip_pitch': 'RS04', 'R_hip_roll': 'RS03', 'R_hip_yaw': 'RS03',
-    'R_knee': 'RS04', 'R_foot_pitch': 'RS02', 'R_foot_roll': 'RS02',
-}
-
-# One representative joint per motor type
-DEFAULT_TEST_JOINTS = ['R_hip_pitch', 'R_hip_roll', 'R_foot_pitch']
-
-# Test parameters per joint: (step_target, sine_amp, sine_freqs)
-TEST_PARAMS = {
-    'R_hip_pitch':  {'step': 0.4, 'amp': 0.3, 'freqs': [0.5, 1.0, 2.0, 5.0, 10.0]},
-    'R_hip_roll':   {'step': -0.3, 'amp': 0.3, 'freqs': [0.5, 1.0, 2.0, 5.0, 10.0]},
-    'R_hip_yaw':    {'step': 0.3, 'amp': 0.3, 'freqs': [0.5, 1.0, 2.0, 5.0, 10.0]},
-    'R_knee':       {'step': 0.8, 'amp': 0.3, 'freqs': [0.5, 1.0, 2.0, 5.0, 10.0]},
-    'R_foot_pitch': {'step': 0.1, 'amp': 0.15, 'freqs': [0.5, 1.0, 2.0, 5.0, 10.0]},
-    'R_foot_roll':  {'step': 0.1, 'amp': 0.1, 'freqs': [0.5, 1.0, 2.0, 5.0, 10.0]},
-}
-
+# --- Helpers ---
 
 def save_csv(data, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, 'w', newline='') as f:
-        w = csv.DictWriter(f, fieldnames=['time', 'cmd_pos', 'pos', 'vel', 'torque'])
+    with open(path, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["time", "cmd_pos", "pos", "vel", "torque"])
         w.writeheader()
         w.writerows(data)
     print("  Saved %s (%d rows)" % (path, len(data)))
 
 
-def create_env():
-    env_cfg = BipedFlatEnvCfg()
-    env_cfg.scene.num_envs = 1
-    # Fixed base, 500mm higher
-    env_cfg.scene.robot.spawn.articulation_props.fix_root_link = True
-    env_cfg.scene.robot.init_state.pos = (0.0, 0.0, 1.30)
-    # Long episode, no base contact termination
-    env_cfg.episode_length_s = 1000.0
-    env_cfg.terminations.base_contact = None
-    # Don't disable events (setting None crashes). The randomization
-    # only fires on startup/reset. We only reset once per joint test,
-    # so the effect is minimal. The key thing is to NOT call env.reset()
-    # between sine sweeps — just keep stepping.
-    return ManagerBasedRLEnv(cfg=env_cfg, render_mode="rgb_array")
+def build_default_targets(robot):
+    """Build a target tensor with all joints at their default positions."""
+    targets = robot.data.default_joint_pos[0].clone()
+    return targets
 
 
-class SysIDRunner:
-    def __init__(self, env, output_dir):
-        self.env = env
-        self.output_dir = output_dir
-        self.n_actions = env.action_manager.total_action_dim
-        self.dt = env.step_dt
-        self.action_scale = 0.25  # must match training config
+def step_control(robot, sim, targets, decimation=DECIMATION):
+    """One control step: set targets, step physics decimation times, update."""
+    robot.set_joint_position_target(targets.unsqueeze(0))
+    robot.write_data_to_sim()
+    for _ in range(decimation):
+        sim.step(render=False)
+    robot.update(SIM_DT * decimation)
 
-        # Get defaults from robot
-        robot = env.scene['robot']
-        self.defaults = robot.data.default_joint_pos[0].clone()
-        print("Defaults:", self.defaults.cpu().numpy())
 
-    def _abs_to_action(self, desired_pos, joint_idx):
-        """Convert absolute joint target (rad) to env action value."""
-        default = self.defaults[joint_idx].item()
-        return (desired_pos - default) / self.action_scale
+def step_control_render(robot, sim, targets, decimation=DECIMATION):
+    """Same as step_control but renders on last substep."""
+    robot.set_joint_position_target(targets.unsqueeze(0))
+    robot.write_data_to_sim()
+    for i in range(decimation):
+        sim.step(render=(i == decimation - 1))
+    robot.update(SIM_DT * decimation)
 
-    def _make_default_actions(self):
-        """Actions that hold all joints at their defaults."""
-        actions = torch.zeros(1, self.n_actions, device=self.env.device)
-        for name, idx in FRIENDLY_TO_IDX.items():
-            actions[0, idx] = self._abs_to_action(self.defaults[idx].item(), idx)
-        return actions
 
-    def _step(self, video_env, actions, joint_idx, cmd_pos, t):
-        """Step env, record data point."""
-        obs, _, _, _, _ = video_env.step(actions)
-        robot = self.env.scene['robot']
-        pos = robot.data.joint_pos[0, joint_idx].item()
-        vel = robot.data.joint_vel[0, joint_idx].item()
-        torque = 0.0
-        if hasattr(robot.data, 'applied_torque'):
-            torque = robot.data.applied_torque[0, joint_idx].item()
-        return {
-            'time': round(t, 5),
-            'cmd_pos': round(cmd_pos, 6),
-            'pos': round(pos, 6),
-            'vel': round(vel, 6),
-            'torque': round(torque, 6),
-        }
-
-    def run_joint(self, video_env, joint_name):
-        jidx = FRIENDLY_TO_IDX[joint_name]
-        mtype = MOTOR_TYPES.get(joint_name, 'UNK')
-        params = TEST_PARAMS.get(joint_name, {'step': 0.3, 'amp': 0.2, 'freqs': [1.0]})
-        out_dir = os.path.join(self.output_dir, '%s_%s' % (joint_name, mtype))
-        default_pos = self.defaults[jidx].item()
-
-        print("=" * 60)
-        print("SysID: %s (%s) idx=%d default=%.3f" % (joint_name, mtype, jidx, default_pos))
-        print("  step_target=%.3f sine_amp=%.3f" % (params['step'], params['amp']))
-        print("=" * 60)
-
-        # --- Step Response ---
-        self.env.reset()
-        data = []
-        t = 0.0
-        n_hold = int(0.5 / self.dt)
-        n_step = int(2.0 / self.dt)
-        n_back = int(1.0 / self.dt)
-
-        # Hold at default
-        for _ in range(n_hold):
-            actions = self._make_default_actions()
-            data.append(self._step(video_env, actions, jidx, default_pos, t))
-            t += self.dt
-
-        # Step to target (absolute)
-        step_target = params['step']
-        for _ in range(n_step):
-            actions = self._make_default_actions()
-            actions[0, jidx] = self._abs_to_action(step_target, jidx)
-            data.append(self._step(video_env, actions, jidx, step_target, t))
-            t += self.dt
-
-        # Return to default
-        for _ in range(n_back):
-            actions = self._make_default_actions()
-            data.append(self._step(video_env, actions, jidx, default_pos, t))
-            t += self.dt
-
-        save_csv(data, os.path.join(out_dir, 'step_response.csv'))
-
-        # --- Sine Sweeps ---
-        for freq in params['freqs']:
-            # Don't reset between sweeps — avoids re-triggering randomization
-            data = []
-            t = 0.0
-            amp = params['amp']
-            dur = 5.0 / freq  # 5 cycles
-
-            # Hold
-            for _ in range(n_hold):
-                actions = self._make_default_actions()
-                data.append(self._step(video_env, actions, jidx, default_pos, t))
-                t += self.dt
-
-            # Sine around default
-            t0 = t
-            n_sine = int(dur / self.dt)
-            for _ in range(n_sine):
-                desired = default_pos + amp * math.sin(2 * math.pi * freq * (t - t0))
-                actions = self._make_default_actions()
-                actions[0, jidx] = self._abs_to_action(desired, jidx)
-                data.append(self._step(video_env, actions, jidx, desired, t))
-                t += self.dt
-
-            # Hold
-            for _ in range(n_hold):
-                actions = self._make_default_actions()
-                data.append(self._step(video_env, actions, jidx, default_pos, t))
-                t += self.dt
-
-            save_csv(data, os.path.join(out_dir, 'sine_%.1fhz.csv' % freq))
-
-        # Metadata
-        meta = {
-            'joint': joint_name,
-            'motor_type': mtype,
-            'default_pos': float(default_pos),
-            'step_target': float(params['step']),
-            'sine_amp': float(params['amp']),
-            'sine_freqs': params['freqs'],
-            'action_scale': self.action_scale,
-            'env_dt': float(self.dt),
-            'decimation': int(self.env.cfg.decimation),
-            'suspended': True,
-            'gravity': True,
-        }
-        os.makedirs(out_dir, exist_ok=True)
-        with open(os.path.join(out_dir, 'metadata.yaml'), 'w') as f:
-            yaml.dump(meta, f)
-        print("  Complete: %s" % out_dir)
+def read_joint(robot, jidx):
+    """Read position and velocity for a single joint."""
+    pos = robot.data.joint_pos[0, jidx].item()
+    vel = robot.data.joint_vel[0, jidx].item()
+    return pos, vel
 
 
 # --- Main ---
-env = create_env()
-runner = SysIDRunner(env, args.output)
 
-# Determine test joints
-if args.all:
-    test_joints = DEFAULT_TEST_JOINTS
-elif args.joint:
-    test_joints = [args.joint]
-else:
-    print('Specify --joint or --all')
+def main():
+    joint_name = args.joint
+    if joint_name not in JOINT_INDEX:
+        print("Unknown joint: %s" % joint_name)
+        print("Available: %s" % list(JOINT_INDEX.keys()))
+        simulation_app.close()
+        return
+
+    jidx = JOINT_INDEX[joint_name]
+    mtype = MOTOR_TYPES.get(joint_name, "UNK")
+    params = TEST_PARAMS.get(joint_name, {"step": 0.3, "amp": 0.2, "freqs": [1.0]})
+    default = DEFAULT_POS.get(joint_name, 0.0)
+    out_dir = os.path.join(args.output, "%s_%s" % (joint_name, mtype))
+
+    print("=" * 60)
+    print("SysID: %s (%s) idx=%d default=%.3f" % (joint_name, mtype, jidx, default))
+    print("  step_target=%.3f sine_amp=%.3f" % (params["step"], params["amp"]))
+    print("  Kp from config, DelayedPD with friction")
+    print("=" * 60)
+
+    # Create sim
+    sim_cfg = SimulationCfg(
+        dt=SIM_DT,
+        render_interval=DECIMATION if args.video else 1,
+        device="cuda:0",
+    )
+    sim = SimulationContext(sim_cfg)
+    sim.set_camera_view(eye=[2.5, 2.5, 2.0], target=[0.0, 0.0, 0.8])
+
+    # Spawn ground plane
+    ground_cfg = sim_utils.GroundPlaneCfg()
+    ground_cfg.func("/World/ground", ground_cfg)
+
+    # Spawn robot
+    robot = Articulation(SYSID_ROBOT_CFG)
+
+    # Reset sim
+    sim.reset()
+    robot.reset()
+
+    # Print joint names for verification
+    print("Joint names:", robot.data.joint_names)
+    print("Num joints:", robot.num_joints)
+    print("Test joint: [%d] = %s" % (jidx, robot.data.joint_names[jidx]))
+
+    # Verify defaults loaded
+    defaults = robot.data.default_joint_pos[0]
+    print("Default positions:", defaults.cpu().numpy())
+
+    # Choose step function based on video flag
+    do_step = step_control_render if args.video else step_control
+
+    # Video setup
+    if args.video:
+        # TODO: camera-based recording for standalone mode
+        # For now, Isaac renders to viewport which can be captured externally
+        pass
+
+    # --- Warmup: let robot settle at defaults for 1s ---
+    print("Warmup: settling at defaults...")
+    targets = build_default_targets(robot)
+    for _ in range(int(1.0 / CONTROL_DT)):
+        do_step(robot, sim, targets)
+
+    pos0, vel0 = read_joint(robot, jidx)
+    print("After warmup: pos=%.4f vel=%.4f" % (pos0, vel0))
+
+    # --- Step Response ---
+    print("\nStep response...")
+    data = []
+    t = 0.0
+    step_target = params["step"]
+
+    # Hold at default (0.5s)
+    targets = build_default_targets(robot)
+    for _ in range(int(0.5 / CONTROL_DT)):
+        do_step(robot, sim, targets)
+        pos, vel = read_joint(robot, jidx)
+        data.append({"time": round(t, 5), "cmd_pos": round(default, 6),
+                      "pos": round(pos, 6), "vel": round(vel, 6), "torque": 0})
+        t += CONTROL_DT
+
+    # Step to absolute target (2s)
+    targets = build_default_targets(robot)
+    targets[jidx] = step_target
+    for _ in range(int(2.0 / CONTROL_DT)):
+        do_step(robot, sim, targets)
+        pos, vel = read_joint(robot, jidx)
+        data.append({"time": round(t, 5), "cmd_pos": round(step_target, 6),
+                      "pos": round(pos, 6), "vel": round(vel, 6), "torque": 0})
+        t += CONTROL_DT
+
+    # Return to default (1s)
+    targets = build_default_targets(robot)
+    for _ in range(int(1.0 / CONTROL_DT)):
+        do_step(robot, sim, targets)
+        pos, vel = read_joint(robot, jidx)
+        data.append({"time": round(t, 5), "cmd_pos": round(default, 6),
+                      "pos": round(pos, 6), "vel": round(vel, 6), "torque": 0})
+        t += CONTROL_DT
+
+    save_csv(data, os.path.join(out_dir, "step_response.csv"))
+
+    # --- Sine Sweeps ---
+    for freq in params["freqs"]:
+        print("Sine sweep %.1f Hz..." % freq)
+        data = []
+        t = 0.0
+        amp = params["amp"]
+        dur = 5.0 / freq  # 5 cycles
+
+        # Hold 0.5s
+        targets = build_default_targets(robot)
+        for _ in range(int(0.5 / CONTROL_DT)):
+            do_step(robot, sim, targets)
+            pos, vel = read_joint(robot, jidx)
+            data.append({"time": round(t, 5), "cmd_pos": round(default, 6),
+                          "pos": round(pos, 6), "vel": round(vel, 6), "torque": 0})
+            t += CONTROL_DT
+
+        # Sine around default
+        t0 = t
+        for _ in range(int(dur / CONTROL_DT)):
+            desired = default + amp * math.sin(2 * math.pi * freq * (t - t0))
+            targets = build_default_targets(robot)
+            targets[jidx] = desired
+            do_step(robot, sim, targets)
+            pos, vel = read_joint(robot, jidx)
+            data.append({"time": round(t, 5), "cmd_pos": round(desired, 6),
+                          "pos": round(pos, 6), "vel": round(vel, 6), "torque": 0})
+            t += CONTROL_DT
+
+        # Hold 0.5s
+        targets = build_default_targets(robot)
+        for _ in range(int(0.5 / CONTROL_DT)):
+            do_step(robot, sim, targets)
+            pos, vel = read_joint(robot, jidx)
+            data.append({"time": round(t, 5), "cmd_pos": round(default, 6),
+                          "pos": round(pos, 6), "vel": round(vel, 6), "torque": 0})
+            t += CONTROL_DT
+
+        save_csv(data, os.path.join(out_dir, "sine_%.1fhz.csv" % freq))
+
+    # Metadata
+    meta = {
+        "joint": joint_name,
+        "motor_type": mtype,
+        "default_pos": float(default),
+        "step_target": float(params["step"]),
+        "sine_amp": float(params["amp"]),
+        "sine_freqs": params["freqs"],
+        "sim_dt": SIM_DT,
+        "control_dt": CONTROL_DT,
+        "decimation": DECIMATION,
+        "suspended": True,
+        "gravity": True,
+    }
+    os.makedirs(out_dir, exist_ok=True)
+    with open(os.path.join(out_dir, "metadata.yaml"), "w") as f:
+        yaml.dump(meta, f)
+
+    print("\nDone! Output: %s" % out_dir)
     simulation_app.close()
-    sys.exit(1)
 
-# Total steps for video length estimate
-total_steps = 0
-for j in test_joints:
-    params = TEST_PARAMS.get(j, {'step': 0.3, 'amp': 0.2, 'freqs': [1.0]})
-    n_hold = int(0.5 / env.step_dt)
-    n_step = int(2.0 / env.step_dt)
-    n_back = int(1.0 / env.step_dt)
-    total_steps += n_hold + n_step + n_back  # step response
-    for freq in params['freqs']:
-        total_steps += n_hold + int(5.0 / freq / env.step_dt) + n_hold  # sine
 
-print("Total steps: %d (%.1f sec at %.0f Hz)" % (total_steps, total_steps * env.step_dt, 1.0 / env.step_dt))
-
-# Wrap with video
-video_dir = os.path.join(args.output, 'video')
-os.makedirs(video_dir, exist_ok=True)
-video_env = RecordVideo(
-    env,
-    video_folder=video_dir,
-    episode_trigger=lambda x: True,
-    video_length=total_steps + 100,
-    name_prefix="sysid",
-)
-obs, _ = video_env.reset()
-
-# Run tests
-for j in test_joints:
-    runner.run_joint(video_env, j)
-
-print("All done! Video + CSVs in %s" % args.output)
-video_env.close()
-simulation_app.close()
+if __name__ == "__main__":
+    main()
