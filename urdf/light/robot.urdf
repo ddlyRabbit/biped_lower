@@ -592,7 +592,7 @@
     <parent link="arb_uj111_cross_bearing"/>
     <child link="foot_6061"/>
     <axis xyz="0 0 1"/>
-    <limit effort="30" velocity="10" lower="-0.261799" upper="0.261799"/>
+    <limit effort="30" velocity="30" lower="-0.261799" upper="0.261799"/>
   </joint>
   <!-- Joint from kd_d_401r_6061 to arb_uj111_cross_bearing -->
   <joint name="right_foot_pitch_02" type="revolute">
@@ -600,7 +600,7 @@
     <parent link="kd_d_401r_6061"/>
     <child link="arb_uj111_cross_bearing"/>
     <axis xyz="0 0 1"/>
-    <limit effort="30" velocity="10" lower="-0.872665" upper="0.523599"/>
+    <limit effort="30" velocity="30" lower="-0.872665" upper="0.523599"/>
   </joint>
   <!-- Joint from kd_d_301r_6061 to kd_d_401r_6061 -->
   <joint name="right_knee_04" type="revolute">
@@ -608,7 +608,7 @@
     <parent link="kd_d_301r_6061"/>
     <child link="kd_d_401r_6061"/>
     <axis xyz="0 0 1"/>
-    <limit effort="100" velocity="10" lower="0" upper="2.70526"/>
+    <limit effort="100" velocity="21" lower="0" upper="2.70526"/>
   </joint>
   <!-- Joint from kd_d_201r_6061 to kd_d_301r_6061 -->
   <joint name="right_hip_yaw_03" type="revolute">
@@ -616,7 +616,7 @@
     <parent link="kd_d_201r_6061"/>
     <child link="kd_d_301r_6061"/>
     <axis xyz="0 0 1"/>
-    <limit effort="50" velocity="10" lower="-1.5708" upper="1.5708"/>
+    <limit effort="50" velocity="21" lower="-1.5708" upper="1.5708"/>
   </joint>
   <!-- Joint from kd_d_102r_6061 to kd_d_201r_6061 -->
   <joint name="right_hip_roll_03" type="revolute">
@@ -624,7 +624,7 @@
     <parent link="kd_d_102r_6061"/>
     <child link="kd_d_201r_6061"/>
     <axis xyz="0 0 1"/>
-    <limit effort="50" velocity="10" lower="-2.26893" upper="0.20944"/>
+    <limit effort="50" velocity="21" lower="-2.26893" upper="0.20944"/>
   </joint>
   <!-- Joint from assy_formfg___kd_b_102b_torso_btm to kd_d_102r_6061 -->
   <joint name="right_hip_pitch_04" type="revolute">
@@ -632,7 +632,7 @@
     <parent link="assy_formfg___kd_b_102b_torso_btm"/>
     <child link="kd_d_102r_6061"/>
     <axis xyz="0 0 1"/>
-    <limit effort="100" velocity="10" lower="-2.21657" upper="1.0472"/>
+    <limit effort="100" velocity="21" lower="-2.21657" upper="1.0472"/>
   </joint>
   <!-- Link kd_d_102l_6061 -->
   <link name="kd_d_102l_6061">
@@ -1072,7 +1072,7 @@
     <parent link="arb_uj111_cross_bearing_2"/>
     <child link="foot_6061_2"/>
     <axis xyz="0 0 1"/>
-    <limit effort="30" velocity="10" lower="-0.261799" upper="0.261799"/>
+    <limit effort="30" velocity="30" lower="-0.261799" upper="0.261799"/>
   </joint>
   <!-- Joint from kd_d_401l_6061 to arb_uj111_cross_bearing_2 -->
   <joint name="left_foot_pitch_02" type="revolute">
@@ -1080,7 +1080,7 @@
     <parent link="kd_d_401l_6061"/>
     <child link="arb_uj111_cross_bearing_2"/>
     <axis xyz="0 0 1"/>
-    <limit effort="30" velocity="10" lower="-0.872665" upper="0.523599"/>
+    <limit effort="30" velocity="30" lower="-0.872665" upper="0.523599"/>
   </joint>
   <!-- Joint from kd_d_301l_6061 to kd_d_401l_6061 -->
   <joint name="left_knee_04" type="revolute">
@@ -1088,7 +1088,7 @@
     <parent link="kd_d_301l_6061"/>
     <child link="kd_d_401l_6061"/>
     <axis xyz="0 0 1"/>
-    <limit effort="100" velocity="10" lower="0" upper="2.70526"/>
+    <limit effort="100" velocity="21" lower="0" upper="2.70526"/>
   </joint>
   <!-- Joint from rs03 to kd_d_301l_6061 -->
   <joint name="left_hip_yaw_03" type="revolute">
@@ -1096,7 +1096,7 @@
     <parent link="rs03"/>
     <child link="kd_d_301l_6061"/>
     <axis xyz="0 0 1"/>
-    <limit effort="50" velocity="10" lower="-1.5708" upper="1.5708"/>
+    <limit effort="50" velocity="21" lower="-1.5708" upper="1.5708"/>
   </joint>
   <!-- Joint from kd_d_102l_6061 to rs03 -->
   <joint name="left_hip_roll_03" type="revolute">
@@ -1104,7 +1104,7 @@
     <parent link="kd_d_102l_6061"/>
     <child link="rs03"/>
     <axis xyz="0 0 1"/>
-    <limit effort="50" velocity="10" lower="-0.20944" upper="2.26893"/>
+    <limit effort="50" velocity="21" lower="-0.20944" upper="2.26893"/>
   </joint>
   <!-- Joint from assy_formfg___kd_b_102b_torso_btm to kd_d_102l_6061 -->
   <joint name="left_hip_pitch_04" type="revolute">
@@ -1112,7 +1112,7 @@
     <parent link="assy_formfg___kd_b_102b_torso_btm"/>
     <child link="kd_d_102l_6061"/>
     <axis xyz="0 0 1"/>
-    <limit effort="100" velocity="10" lower="-1.0472" upper="2.21657"/>
+    <limit effort="100" velocity="21" lower="-1.0472" upper="2.21657"/>
   </joint>
 
   <link name="battery_chest">
