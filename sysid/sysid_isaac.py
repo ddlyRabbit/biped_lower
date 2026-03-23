@@ -39,7 +39,7 @@ from isaaclab.assets import Articulation
 from isaaclab.sim import SimulationCfg, SimulationContext
 
 if args.video:
-    from isaaclab.sensors import CameraCfg, Camera
+    import omni.replicator.core as rep
     import imageio
 
 from sysid_config import (
@@ -73,14 +73,14 @@ def step_control(robot, sim, targets, decimation=DECIMATION):
     robot.update(SIM_DT * decimation)
 
 
-def step_control_render(robot, sim, targets, decimation=DECIMATION, camera=None, video_writer=None):
+def step_control_render(robot, sim, targets, decimation=DECIMATION, rgb_annotator=None, video_writer=None):
     """Same as step_control but renders on last substep + captures frame."""
     robot.set_joint_position_target(targets.unsqueeze(0))
     robot.write_data_to_sim()
     for i in range(decimation):
         sim.step(render=(i == decimation - 1))
     robot.update(SIM_DT * decimation)
-    capture_frame(camera, video_writer)
+    capture_frame(rgb_annotator, video_writer)
 
 
 def read_joint(robot, jidx):
@@ -90,14 +90,13 @@ def read_joint(robot, jidx):
     return pos, vel
 
 
-def capture_frame(camera, video_writer):
-    """Capture one frame from camera and write to video."""
-    if camera is None or video_writer is None:
+def capture_frame(rgb_annotator, video_writer):
+    """Capture one frame via replicator annotator and write to video."""
+    if rgb_annotator is None or video_writer is None:
         return
-    camera.update(dt=CONTROL_DT)
-    rgb = camera.data.output["rgb"]
-    if rgb is not None and rgb.numel() > 0:
-        frame = rgb[0].cpu().numpy()
+    rgb_data = rgb_annotator.get_data()
+    if rgb_data is not None and rgb_data.size > 0:
+        frame = np.frombuffer(rgb_data, dtype=np.uint8).reshape(*rgb_data.shape)
         if frame.shape[-1] == 4:  # RGBA → RGB
             frame = frame[:, :, :3]
         video_writer.append_data(frame)
@@ -145,39 +144,28 @@ def main():
     # Spawn robot
     robot = Articulation(SYSID_ROBOT_CFG)
 
-    # Spawn camera for video
-    camera = None
+    # Video recording via replicator render product (same as Isaac Lab env)
+    rgb_annotator = None
     video_writer = None
     if args.video:
-        camera_cfg = CameraCfg(
-            prim_path="/World/Camera",
-            update_period=CONTROL_DT,
-            height=480,
-            width=640,
-            data_types=["rgb"],
-            spawn=sim_utils.PinholeCameraCfg(
-                focal_length=24.0,
-                focus_distance=400.0,
-                horizontal_aperture=20.955,
-                clipping_range=(0.1, 100.0),
-            ),
-            offset=CameraCfg.OffsetCfg(
-                pos=(3.0, 3.0, 2.0),
-                rot=(0.36, 0.11, -0.28, 0.88),
-                convention="world",
-            ),
-        )
-        camera = Camera(camera_cfg)
         video_path = os.path.join(out_dir, "sysid_video.mp4")
         os.makedirs(out_dir, exist_ok=True)
         video_writer = imageio.get_writer(video_path, fps=int(1.0 / CONTROL_DT), codec="h264")
         print("Video recording to: %s" % video_path)
+        # Render product + annotator created after sim.reset()
 
     # Reset sim
     sim.reset()
     robot.reset()
-    if camera is not None:
-        camera.reset()
+
+    # Create render product after sim reset (viewport must exist)
+    if args.video:
+        render_product = rep.create.render_product(
+            "/OmniverseKit_Persp", (640, 480)
+        )
+        rgb_annotator = rep.AnnotatorRegistry.get_annotator("rgb", device="cpu")
+        rgb_annotator.attach([render_product])
+        print("Render product + RGB annotator created")
 
     # Print joint names for verification
     print("Joint names:", robot.data.joint_names)
@@ -191,7 +179,7 @@ def main():
     # Choose step function based on video flag
     if args.video:
         def do_step(robot, sim, targets, decimation=DECIMATION):
-            step_control_render(robot, sim, targets, decimation, camera, video_writer)
+            step_control_render(robot, sim, targets, decimation, rgb_annotator, video_writer)
     else:
         do_step = step_control
 
