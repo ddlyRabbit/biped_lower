@@ -96,7 +96,7 @@ class KeyboardTeleop(Node):
         self._max_ang = float(self.get_parameter('max_angular').value)
 
         self._pub = self.create_publisher(Twist, '/cmd_vel', 10)
-        self._pub_fsm = self.create_publisher(String, '/state_machine_cmd', 10)
+        self._pub_fsm = self.create_publisher(String, '/state_command', 10)
         self._fsm_state = 'IDLE'
 
         self._vx = 0.0
