@@ -127,7 +127,13 @@ Use this to:
 - `/joint_commands` (MITCommandArray) — actual STAND commands to motors
 - `/joint_states` (JointState) — real motor feedback
 
-### Keyboard Teleop Keys
+### Keyboard Teleop
+
+```bash
+ros2 run biped_teleop keyboard_teleop
+```
+
+#### Keys
 
 | Key | Action |
 |-----|--------|
