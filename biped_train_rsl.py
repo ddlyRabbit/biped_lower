@@ -132,8 +132,8 @@ def main():
 
     if args_cli.tanh:
         import torch.nn as nn
-        original_actor = runner.alg.actor_critic.actor
-        runner.alg.actor_critic.actor = nn.Sequential(original_actor, nn.Tanh())
+        original_actor = runner.alg.policy.actor
+        runner.alg.policy.actor = nn.Sequential(original_actor, nn.Tanh())
         print("[INFO] Tanh output layer added to actor — actions bounded to [-1, +1]")
 
     if args_cli.resume:
