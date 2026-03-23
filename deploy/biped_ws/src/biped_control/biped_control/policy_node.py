@@ -23,6 +23,7 @@ import rcl_interfaces.msg
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Imu, JointState
+# JointState also used for /policy_viz_joints
 from geometry_msgs.msg import Twist, Vector3Stamped
 from std_msgs.msg import String
 from biped_msgs.msg import MITCommand, MITCommandArray
@@ -90,6 +91,7 @@ class PolicyNode(Node):
         # Publishers
         self._pub_cmd = self.create_publisher(MITCommandArray, '/joint_commands', 10)
         self._pub_viz = self.create_publisher(MITCommandArray, '/policy_viz', 10)
+        self._pub_viz_js = self.create_publisher(JointState, '/policy_viz_joints', 10)
 
         # Timer
         self._timer = self.create_timer(1.0 / self._rate, self._loop)
@@ -205,6 +207,14 @@ class PolicyNode(Node):
 
         if self._fsm_state == "SIM_WALK":
             self._pub_viz.publish(cmd_msg)  # viz only, motors hold STAND
+            # Also publish as JointState for Foxglove plotting
+            js = JointState()
+            js.header = cmd_msg.header
+            js.name = [cmd.joint_name for cmd in cmd_msg.commands]
+            js.position = [cmd.position for cmd in cmd_msg.commands]
+            js.velocity = [0.0] * len(cmd_msg.commands)
+            js.effort = [0.0] * len(cmd_msg.commands)
+            self._pub_viz_js.publish(js)
         else:
             self._pub_cmd.publish(cmd_msg)  # actual motor commands
 
