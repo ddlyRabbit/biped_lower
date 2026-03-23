@@ -19,6 +19,7 @@ parser.add_argument("--env_index", type=int, default=0, help="Which env to follo
 parser.add_argument("--global_camera", action="store_true", help="Fixed global camera view (for multi-env recording)")
 parser.add_argument("--video_dir", type=str, default="/results/videos", help="Video output directory")
 parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"], help="URDF variant")
+parser.add_argument("--tanh", action="store_true", help="Actor has tanh output layer")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -148,12 +149,16 @@ def main():
     print(f"[INFO] obs_dim={num_obs}, actions={num_actions}, student={args_cli.student}")
 
     # Build actor MLP: [128, 128, 128]
-    actor = nn.Sequential(
+    actor_layers = [
         nn.Linear(num_obs, 128), nn.ELU(),
         nn.Linear(128, 128), nn.ELU(),
         nn.Linear(128, 128), nn.ELU(),
         nn.Linear(128, num_actions),
-    ).to("cuda:0")
+    ]
+    if args_cli.tanh:
+        actor_layers.append(nn.Tanh())
+        print("[INFO] Tanh output layer added to actor")
+    actor = nn.Sequential(*actor_layers).to("cuda:0")
 
     # Load weights — different key prefix for student vs teacher
     model_sd = ckpt["model_state_dict"]

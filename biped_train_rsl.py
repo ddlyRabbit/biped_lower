@@ -24,6 +24,7 @@ parser.add_argument("--seed", type=int, default=42)
 parser.add_argument("--resume", type=str, default=None)
 parser.add_argument("--rough", action="store_true", help="Use rough terrain config")
 parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"], help="URDF variant")
+parser.add_argument("--tanh", action="store_true", help="Add tanh output layer to actor (bounds actions to [-1, +1])")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 app_launcher = AppLauncher(args_cli)
@@ -128,6 +129,12 @@ def main():
     os.makedirs(log_dir, exist_ok=True)
 
     runner = OnPolicyRunner(env, train_cfg, log_dir=log_dir, device="cuda:0")
+
+    if args_cli.tanh:
+        import torch.nn as nn
+        original_actor = runner.alg.actor_critic.actor
+        runner.alg.actor_critic.actor = nn.Sequential(original_actor, nn.Tanh())
+        print("[INFO] Tanh output layer added to actor — actions bounded to [-1, +1]")
 
     if args_cli.resume:
         print(f"[INFO] Resuming from: {args_cli.resume}")
