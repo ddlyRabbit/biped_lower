@@ -157,7 +157,9 @@ class StateMachineNode(Node):
             self._transition("STAND")
         elif cmd == "WALK" and self._state == "STAND":
             self._transition("WALK")
-        elif cmd == "STOP" and self._state in ("WALK", "WIGGLE_SEQ", "WIGGLE_ALL"):
+        elif cmd == "SIM_WALK" and self._state == "STAND":
+            self._transition("SIM_WALK")
+        elif cmd == "STOP" and self._state in ("WALK", "SIM_WALK", "WIGGLE_SEQ", "WIGGLE_ALL"):
             self._transition("STAND")
         elif cmd == "WIGGLE_SEQ" and self._state == "STAND":
             self._transition("WIGGLE_SEQ")
