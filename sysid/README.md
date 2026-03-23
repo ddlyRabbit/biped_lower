@@ -31,12 +31,12 @@ Control loop (50Hz = 4× decimation):
     5. read pos, vel → CSV
 ```
 
-### V73 Actuator Gains
+### V74 Actuator Gains (current)
 | Joint Group | Kp | Kd | Effort | Friction |
 |-------------|----|----|--------|----------|
-| hip_roll/yaw | 80 | 3 | 50Nm | 0.375Nm |
-| hip_pitch/knee | 120 | 3 | 100Nm | 0.5Nm |
-| foot_pitch/roll | 64 | 2 | 30Nm | 0.25Nm |
+| hip_roll/yaw | 40 | 3 | 50Nm | 0.375Nm |
+| hip_pitch/knee | 60 | 3 | 100Nm | 0.5Nm |
+| foot_pitch/roll | 32 | 2 | 30Nm | 0.25Nm |
 
 ### Usage
 ```bash
@@ -90,17 +90,29 @@ python3 deploy/scripts/motor_sysid.py --all --output ~/sysid_data
 python3 deploy/scripts/motor_sysid.py --joint R_hip_pitch --kp 1 --kd 0.1
 ```
 
-## Findings (V73)
+## Findings
 
-### R_hip_pitch (Kp=120, Kd=3)
-- **Heavily underdamped**: sustained oscillation, vel saturates at ±10 rad/s
+### R_hip_pitch (Kp=60, Kd=3) — V74
+- **Heavily underdamped**: sustained oscillation, vel saturates at ±9.6 rad/s
 - Step response overshoots and never settles
-- Sine 1Hz: tracks roughly with overshoot
-- Needs higher Kd or lower Kp for stable response
+- pos range -0.07 to 0.40 (joint moves, but oscillates)
+- Critical damping estimate: Kd_critical ≈ 2×√(Kp×I) ≈ 11 (with I≈0.5 kg⋅m²)
+- Current damping ratio ≈ 0.27 (very underdamped)
+
+### R_hip_pitch (Kp=120, Kd=3) — V73
+- Same underdamped behavior but more violent oscillation
+- V73 policy learned to avoid hip pitch entirely (too stiff + oscillatory)
+
+### Video recording issue
+- Standalone Camera sensor produces black frames
+- Root cause: Xvfb reports 0 Hz refresh rate → Isaac's render pipeline doesn't produce frames
+- The env-based RecordVideo works because `render_mode="rgb_array"` sets up tiled rendering
+- Fix needed: configure offscreen render product or use env wrapper for video only
 
 ## Notes
 - Isaac cold boot: ~10-15 min on L4 GPU
-- Cannot run rendering + training simultaneously on single GPU
-- The env-based sysid approach failed due to randomization events
+- Can run sysid + training in parallel (sysid uses minimal GPU)
+- The env-based sysid failed due to randomization events
   (`scale_all_actuator_torque_constant` randomizes gains on reset)
-- Standalone approach bypasses all env machinery — clean results
+- Standalone approach bypasses all env machinery — clean CSV results
+- Video needs separate fix (Camera sensor + offscreen rendering)
