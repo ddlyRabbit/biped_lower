@@ -74,6 +74,14 @@ def create_env():
     # Long episode, no base contact termination
     env_cfg.episode_length_s = 1000.0
     env_cfg.terminations.base_contact = None
+    # Disable all randomization events — we want deterministic actuator response
+    env_cfg.events.add_all_joint_default_pos = None
+    env_cfg.events.scale_all_joint_armature = None
+    env_cfg.events.scale_all_joint_friction = None
+    env_cfg.events.scale_all_actuator_torque_constant = None
+    env_cfg.events.reset_robot_joints = None
+    env_cfg.events.reset_base = None
+    env_cfg.events.push_robot = None
     return ManagerBasedRLEnv(cfg=env_cfg, render_mode="rgb_array")
 
 
