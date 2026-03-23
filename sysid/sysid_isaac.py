@@ -65,19 +65,19 @@ def build_default_targets(robot):
 
 
 def step_control(robot, sim, targets, decimation=DECIMATION):
-    """One control step: set targets, step physics decimation times, update."""
-    robot.set_joint_position_target(targets.unsqueeze(0))
-    robot.write_data_to_sim()
+    """One control step: PD recomputed every substep (true 2kHz PD)."""
     for _ in range(decimation):
+        robot.set_joint_position_target(targets.unsqueeze(0))
+        robot.write_data_to_sim()
         sim.step(render=False)
     robot.update(SIM_DT * decimation)
 
 
 def step_control_render(robot, sim, targets, decimation=DECIMATION, rgb_annotator=None, video_writer=None):
     """Same as step_control but renders on last substep + captures frame."""
-    robot.set_joint_position_target(targets.unsqueeze(0))
-    robot.write_data_to_sim()
     for i in range(decimation):
+        robot.set_joint_position_target(targets.unsqueeze(0))
+        robot.write_data_to_sim()
         sim.step(render=(i == decimation - 1))
     robot.update(SIM_DT * decimation)
     capture_frame(rgb_annotator, video_writer)
