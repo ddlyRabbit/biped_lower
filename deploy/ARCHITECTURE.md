@@ -78,20 +78,21 @@ biped_ws/src/
 
 ## Data Flow
 
+### WALK Mode (motors active)
+
 ```
  /cmd_vel ──────────────────────────────┐
  /imu/data ──┐                          │
  /imu/gravity┤  ┌────────────────┐      │
              ├─▶│  policy_node   │◀─────┘
- /joint_states┤  │  obs(45d)→ONNX │
+ /joint_states┤  │  obs→ONNX      │
               │  │  →action(12d)  │
               │  └───────┬────────┘
-              │          │ /joint_commands
+              │          │ /joint_commands (MITCommandArray)
               │          ▼
               │  ┌────────────────┐    ┌──────────────┐
-              └─▶│  can_bus_node  │◀──▶│  12× motors  │
-                 │  ankle linkage │    └──────────────┘
-                 │  soft stops    │
+              └─▶│ can_bus_node   │◀──▶│  12× motors  │
+                 │ (C++ recommended)   └──────────────┘
                  └────────────────┘
                          │
  /motor_states ──────────┤
@@ -106,6 +107,84 @@ biped_ws/src/
  /tf (base_link→joints) ◀── robot_state_publisher ◀── /joint_states
  /robot_description ◀── bringup.launch.py (URDF with meshes)
 ```
+
+### SIM_WALK Mode (viz only, motors hold STAND)
+
+```
+ /cmd_vel ──────────────────────────────┐
+ /imu/data ──┐                          │
+ /imu/gravity┤  ┌────────────────┐      │
+             ├─▶│  policy_node   │◀─────┘
+ /joint_states┤  │  obs→ONNX      │
+              │  │  →action(12d)  │
+              │  └──┬─────────┬───┘
+              │     │         │
+              │     │         ├─▶ /policy_viz (MITCommandArray)
+              │     │         └─▶ /policy_viz_joints (JointState)
+              │     │                    │
+              │     │           ┌────────▼─────────────┐
+              │     │           │ policy_state_publisher│
+              │     │           │ frame_prefix="policy/"│
+              │     │           └────────┬─────────────┘
+              │     │                    │
+              │     │           /tf policy/* frames → Foxglove ghost
+              │     │
+              │     ▼ (NOT used — state_machine holds STAND)
+              │  ┌────────────────┐
+              └─▶│ state_machine  │──▶ /joint_commands (STAND defaults)
+                 │ _handle_stand  │        │
+                 └────────────────┘        ▼ motors
+```
+
+### Policy Pipeline
+
+```
+Sensor data → obs_builder.build() → 48d observation vector
+    ↓
+ONNX inference (MLP 48→128→128→128→12) → raw actions
+    ↓
+np.clip(actions, -1.0, 1.0) → clamped actions
+    ↓
+action_to_positions: target = default_pos + action × 0.5 → joint targets (rad)
+    ↓
+MITCommand per joint: { position, velocity=0, kp, kd, torque_ff=0 }
+    ↓
+WALK  → /joint_commands → motors
+SIM_WALK → /policy_viz + /policy_viz_joints → Foxglove
+```
+
+### Topics
+
+| Topic | Type | Publisher | Subscriber |
+|-------|------|-----------|------------|
+| `/joint_commands` | MITCommandArray | policy_node (WALK) / state_machine (STAND) | can_bus_node |
+| `/joint_states` | JointState | can_bus_node | policy_node, state_machine, robot_state_publisher |
+| `/motor_states` | MotorStateArray | can_bus_node | safety_node |
+| `/policy_viz` | MITCommandArray | policy_node (SIM_WALK) | Foxglove |
+| `/policy_viz_joints` | JointState | policy_node (SIM_WALK) | policy_state_publisher → /tf policy/* |
+| `/cmd_vel` | Twist | keyboard_teleop | policy_node |
+| `/state_command` | String | keyboard_teleop | state_machine_node |
+| `/state_machine` | String | state_machine_node | policy_node, keyboard_teleop |
+| `/imu/data` | Imu | imu_node | policy_node |
+| `/imu/gravity` | Vector3Stamped | imu_node | policy_node, safety_node |
+| `/safety/status` | Bool | safety_node | state_machine_node |
+| `/robot_description` | String | bringup.launch.py | Foxglove URDF display |
+| `/tf` | TFMessage | robot_state_publisher, policy_state_publisher | Foxglove 3D |
+
+### Nodes
+
+| Node | Package | Description |
+|------|---------|-------------|
+| `can_bus_node_cpp` | biped_driver_cpp | C++ CAN driver, ~300Hz per bus, dual CAN |
+| `can_bus_node` | biped_driver | Python sync CAN driver, ~50Hz |
+| `can_bus_node_async` | biped_driver | Python async CAN driver, ~200Hz |
+| `imu_node` | biped_driver | BNO085 IMU via I2C, 50Hz |
+| `policy_node` | biped_control | ONNX inference at 50Hz, publishes motor cmds or viz |
+| `safety_node` | biped_control | Pitch/roll/temp monitoring, triggers ESTOP |
+| `state_machine_node` | biped_control | FSM: IDLE→STAND→WALK/SIM_WALK/WIGGLE→ESTOP |
+| `keyboard_teleop` | biped_teleop | Terminal UI: state transitions + velocity control |
+| `robot_state_publisher` | (system) | URDF → /tf from /joint_states |
+| `policy_state_publisher` | (system) | URDF → /tf policy/* from /policy_viz_joints |
 
 All control loops run at **50 Hz**. Safety at 50 Hz, state publishing at 10 Hz.
 

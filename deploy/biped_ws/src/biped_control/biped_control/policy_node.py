@@ -164,7 +164,7 @@ class PolicyNode(Node):
         obs = self._obs_builder.build(
             gyro=self._gyro,
             gravity=self._gravity,
-            cmd_vel=self._cmd_vel if self._fsm_state == "WALK" else np.zeros(3),
+            cmd_vel=self._cmd_vel,  # pass cmd_vel in both WALK and SIM_WALK
             joint_positions=self._joint_positions,
             joint_velocities=self._joint_velocities,
         )
