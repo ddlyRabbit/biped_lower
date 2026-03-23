@@ -90,6 +90,20 @@ def generate_launch_description():
             parameters=[{'robot_description': robot_description}],
         ),
 
+        # Policy ghost — second URDF model driven by policy output (SIM_WALK viz)
+        # In Foxglove 3D panel: add second URDF display with frame_prefix "policy/"
+        Node(
+            package='robot_state_publisher', executable='robot_state_publisher',
+            name='policy_state_publisher', output='log',
+            parameters=[{
+                'robot_description': robot_description,
+                'frame_prefix': 'policy/',
+            }],
+            remappings=[
+                ('joint_states', '/policy_viz_joints'),
+            ],
+        ),
+
         # IMU
         Node(
             package='biped_driver', executable='imu_node',
