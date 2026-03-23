@@ -53,42 +53,42 @@ SYSID_ROBOT_CFG = ArticulationCfg(
         "hip_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_roll.*"],
             effort_limit=50.0, velocity_limit=10.0,
-            stiffness=10.0, damping=3.0, armature=0.0112,
+            stiffness=40.0, damping=3.0, armature=0.0112,
             friction=0.375,
             min_delay=0, max_delay=1,
         ),
         "hip_yaw": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
             effort_limit=50.0, velocity_limit=10.0,
-            stiffness=10.0, damping=3.0, armature=0.0112,
+            stiffness=40.0, damping=3.0, armature=0.0112,
             friction=0.375,
             min_delay=0, max_delay=1,
         ),
         "hip_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
             effort_limit=100.0, velocity_limit=10.0,
-            stiffness=15.0, damping=3.0, armature=0.0152,
+            stiffness=60.0, damping=3.0, armature=0.0152,
             friction=0.5,
             min_delay=0, max_delay=1,
         ),
         "knee": DelayedPDActuatorCfg(
             joint_names_expr=[".*knee.*"],
             effort_limit=100.0, velocity_limit=10.0,
-            stiffness=15.0, damping=3.0, armature=0.024,
+            stiffness=60.0, damping=3.0, armature=0.024,
             friction=0.5,
             min_delay=0, max_delay=1,
         ),
         "foot_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=8.0, damping=2.0, armature=0.0112,
+            stiffness=32.0, damping=2.0, armature=0.0112,
             friction=0.25,
             min_delay=0, max_delay=1,
         ),
         "foot_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=8.0, damping=2.0, armature=0.001,
+            stiffness=32.0, damping=2.0, armature=0.001,
             friction=0.25,
             min_delay=0, max_delay=1,
         ),
@@ -96,9 +96,9 @@ SYSID_ROBOT_CFG = ArticulationCfg(
 )
 
 # Physics config
-SIM_DT = 0.005        # 200Hz physics
-DECIMATION = 4        # control at 50Hz (matching training)
-CONTROL_DT = SIM_DT * DECIMATION  # 0.02s
+SIM_DT = 0.0005       # 2kHz physics
+DECIMATION = 40       # control at 50Hz (2kHz / 40 = 50Hz)
+CONTROL_DT = SIM_DT * DECIMATION  # 0.02s (50Hz)
 
 # Joint index in the articulation (Isaac joint order from URDF)
 # Verified from robot.data.joint_names after spawning
