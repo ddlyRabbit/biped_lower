@@ -96,9 +96,9 @@ SYSID_ROBOT_CFG = ArticulationCfg(
 )
 
 # Physics config
-SIM_DT = 0.0005       # 2kHz physics
-DECIMATION = 40       # control at 50Hz (2kHz / 40 = 50Hz)
-CONTROL_DT = SIM_DT * DECIMATION  # 0.02s (50Hz)
+SIM_DT = 0.005        # 200Hz physics
+DECIMATION = 4        # control at 50Hz (matching training)
+CONTROL_DT = SIM_DT * DECIMATION  # 0.02s
 
 # Joint index in the articulation (Isaac joint order from URDF)
 # Verified from robot.data.joint_names after spawning
