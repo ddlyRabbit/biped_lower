@@ -1118,12 +1118,12 @@
   <link name="battery_chest">
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0" />
-      <mass value="1.0" />
-      <inertia ixx="0.005110" ixy="0" ixz="0" iyy="0.004656" iyz="0" izz="0.003099" />
+      <mass value="0.5" />
+      <inertia ixx="0.000992" ixy="0" ixz="0" iyy="0.000766" iyz="0" izz="0.001550" />
     </inertial>
     <visual>
       <geometry>
-        <box size="0.1260 0.1460 0.2" />
+        <box size="0.1260 0.1460 0.05" />
       </geometry>
       <material name="battery_material">
         <color rgba="0.2 0.2 0.2 1" />
@@ -1131,13 +1131,13 @@
     </visual>
     <collision>
       <geometry>
-        <box size="0.1260 0.1460 0.2" />
+        <box size="0.1260 0.1460 0.05" />
       </geometry>
     </collision>
   </link>
 
   <joint name="torso_to_battery" type="fixed">
-    <origin xyz="0.0004 0.0006 0.1263" rpy="0 0 0" />
+    <origin xyz="-0.0004 0.0003 0.0436" rpy="0 0 0" />
     <parent link="assy_formfg___kd_b_102b_torso_btm" />
     <child link="battery_chest" />
   </joint>
