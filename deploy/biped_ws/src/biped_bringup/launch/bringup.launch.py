@@ -37,6 +37,23 @@ RECORD_TOPICS = [
 ]
 
 
+def _make_imu_node(context):
+    """Select IMU driver based on imu_type arg."""
+    imu_type = LaunchConfiguration('imu_type').perform(context)
+    if imu_type == 'im10a':
+        return [Node(
+            package='biped_driver', executable='im10a_imu_node',
+            name='imu_node', output='screen',
+            parameters=[{'serial_port': '/dev/ttyUSB0', 'baudrate': 921600, 'rate_hz': 50.0}],
+        )]
+    else:  # bno085 (default)
+        return [Node(
+            package='biped_driver', executable='imu_node',
+            name='imu_node', output='screen',
+            parameters=[{'rate_hz': 50.0, 'i2c_address': 75, 'reset_pin': 4}],
+        )]
+
+
 def _make_can_driver_node(context):
     """Select CAN driver package based on can_driver arg."""
     driver = LaunchConfiguration('can_driver').perform(context)
@@ -80,6 +97,8 @@ def generate_launch_description():
         DeclareLaunchArgument('gain_scale', default_value='1.0'),
         DeclareLaunchArgument('max_pitch_deg', default_value='85.0'),
         DeclareLaunchArgument('max_roll_deg', default_value='85.0'),
+        DeclareLaunchArgument('imu_type', default_value='bno085',
+                              description='IMU driver: bno085 | im10a'),
         DeclareLaunchArgument('record', default_value='true',
                               description='Enable rosbag recording (MCAP format)'),
 
@@ -104,12 +123,8 @@ def generate_launch_description():
             ],
         ),
 
-        # IMU
-        Node(
-            package='biped_driver', executable='imu_node',
-            name='imu_node', output='screen',
-            parameters=[{'rate_hz': 50.0, 'i2c_address': 75, 'reset_pin': 4}],
-        ),
+        # IMU — selected by imu_type launch arg
+        OpaqueFunction(function=_make_imu_node),
 
         # CAN bus — motor config from robot.yaml
         # Package depends on driver: can_bus_node_cpp uses biped_driver_cpp
