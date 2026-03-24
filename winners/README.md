@@ -37,6 +37,17 @@
 
 **Full tanh pipeline verified:** Train → Distill → Fine-tune → Play → ONNX export
 
+### V74 iter 18400 — push-hardened checkpoint
+
+| File | Description |
+|------|-------------|
+| `v74_teacher_18400.pt` | Trained with push curriculum at 3.0 m/s (max) |
+
+**Metrics (18400):** reward 11.7, vel ~0.80, falls 23%, push 3.0 m/s
+**Training history:** Kp×1.5 at iter 15000, push ramped 0.5→3.0 over iters 16100-17200.
+Policy survived max push for 1200+ iters, survival improved 58%→77%.
+**To resume:** `--resume model_18400.pt --max_iterations 6000 --urdf heavy --tanh`
+
 ### V74 iter 16600 — saved checkpoint
 
 | File | Description |
