@@ -27,6 +27,64 @@ ROS2 Jazzy · RPi 5 · Dual SocketCAN (`can0` + `can1`) · 12 RobStride motors �
 
 Host CAN ID: `0xFD`. Per-motor `direction` (±1) stored in `calibration.yaml`.
 
+## Motor Calibration
+
+Each motor has an arbitrary encoder zero position that doesn't correspond to the URDF joint zero.
+Calibration maps between **encoder space** (raw motor position) and **joint space** (URDF radians).
+
+### Conversion
+
+```
+Joint → Motor (sending commands):
+    motor_cmd = joint_pos * direction + offset
+
+Motor → Joint (reading feedback):
+    joint_pos = (encoder_pos - offset) * direction
+```
+
+Where:
+- `offset`: encoder position when joint is at URDF zero (or URDF lower limit)
+- `direction`: +1 (encoder increases = joint increases) or -1 (inverted)
+
+### Calibration File (`calibration.yaml`)
+
+```yaml
+R_hip_pitch:
+  motor_min: -0.6397    # encoder value at physical min stop
+  motor_max: 2.6328     # encoder value at physical max stop
+  offset: 1.5769        # encoder value at URDF joint zero
+  direction: 1           # +1 normal, -1 inverted
+```
+
+### Calibration Procedure
+
+1. `ros2 launch biped_bringup calibrate.launch.py` — starts calibration node
+2. Manually move each joint to both mechanical limits
+3. Node records `motor_min` and `motor_max` from encoder feedback
+4. Offset computed automatically:
+   - **Normal joints**: `offset = motor_min - urdf_lower_limit`
+   - **Ankle motors** (parallel linkage): `offset = motor_min - cmd_lo` (dir=+1) or `offset = motor_min + cmd_hi` (dir=-1)
+5. `direction` preserved from existing calibration (set via `setup_directions.py`)
+6. Ctrl+C saves to `calibration.yaml`
+
+### Ankle Linkage
+
+Ankle motors (foot_top, foot_bottom) operate in **motor command space**, not joint space:
+
+```
+motor_upper =  pitch_sign × K_P × pitch − K_R × roll
+motor_lower = −pitch_sign × K_P × pitch − K_R × roll
+```
+
+Where `K_P=1.276`, `K_R=0.974`, `pitch_sign=+1 (R) / -1 (L)`.
+
+The CAN node handles this transform:
+- **Outbound**: policy sends foot_pitch/roll → CAN node converts to foot_top/foot_bottom motor commands
+- **Inbound**: motor encoders report in motor space → CAN node converts back to foot_pitch/roll for `/joint_states`
+
+Motor command limits for ankles are computed by evaluating all four URDF corner combinations
+of (pitch_min/max, roll_min/max) through the linkage transform.
+
 ## Joint Limits & Defaults
 
 | Joint | Lower | Upper | Default | | Joint | Lower | Upper | Default |
