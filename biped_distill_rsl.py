@@ -157,7 +157,9 @@ def main():
         import torch.nn as nn
         original_student = runner.alg.policy.student
         runner.alg.policy.student = nn.Sequential(original_student, nn.Tanh())
-        print("[INFO] Tanh output layer added to student — actions bounded to [-1, +1]")
+        original_teacher = runner.alg.policy.teacher
+        runner.alg.policy.teacher = nn.Sequential(original_teacher, nn.Tanh())
+        print("[INFO] Tanh output layer added to both student and teacher")
 
     runner.learn(num_learning_iterations=args_cli.max_iterations, init_at_random_ep_len=True)
 
