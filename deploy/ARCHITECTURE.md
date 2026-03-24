@@ -1,6 +1,6 @@
 # Biped Deployment Architecture
 
-ROS2 Jazzy · RPi 5 · SocketCAN `can0` · 12 RobStride motors · BNO085 IMU · ONNX policy
+ROS2 Jazzy · RPi 5 · Dual SocketCAN (`can0` + `can1`) · 12 RobStride motors · BNO085 IMU · ONNX policy
 
 ---
 
@@ -9,9 +9,9 @@ ROS2 Jazzy · RPi 5 · SocketCAN `can0` · 12 RobStride motors · BNO085 IMU · 
 | Component | Detail |
 |-----------|--------|
 | Compute | RPi 5 (8 GB), Ubuntu 24.04 aarch64 |
-| CAN | Waveshare RS485 CAN HAT (B) — MCP2515/SPI0, `can0`, 1 Mbps |
+| CAN | 2-CH CAN HAT — 2× MCP2515/SPI, `can0` (right) + `can1` (left), 1 Mbps |
 | IMU | BNO085 I2C bus 1, addr 0x4B, RST GPIO 4, 50 Hz, axes aligned to base_link |
-| Motors | 12× RobStride (4× RS04, 4× RS03, 4× RS02) on `can0` |
+| Motors | 12× RobStride (4× RS04, 4× RS03, 4× RS02), can0=right, can1=left |
 | Policy | `student_flat.onnx` — MLP 45→128→128→128→12, ~0.5 ms |
 
 ## Motors
@@ -369,12 +369,13 @@ MCP2515 TX buffer: 5-attempt retry with 0.5 ms backoff.
 ### 1. Hardware Setup
 ```bash
 # Flash RPi 5 with Ubuntu 24.04 + ROS2 Jazzy
-# Wire: CAN HAT on SPI0, BNO085 on I2C1 (addr 0x4B, RST→GPIO4)
-# Connect all 12 motors to can0, power 48V
+# Wire: 2-CH CAN HAT on SPI, BNO085 on I2C1 (addr 0x4B, RST→GPIO4)
+# can0 = right leg (motors 1-6), can1 = left leg (motors 7-12)
 
 # Add to /boot/firmware/config.txt:
 dtparam=spi=on
 dtoverlay=mcp2515-can0,oscillator=12000000,interrupt=25
+dtoverlay=mcp2515-can1,oscillator=12000000,interrupt=24
 # Reboot
 ```
 

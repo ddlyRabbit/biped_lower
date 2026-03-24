@@ -131,10 +131,11 @@ docker run --gpus all -d --name <NAME> \
 
 ```bash
 # Flat teacher (~2.5s/iter, ~2h for 3000 iters)
+# Add --tanh for bounded actions [-1, +1] (recommended for deploy)
 docker run --gpus all -d --name biped_train_flat \
   ... isaaclab:latest /isaac-sim/python.sh \
   /workspace/biped_locomotion/biped_train_rsl.py \
-  --num_envs 16384 --max_iterations 3000 --urdf heavy --headless
+  --num_envs 8192 --max_iterations 6000 --urdf light --tanh --headless
 
 # Monitor
 docker logs -f biped_train_flat 2>&1 | grep "Mean reward"
@@ -209,7 +210,10 @@ docker run --gpus all -d --name biped_play \
   /workspace/biped_locomotion/biped_play_rsl.py \
   --student --checkpoint /results/logs/rsl_rl/biped_student_flat/model_3400.pt \
   --video --video_length 500 --num_envs 8 --env_index 0 \
-  --video_dir /results/videos --urdf heavy --headless
+  --video_dir /results/videos --urdf light --headless
+
+# For tanh-trained teacher (add --tanh to match training):
+#   --tanh --checkpoint model.pt --num_envs 8 --global_camera
 ```
 
 ### Typical Training Timeline (L4 GPU)
