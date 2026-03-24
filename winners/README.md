@@ -37,6 +37,27 @@
 
 **Full tanh pipeline verified:** Train → Distill → Fine-tune → Play → ONNX export
 
+### V74 iter 16600 — saved checkpoint
+
+| File | Description |
+|------|-------------|
+| `v74_teacher_16600.pt` | Trained with push curriculum (1.69 m/s at this point) |
+| `v74_teacher_16600.mp4` | Video with push active |
+
+**Metrics (16600):** reward 20.3, vel 0.89, falls 3.4%, push 1.69 m/s
+**Pre-push peak (16400):** reward 21.7, vel 0.92, falls 0.7%
+
+**Play:**
+```bash
+docker run --gpus all \
+  -e DISPLAY=:2 -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v /home/ubuntu/workspace/biped_locomotion:/workspace/biped_locomotion \
+  -v /home/ubuntu/uploads:/uploads -v /home/ubuntu/results:/results \
+  isaaclab:latest /isaac-sim/python.sh /workspace/biped_locomotion/biped_play_rsl.py \
+  --checkpoint /results/winners/v74_teacher_16600.pt \
+  --num_envs 8 --urdf heavy --tanh --video --global_camera --headless
+```
+
 **Play:**
 ```bash
 docker run --gpus all \
