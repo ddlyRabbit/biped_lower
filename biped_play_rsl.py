@@ -167,11 +167,17 @@ def main():
         actor_sd = {}
         for k, v in model_sd.items():
             if k.startswith("student."):
-                actor_sd[k.replace("student.", "")] = v
+                clean_k = k.replace("student.", "")
+                if clean_k.startswith("0.") and args_cli.tanh:
+                    clean_k = clean_k[2:]
+                actor_sd[clean_k] = v
         if not actor_sd:
             for k, v in model_sd.items():
                 if k.startswith("actor."):
-                    actor_sd[k.replace("actor.", "")] = v
+                    clean_k = k.replace("actor.", "")
+                    if clean_k.startswith("0.") and args_cli.tanh:
+                        clean_k = clean_k[2:]
+                    actor_sd[clean_k] = v
             print("[INFO] No student.* keys, using actor.* (Phase 3 fine-tuned checkpoint)")
         if not actor_sd:
             raise ValueError(
