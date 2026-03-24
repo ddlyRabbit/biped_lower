@@ -886,21 +886,21 @@ class EventsCfg:
 @configclass
 class CurriculumsCfg:
     push_force_levels = CurrTerm(
-        func="biped_env_cfg:modify_push_force",
+        func=modify_push_force,
         params={
             "term_name": "push_robot",
             "max_velocity": [3.0, 3.0],
-            "interval": 200 * 24,         # check every 200 iterations
-            "starting_step": 1000 * 24,     # start after 1000 iterations
+            "interval": 200 * 24,
+            "starting_step": 100 * 24,
         },
     )
     command_vel = CurrTerm(
-        func="biped_env_cfg:modify_command_velocity",
+        func=modify_command_velocity,
         params={
             "term_name": "track_lin_vel_xy_exp",
-            "max_velocity": [-0.5, 3.0],  # expand +X forward range
-            "interval": 200 * 24,         # check every 200 iterations
-            "starting_step": 3000 * 24,     # start after 3000 iterations
+            "max_velocity": [-0.5, 3.0],
+            "interval": 200 * 24,
+            "starting_step": 3000 * 24,
         },
     )
 
@@ -918,7 +918,7 @@ class BipedFlatEnvCfg(ManagerBasedRLEnvCfg):
     rewards: RewardsCfg = RewardsCfg()
     terminations: TerminationsCfg = TerminationsCfg()
     events: EventsCfg = EventsCfg()
-    curriculums: CurriculumsCfg = CurriculumsCfg()
+    curriculum: CurriculumsCfg = CurriculumsCfg()
 
     def __post_init__(self):
         self.decimation = 4  # 50 Hz control (Berkeley exact)

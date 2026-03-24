@@ -888,7 +888,7 @@ class BipedFlatEnvCfg(ManagerBasedRLEnvCfg):
     rewards: RewardsCfg = RewardsCfg()
     terminations: TerminationsCfg = TerminationsCfg()
     events: EventsCfg = EventsCfg()
-    curriculums: CurriculumsCfg = CurriculumsCfg()
+    curriculum: CurriculumsCfg = CurriculumsCfg()
 
     def __post_init__(self):
         self.decimation = 4  # 50 Hz control (Berkeley exact)
