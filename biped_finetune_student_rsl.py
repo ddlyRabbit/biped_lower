@@ -137,15 +137,14 @@ def remap_distilled_to_actor_critic(distilled_path, runner):
     model_sd = ckpt["model_state_dict"]
 
     # Remap student.* → actor.*
-    # Tanh wrapper adds "0." prefix: student.0.X → actor.X (strip "0.")
+    # With --tanh: both student and actor are Sequential(MLP, Tanh)
+    #   student.0.X → actor.0.X (straight replace, keep "0." prefix)
+    # Without --tanh: both are plain MLP
+    #   student.X → actor.X (straight replace)
     remap_sd = {}
     for k, v in model_sd.items():
         if k.startswith("student."):
-            new_k = k.replace("student.", "actor.", 1)
-            # Strip tanh Sequential wrapper prefix: actor.0.X → actor.X
-            if new_k.startswith("actor.0."):
-                new_k = new_k.replace("actor.0.", "actor.", 1)
-            remap_sd[new_k] = v
+            remap_sd[k.replace("student.", "actor.", 1)] = v
         elif k == "std":
             remap_sd["std"] = v
 
