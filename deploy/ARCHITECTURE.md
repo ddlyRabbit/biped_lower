@@ -270,6 +270,15 @@ Training supports `--tanh` flag which adds `nn.Tanh()` after the actor MLP, boun
 Without `--tanh`: actions are unbounded (MLP output), clipped to ±1 in deploy code.
 With `--tanh`: actions bounded by architecture. Checkpoint keys have `actor.0.X` prefix (wrapped Sequential).
 
+Full tanh pipeline:
+```
+Phase 1: biped_train_rsl.py --tanh           → teacher (actor.0.X keys)
+Phase 2: biped_distill_rsl.py --tanh          → student (student.0.X keys)
+Phase 3: biped_finetune_student_rsl.py --tanh → student PPO (actor.0.X keys)
+Export:  export_onnx.py --tanh                → ONNX with Tanh op in graph
+Deploy:  policy_node.py                       → no changes (output already bounded)
+```
+
 ### Action Statistics
 
 The play script logs per-joint action magnitudes from actual simulation rollout:

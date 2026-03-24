@@ -19,7 +19,23 @@
 
 **Metrics (5999):** reward 20.5, vel 0.89, falls 2.4%
 
-**Note:** Unbounded actions — policy saturates actuators. Needs student distillation with bounded actions for deploy.
+**Note:** Unbounded actions — policy saturates actuators. Superseded by V74 (tanh).
+
+## V74 Teacher (active training, Mar 24, 2026)
+
+**Config:**
+- Tanh output layer (actions bounded [-1, +1])
+- Actuator: DelayedPDActuator, delay 0-5ms
+- Kp: hip_roll=120, hip_yaw=60, hip_pitch=180, knee=180, foot_pitch=96, foot_roll=48
+- Kd: hip=3, foot=2 | action_scale=0.5
+- Push curriculum: active, ramped to 3.0 m/s (max)
+- Heavy URDF (0.5kg battery), 8192 envs
+- Symmetry loss ON, Berkeley impact air_time
+
+**Metrics (iter ~17800):** reward 9.8 (under 3.0 m/s push), vel 0.74, 70% survive
+**Pre-push peak (iter ~16400):** reward 21.7, vel 0.92, 99% survive
+
+**Full tanh pipeline verified:** Train → Distill → Fine-tune → Play → ONNX export
 
 **Play:**
 ```bash
