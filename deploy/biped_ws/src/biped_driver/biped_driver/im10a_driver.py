@@ -1,167 +1,203 @@
-"""IM10A (Hiwonder/Hexmove HFI-A9) IMU driver — USB serial.
+"""IM10A (Hiwonder/Hexmove) IMU driver — USB serial, WIT-motion B6 protocol.
 
-Protocol: Two-frame packets over serial (921600 baud, CP210x USB-UART).
-  Frame 1 (49B): 0xAA 0x55 0x2C | 4B flags | 4B timestamp | 9×float32 (gyro, accel, mag)
-  Frame 2 (25B): 0xAA 0x55 0x14 | 4B flags | 4B timestamp | 3×float32 (roll, pitch, yaw)
+Protocol: 11-byte frames over serial.
+  Header: 0x55 0x5X
+  Types: 0x50=time, 0x51=accel, 0x52=gyro, 0x53=euler, 0x59=quaternion
 
-Reference: MRPT CTaoboticsIMU (parser_hfi_a9), K-Scale kos-kbot hexmove driver.
+Default baud: 9600. Driver auto-detects and upgrades to TARGET_BAUD.
+Baud change persists in IMU flash (only done once).
+
+Reference: MRPT CTaoboticsIMU (parser_hfi_b6), WIT-motion protocol docs.
 """
 
 import struct
 import time
+import math
 import numpy as np
 from scipy.spatial.transform import Rotation
 
+# Frame constants
+FRAME_LEN = 11
+HEADER = 0x55
+TYPE_ACCEL = 0x51
+TYPE_GYRO = 0x52
+TYPE_EULER = 0x53
+TYPE_QUAT = 0x59
 
-# Frame headers
-FRAME1_HEADER = bytes([0xAA, 0x55, 0x2C])  # 49 bytes: gyro + accel + mag
-FRAME2_HEADER = bytes([0xAA, 0x55, 0x14])  # 25 bytes: euler angles
-FRAME1_LEN = 49
-FRAME2_LEN = 25
-
-# Gravity constant
-G = 9.81
+# Baud rate config
+DEFAULT_BAUD = 9600
+TARGET_BAUD = 460800
+BAUD_CODES = {
+    9600: 0x02, 19200: 0x03, 38400: 0x04, 57600: 0x05,
+    115200: 0x06, 230400: 0x07, 460800: 0x08, 921600: 0x09,
+}
 
 
 class IM10AData:
-    """Parsed IMU data from one frame pair."""
-    __slots__ = ['gyro', 'accel', 'mag', 'euler', 'quaternion', 'gravity', 'timestamp']
+    """Parsed IMU data."""
+    __slots__ = ['gyro', 'accel', 'euler', 'quaternion', 'gravity', 'timestamp']
 
     def __init__(self):
-        self.gyro = np.zeros(3)      # rad/s (wx, wy, wz)
-        self.accel = np.zeros(3)     # m/s² (ax, ay, az)
-        self.mag = np.zeros(3)       # magnetic field
-        self.euler = np.zeros(3)     # rad (roll, pitch, yaw)
-        self.quaternion = np.array([1.0, 0, 0, 0])  # (w, x, y, z)
-        self.gravity = np.array([0.0, 0.0, -1.0])   # projected gravity (Isaac convention)
+        self.gyro = np.zeros(3, dtype=np.float64)       # rad/s (x, y, z)
+        self.accel = np.zeros(3, dtype=np.float64)       # m/s²
+        self.euler = np.zeros(3, dtype=np.float64)       # rad (roll, pitch, yaw)
+        self.quaternion = np.array([1.0, 0, 0, 0])       # (w, x, y, z)
+        self.gravity = np.array([0.0, 0.0, -1.0])        # projected gravity (Isaac convention)
         self.timestamp = 0.0
 
 
 class IM10ADriver:
-    """Serial driver for IM10A IMU.
+    """Serial driver for IM10A IMU (WIT-motion B6 protocol).
 
-    Usage:
-        driver = IM10ADriver('/dev/ttyUSB0')
-        driver.open()
-        while True:
-            data = driver.read()
-            if data:
-                print(data.gyro, data.quaternion, data.gravity)
+    Auto-detects 9600 baud default and upgrades to 460800.
     """
 
-    def __init__(self, port: str = '/dev/ttyUSB0', baudrate: int = 921600):
+    def __init__(self, port: str = '/dev/ttyUSB0', baudrate: int = TARGET_BAUD):
         self.port = port
         self.baudrate = baudrate
         self._serial = None
         self._buf = bytearray()
-        self._pending_frame1 = None  # partial: frame1 parsed, waiting for frame2
+        self._data = IM10AData()
+        self._has_quat = False
+        self._has_gyro = False
 
     def open(self):
-        """Open serial port."""
+        """Open serial port. Auto-upgrade baud if at default 9600."""
         import serial
-        self._serial = serial.Serial(
-            port=self.port,
-            baudrate=self.baudrate,
-            timeout=0.01,  # 10ms read timeout
-            bytesize=serial.EIGHTBITS,
-            parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE,
-        )
+
+        # Try target baud first
+        self._serial = serial.Serial(port=self.port, baudrate=self.baudrate, timeout=0.1)
         self._serial.reset_input_buffer()
-        self._buf.clear()
+        time.sleep(0.3)
+        data = self._serial.read(100)
+        frames = self._count_frames(data)
+
+        if frames >= 3:
+            # Already at target baud
+            self._serial.reset_input_buffer()
+            return
+
+        # Try default 9600
+        self._serial.close()
+        self._serial = serial.Serial(port=self.port, baudrate=DEFAULT_BAUD, timeout=0.1)
+        self._serial.reset_input_buffer()
+        time.sleep(0.3)
+        data = self._serial.read(100)
+        frames = self._count_frames(data)
+
+        if frames >= 3:
+            # At 9600 — upgrade to target
+            self._upgrade_baud()
+            self._serial.close()
+            time.sleep(0.3)
+            self._serial = serial.Serial(port=self.port, baudrate=self.baudrate, timeout=0.01)
+            self._serial.reset_input_buffer()
+            return
+
+        raise RuntimeError(
+            f"IM10A not responding on {self.port} at {self.baudrate} or {DEFAULT_BAUD}"
+        )
+
+    def _count_frames(self, data: bytes) -> int:
+        """Count valid frame headers in data."""
+        count = 0
+        for i in range(len(data) - 1):
+            if data[i] == HEADER and (data[i + 1] & 0x50) == 0x50:
+                count += 1
+        return count
+
+    def _upgrade_baud(self):
+        """Send WIT-motion commands to change baud rate."""
+        code = BAUD_CODES.get(self.baudrate)
+        if code is None:
+            raise ValueError(f"Unsupported baud rate: {self.baudrate}")
+
+        # Unlock config
+        self._serial.write(bytes([0xFF, 0xAA, 0x69, 0x88, 0xB5]))
+        time.sleep(0.1)
+        # Set baud rate
+        self._serial.write(bytes([0xFF, 0xAA, 0x04, code, 0x00]))
+        time.sleep(0.1)
+        # Save to flash
+        self._serial.write(bytes([0xFF, 0xAA, 0x00, 0x00, 0x00]))
+        time.sleep(0.3)
 
     def close(self):
-        """Close serial port."""
         if self._serial and self._serial.is_open:
             self._serial.close()
 
     def read(self) -> IM10AData | None:
-        """Read and parse one complete frame pair.
-
-        Returns IM10AData if a complete pair was parsed, None otherwise.
-        Call in a loop at >= 100Hz.
-        """
+        """Read and parse frames. Returns data when a complete set is available."""
         if not self._serial or not self._serial.is_open:
             return None
 
-        # Read available bytes
         avail = self._serial.in_waiting
         if avail > 0:
             self._buf.extend(self._serial.read(min(avail, 1024)))
 
-        # Try to parse frames
         return self._parse()
 
     def _parse(self) -> IM10AData | None:
-        """Parse buffered bytes for frame pairs."""
-        while True:
-            if len(self._buf) < 3:
-                return None
+        """Parse 11-byte frames from buffer."""
+        result = None
 
-            # Look for frame headers
-            if self._buf[:3] == FRAME1_HEADER:
-                if len(self._buf) < FRAME1_LEN:
-                    return None  # need more bytes
-                frame = bytes(self._buf[:FRAME1_LEN])
-                del self._buf[:FRAME1_LEN]
-                self._pending_frame1 = self._parse_frame1(frame)
-
-            elif self._buf[:3] == FRAME2_HEADER:
-                if len(self._buf) < FRAME2_LEN:
-                    return None
-                frame = bytes(self._buf[:FRAME2_LEN])
-                del self._buf[:FRAME2_LEN]
-
-                if self._pending_frame1 is not None:
-                    data = self._pending_frame1
-                    self._parse_frame2(frame, data)
-                    self._pending_frame1 = None
-                    return data
-                # else: orphan frame2, discard
-
-            else:
-                # Not a valid header — discard one byte and resync
+        while len(self._buf) >= FRAME_LEN:
+            # Sync to header
+            if self._buf[0] != HEADER:
                 del self._buf[0]
+                continue
 
-    def _parse_frame1(self, frame: bytes) -> IM10AData:
-        """Parse 49-byte frame: gyro + accel + mag."""
-        # Bytes 3-6: flags, 7-10: timestamp, 11-46: 9 floats (little-endian)
-        data = IM10AData()
-        data.timestamp = time.time()
+            if len(self._buf) < FRAME_LEN:
+                break
 
-        floats = struct.unpack_from('<9f', frame, 11)
-        # gyro: rad/s (raw from IMU)
-        data.gyro[0] = floats[0]  # wx
-        data.gyro[1] = floats[1]  # wy
-        data.gyro[2] = floats[2]  # wz
-        # accel: raw is in g-units, convert to m/s²
-        data.accel[0] = floats[3] * G
-        data.accel[1] = floats[4] * G
-        data.accel[2] = floats[5] * G
-        # mag
-        data.mag[0] = floats[6]
-        data.mag[1] = floats[7]
-        data.mag[2] = floats[8]
+            frame_type = self._buf[1]
+            if (frame_type & 0x50) != 0x50:
+                del self._buf[0]
+                continue
 
-        return data
+            frame = bytes(self._buf[:FRAME_LEN])
+            del self._buf[:FRAME_LEN]
 
-    def _parse_frame2(self, frame: bytes, data: IM10AData):
-        """Parse 25-byte frame: euler angles → quaternion + gravity."""
-        # Bytes 3-6: flags, 7-10: timestamp, 11-22: 3 floats (roll, pitch, yaw) in degrees
-        floats = struct.unpack_from('<3f', frame, 11)
-        # Convert degrees to radians
-        data.euler[0] = np.radians(floats[0])  # roll
-        data.euler[1] = np.radians(floats[1])  # pitch
-        data.euler[2] = np.radians(floats[2])  # yaw
+            # Parse 4 int16 values (little-endian) from bytes 2-9
+            d0 = struct.unpack_from('<hhhh', frame, 2)
 
-        # Euler → quaternion (scipy uses scalar-last: [x, y, z, w])
-        r = Rotation.from_euler('xyz', data.euler)
-        quat_xyzw = r.as_quat()  # [x, y, z, w]
-        data.quaternion[0] = quat_xyzw[3]  # w
-        data.quaternion[1] = quat_xyzw[0]  # x
-        data.quaternion[2] = quat_xyzw[1]  # y
-        data.quaternion[3] = quat_xyzw[2]  # z
+            if frame_type == TYPE_ACCEL:
+                # Accel: raw / 32768 * 16g * 9.81
+                self._data.accel[0] = d0[0] / 32768.0 * 16.0 * 9.81
+                self._data.accel[1] = d0[1] / 32768.0 * 16.0 * 9.81
+                self._data.accel[2] = d0[2] / 32768.0 * 16.0 * 9.81
 
-        # Projected gravity in body frame (Isaac convention: upright → [0, 0, -1])
-        # Same as K-Scale: r.apply([0, 0, -1], inverse=True)
-        data.gravity = r.apply(np.array([0.0, 0.0, -1.0]), inverse=True)
+            elif frame_type == TYPE_GYRO:
+                # Gyro: raw / 32768 * 2000 deg/s → rad/s
+                self._data.gyro[0] = d0[0] / 32768.0 * 2000.0 * math.pi / 180.0
+                self._data.gyro[1] = d0[1] / 32768.0 * 2000.0 * math.pi / 180.0
+                self._data.gyro[2] = d0[2] / 32768.0 * 2000.0 * math.pi / 180.0
+                self._has_gyro = True
+
+            elif frame_type == TYPE_EULER:
+                # Euler: raw / 32768 * 180 deg → rad
+                self._data.euler[0] = d0[0] / 32768.0 * math.pi  # roll
+                self._data.euler[1] = d0[1] / 32768.0 * math.pi  # pitch
+                self._data.euler[2] = d0[2] / 32768.0 * math.pi  # yaw
+
+            elif frame_type == TYPE_QUAT:
+                # Quaternion: raw / 32768
+                qw = d0[0] / 32768.0
+                qx = d0[1] / 32768.0
+                qy = d0[2] / 32768.0
+                qz = d0[3] / 32768.0
+                self._data.quaternion[:] = [qw, qx, qy, qz]
+                self._has_quat = True
+
+                # Derive gravity from quaternion (Isaac convention: upright → [0, 0, -1])
+                r = Rotation.from_quat([qx, qy, qz, qw])  # scipy: scalar-last
+                self._data.gravity = r.apply(np.array([0.0, 0.0, -1.0]), inverse=True)
+
+            # Return data when we have both quat and gyro
+            if self._has_quat and self._has_gyro:
+                self._data.timestamp = time.time()
+                self._has_quat = False
+                self._has_gyro = False
+                result = self._data  # return latest complete set
+
+        return result
