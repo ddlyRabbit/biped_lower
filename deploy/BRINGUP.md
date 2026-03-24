@@ -75,8 +75,10 @@ ros2 topic echo /safety/status    # should be True
 
 ```bash
 # Terminal 1: full robot with C++ CAN driver
+# imu_type: bno085 (default, I2C) | im10a (USB serial)
 ros2 launch biped_bringup bringup.launch.py \
   can_driver:=can_bus_node_cpp \
+  imu_type:=im10a \
   calibration_file:=calibration.yaml \
   onnx_model:=~/biped_lower/deploy/v68b_student_flat.onnx \
   gain_scale:=0.3
@@ -175,8 +177,10 @@ ros2 topic pub --once /state_command std_msgs/String "data: ESTOP"
 After suspended test looks good:
 ```bash
 # Terminal 1: full robot with higher gains
+# imu_type: bno085 (default) | im10a
 ros2 launch biped_bringup bringup.launch.py \
   can_driver:=can_bus_node_cpp \
+  imu_type:=im10a \
   calibration_file:=calibration.yaml \
   onnx_model:=~/biped_lower/deploy/v68b_student_flat.onnx \
   gain_scale:=0.5

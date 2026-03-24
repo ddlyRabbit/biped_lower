@@ -4,16 +4,34 @@ For testing hardware before policy integration.
 
 Usage:
     ros2 launch biped_bringup hardware.launch.py
+    ros2 launch biped_bringup hardware.launch.py imu_type:=im10a
     ros2 launch biped_bringup hardware.launch.py calibration_file:=calibration.yaml
 """
 
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
+
+
+def _make_imu_node(context):
+    """Select IMU driver based on imu_type arg."""
+    imu_type = LaunchConfiguration('imu_type').perform(context)
+    if imu_type == 'im10a':
+        return [Node(
+            package='biped_driver', executable='im10a_imu_node',
+            name='imu_node', output='screen',
+            parameters=[{'serial_port': '/dev/ttyUSB0', 'baudrate': 460800, 'rate_hz': 300.0}],
+        )]
+    else:  # bno085 (default)
+        return [Node(
+            package='biped_driver', executable='imu_node',
+            name='imu_node', output='screen',
+            parameters=[{'rate_hz': 50.0, 'i2c_address': 75, 'reset_pin': 4}],
+        )]
 
 
 def generate_launch_description():
@@ -28,24 +46,22 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('calibration_file', default_value=''),
         DeclareLaunchArgument('robot_config', default_value=default_robot_config),
+        DeclareLaunchArgument('imu_type', default_value='bno085',
+                              description='IMU driver: bno085 (I2C) | im10a (USB serial)'),
         DeclareLaunchArgument('max_pitch_deg', default_value='85.0'),
         DeclareLaunchArgument('max_roll_deg', default_value='85.0'),
 
-        # Robot description (URDF → /tf, /tf_static, /robot_description)
+        # Robot description
         Node(
             package='robot_state_publisher', executable='robot_state_publisher',
             name='robot_state_publisher', output='screen',
             parameters=[{'robot_description': robot_description}],
         ),
 
-        # IMU
-        Node(
-            package='biped_driver', executable='imu_node',
-            name='imu_node', output='screen',
-            parameters=[{'rate_hz': 50.0, 'i2c_address': 75, 'reset_pin': 4}],
-        ),
+        # IMU — selected by imu_type arg (bno085 default, im10a for USB IMU)
+        OpaqueFunction(function=_make_imu_node),
 
-        # CAN bus — motor config from robot.yaml
+        # CAN bus
         Node(
             package='biped_driver', executable='can_bus_node',
             name='can_bus_node', output='screen',
