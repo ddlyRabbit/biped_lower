@@ -31,12 +31,12 @@ Control loop (50Hz = 4× decimation):
     5. read pos, vel → CSV
 ```
 
-### V74 Actuator Gains (current)
+### V74 Actuator Gains (current training)
 | Joint Group | Kp | Kd | Effort | Friction |
 |-------------|----|----|--------|----------|
-| hip_roll/yaw | 40 | 3 | 50Nm | 0.375Nm |
-| hip_pitch/knee | 60 | 3 | 100Nm | 0.5Nm |
-| foot_pitch/roll | 32 | 2 | 30Nm | 0.25Nm |
+| hip_roll/yaw | 10 | 3 | 50Nm | 0.375Nm |
+| hip_pitch/knee | 15 | 3 | 100Nm | 0.5Nm |
+| foot_pitch/roll | 16 | 2 | 30Nm | 0.25Nm |
 
 ### Usage
 ```bash
@@ -92,27 +92,22 @@ python3 deploy/scripts/motor_sysid.py --joint R_hip_pitch --kp 1 --kd 0.1
 
 ## Findings
 
-### R_hip_pitch (Kp=60, Kd=3) — V74
-- **Heavily underdamped**: sustained oscillation, vel saturates at ±9.6 rad/s
-- Step response overshoots and never settles
-- pos range -0.07 to 0.40 (joint moves, but oscillates)
-- Critical damping estimate: Kd_critical ≈ 2×√(Kp×I) ≈ 11 (with I≈0.5 kg⋅m²)
-- Current damping ratio ≈ 0.27 (very underdamped)
+### URDF Velocity Limit (Critical Fix)
+- URDF had `velocity="10"` on all joints — PhysX enforces this at physics level
+- Caused ±10 rad/s chattering regardless of actuator config
+- Fixed: RS04/RS03 → 21 rad/s, RS02 → 30 rad/s (matching hardware)
 
-### R_hip_pitch (Kp=120, Kd=3) — V73
-- Same underdamped behavior but more violent oscillation
-- V73 policy learned to avoid hip pitch entirely (too stiff + oscillatory)
+### PD Loop Rate
+- `write_data_to_sim()` must be called every physics substep for true high-rate PD
+- Calling it once per control step → PD runs at 50Hz regardless of physics rate
+- Fix: move `set_joint_position_target` + `write_data_to_sim` inside substep loop
 
-### Video recording issue
-- Standalone Camera sensor produces black frames
-- Root cause: Xvfb reports 0 Hz refresh rate → Isaac's render pipeline doesn't produce frames
-- The env-based RecordVideo works because `render_mode="rgb_array"` sets up tiled rendering
-- Fix needed: configure offscreen render product or use env wrapper for video only
+### Video Recording
+- Camera sensor approach produces black frames (Xvfb 0Hz refresh)
+- Fixed: use `omni.replicator.core` render product + RGB annotator (same as Isaac Lab env)
 
 ## Notes
-- Isaac cold boot: ~10-15 min on L4 GPU
-- Can run sysid + training in parallel (sysid uses minimal GPU)
-- The env-based sysid failed due to randomization events
-  (`scale_all_actuator_torque_constant` randomizes gains on reset)
-- Standalone approach bypasses all env machinery — clean CSV results
-- Video needs separate fix (Camera sensor + offscreen rendering)
+- Isaac cold boot: ~15-45 min on L4 GPU (varies with parallel training load)
+- Standalone approach bypasses env randomization events — clean results
+- The env-based sysid failed due to `scale_all_actuator_torque_constant`
+- `joint_drive.target_type` must be `"position"` (not `"none"`) for explicit actuators
