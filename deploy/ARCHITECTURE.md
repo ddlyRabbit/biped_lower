@@ -270,6 +270,25 @@ Training supports `--tanh` flag which adds `nn.Tanh()` after the actor MLP, boun
 Without `--tanh`: actions are unbounded (MLP output), clipped to ±1 in deploy code.
 With `--tanh`: actions bounded by architecture. Checkpoint keys have `actor.0.X` prefix (wrapped Sequential).
 
+### Action Statistics
+
+The play script logs per-joint action magnitudes from actual simulation rollout:
+
+```bash
+/isaac-sim/python.sh biped_play_rsl.py --tanh --checkpoint model.pt \
+  --video --video_length 300 --video_dir /results/videos/test --headless
+```
+
+Output at end of playback:
+```
+[ACT] Action statistics over 300 steps (actual rollout):
+Joint              abs    rms    min    max off(rad)
+R_hip_yaw        0.13  0.17  -0.37  +0.38   +0.02
+...
+```
+
+Also saves `action_stats.csv` alongside the video for post-analysis.
+
 ### Topics
 
 | Topic | Type | Publisher | Subscriber |
