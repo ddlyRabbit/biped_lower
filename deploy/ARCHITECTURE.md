@@ -56,14 +56,56 @@ R_hip_pitch:
   direction: 1           # +1 normal, -1 inverted
 ```
 
+### Offset Calculation
+
+The offset maps the encoder zero to the URDF joint zero. Derived from the physical minimum stop:
+
+**direction = +1 (normal):**
+```
+joint = (encoder - offset) × 1
+
+At motor_min, joint = urdf_lower:
+    urdf_lower = motor_min - offset
+    offset = motor_min - urdf_lower
+```
+
+**direction = -1 (inverted):**
+```
+joint = (encoder - offset) × (-1)
+
+At motor_min, joint = urdf_lower:
+    urdf_lower = -(motor_min - offset)
+    offset = motor_min + urdf_lower
+```
+
+**Example — R_hip_pitch (dir=+1):**
+```
+motor_min = -0.6397,  urdf_lower = -2.217 rad
+offset = -0.6397 - (-2.217) = 1.577
+
+Verify at motor_min:  joint = (-0.6397 - 1.577) × 1 = -2.217 ✓
+Verify at motor_max:  joint = (2.6328 - 1.577) × 1  =  1.056 ≈ 1.047 ✓
+```
+
+**Example — R_knee (dir=-1):**
+```
+motor_min = 2.3175,  urdf_lower = 0.0 rad
+offset = 2.3175 + 0.0 = 2.3175
+
+Verify at motor_min:  joint = (2.3175 - 2.3175) × (-1) = 0.0 ✓
+Verify at motor_max:  joint = (4.925 - 2.3175) × (-1)  = -2.607
+    → abs = 2.607 ≈ 2.705 (URDF upper, difference from mechanical tolerance)
+```
+
+**Ankle motors:** Same formula but `urdf_lower` is replaced by `cmd_lo` — the theoretical
+motor command-space lower limit computed from the linkage transform at URDF corner positions.
+
 ### Calibration Procedure
 
 1. `ros2 launch biped_bringup calibrate.launch.py` — starts calibration node
 2. Manually move each joint to both mechanical limits
 3. Node records `motor_min` and `motor_max` from encoder feedback
-4. Offset computed automatically:
-   - **Normal joints**: `offset = motor_min - urdf_lower_limit`
-   - **Ankle motors** (parallel linkage): `offset = motor_min - cmd_lo` (dir=+1) or `offset = motor_min + cmd_hi` (dir=-1)
+4. Offset computed automatically using the formulas above
 5. `direction` preserved from existing calibration (set via `setup_directions.py`)
 6. Ctrl+C saves to `calibration.yaml`
 
