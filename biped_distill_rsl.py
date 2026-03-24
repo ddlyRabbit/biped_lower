@@ -130,20 +130,34 @@ def main():
 
     runner = DistillationRunner(env, train_cfg, log_dir=log_dir, device="cuda:0")
 
-    if args_cli.tanh:
-        import torch.nn as nn
-        original_student = runner.alg.policy.student
-        runner.alg.policy.student = nn.Sequential(original_student, nn.Tanh())
-        print("[INFO] Tanh output layer added to student — actions bounded to [-1, +1]")
-
     if args_cli.resume:
         print(f"[INFO] Resuming distillation from: {args_cli.resume}")
         runner.load(args_cli.resume)
     elif args_cli.teacher_checkpoint:
         print(f"[INFO] Loading teacher from: {args_cli.teacher_checkpoint}")
-        runner.load(args_cli.teacher_checkpoint, load_optimizer=False)
+        # Strip tanh wrapper prefix from teacher checkpoint if present
+        ckpt = torch.load(args_cli.teacher_checkpoint, map_location="cuda:0")
+        sd = ckpt["model_state_dict"]
+        clean_sd = {}
+        for k, v in sd.items():
+            # actor.0.X.weight → actor.X.weight (strip tanh Sequential wrapper)
+            if k.startswith("actor.0."):
+                clean_sd[k.replace("actor.0.", "actor.")] = v
+            else:
+                clean_sd[k] = v
+        if any(k.startswith("actor.0.") for k in sd):
+            print("[INFO] Stripped tanh wrapper prefix from teacher checkpoint keys")
+        ckpt["model_state_dict"] = clean_sd
+        torch.save(ckpt, "/tmp/_teacher_clean.pt")
+        runner.load("/tmp/_teacher_clean.pt", load_optimizer=False)
     else:
         raise ValueError("Must provide --teacher_checkpoint or --resume")
+
+    if args_cli.tanh:
+        import torch.nn as nn
+        original_student = runner.alg.policy.student
+        runner.alg.policy.student = nn.Sequential(original_student, nn.Tanh())
+        print("[INFO] Tanh output layer added to student — actions bounded to [-1, +1]")
 
     runner.learn(num_learning_iterations=args_cli.max_iterations, init_at_random_ep_len=True)
 
