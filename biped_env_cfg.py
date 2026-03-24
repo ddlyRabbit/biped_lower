@@ -859,7 +859,7 @@ class CurriculumsCfg:
         func="biped_env_cfg:modify_push_force",
         params={
             "term_name": "push_robot",
-            "max_velocity": [3.0, 3.0],
+            "max_velocity": [1.5, 1.5],
             "interval": 200 * 24,         # check every 200 iterations
             "starting_step": 1000 * 24,     # start after 1000 iterations
         },
@@ -870,7 +870,7 @@ class CurriculumsCfg:
             "term_name": "track_lin_vel_xy_exp",
             "max_velocity": [-0.5, 3.0],  # expand +X forward range
             "interval": 200 * 24,         # check every 200 iterations
-            "starting_step": 3000 * 24,     # start after 3000 iterations
+            "starting_step": 5000 * 24,     # start after 3000 iterations
         },
     )
 
