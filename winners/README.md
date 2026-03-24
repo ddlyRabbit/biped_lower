@@ -43,7 +43,31 @@
 |------|-------------|
 | `v74_teacher_18400.pt` | Trained with push curriculum at 3.0 m/s (max) |
 
+| File | Description |
+|------|-------------|
+| `v74_teacher_18400.pt` | Push-hardened checkpoint |
+| `v74_teacher_18400.mp4` | Video under 3.0 m/s push |
+| `v74_teacher_18400_actions.csv` | Per-joint action stats (300-step rollout) |
+
 **Metrics (18400):** reward 11.7, vel ~0.80, falls 23%, push 3.0 m/s
+
+**Action magnitudes (300-step rollout):**
+```
+Joint           abs   rms    min    max   off(rad) Kp
+R_hip_yaw      0.61  0.68  -0.97  +0.78   -0.22   60
+R_hip_roll     0.25  0.30  -0.78  +0.80   +0.02  120
+R_hip_pitch    0.60  0.64  -0.96  +0.22   -0.30  180
+R_knee         0.75  0.80  -0.13  +1.00   +0.38  180
+R_foot_pitch   0.60  0.67  -1.00  +0.98   -0.21   96
+R_foot_roll    0.82  0.85  -1.00  +1.00   +0.26   48
+L_hip_yaw      0.58  0.64  -0.71  +0.99   +0.16   60
+L_hip_roll     0.33  0.41  -0.69  +0.91   +0.01  120
+L_hip_pitch    0.49  0.53  -0.27  +0.86   +0.24  180
+L_knee         0.69  0.75  -0.11  +1.00   +0.34  180
+L_foot_pitch   0.57  0.67  -1.00  +0.98   -0.21   96
+L_foot_roll    0.75  0.80  -1.00  +0.89   -0.24   48
+```
+
 **Training history:** Kp×1.5 at iter 15000, push ramped 0.5→3.0 over iters 16100-17200.
 Policy survived max push for 1200+ iters, survival improved 58%→77%.
 **To resume:** `--resume model_18400.pt --max_iterations 6000 --urdf heavy --tanh`
