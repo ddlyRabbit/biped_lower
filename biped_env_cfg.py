@@ -292,10 +292,10 @@ def modify_push_force(
         return curr_setting
     if env.common_step_counter % interval == 0:
         base_contact_count = torch.sum(
-            env.termination_manager._term_dones["base_contact"]
+            env.termination_manager.get_term("base_contact")
         )
         time_out_count = torch.sum(
-            env.termination_manager._term_dones["time_out"]
+            env.termination_manager.get_term("time_out")
         )
         # Stable → increase push
         if base_contact_count < time_out_count * 2:
