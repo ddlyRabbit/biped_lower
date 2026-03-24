@@ -1,6 +1,6 @@
 # Biped Deployment Architecture
 
-ROS2 Jazzy · RPi 5 · Dual SocketCAN (`can0` + `can1`) · 12 RobStride motors · BNO085 IMU · ONNX policy
+ROS2 Jazzy · RPi 5 · Dual SocketCAN (`can0` + `can1`) · 12 RobStride motors · IMU (BNO085 or IM10A) · ONNX policy
 
 ---
 
@@ -10,7 +10,7 @@ ROS2 Jazzy · RPi 5 · Dual SocketCAN (`can0` + `can1`) · 12 RobStride motors �
 |-----------|--------|
 | Compute | RPi 5 (8 GB), Ubuntu 24.04 aarch64 |
 | CAN | 2-CH CAN HAT — 2× MCP2515/SPI, `can0` (right) + `can1` (left), 1 Mbps |
-| IMU | BNO085 I2C bus 1, addr 0x4B, RST GPIO 4, 50 Hz, axes aligned to base_link |
+| IMU | BNO085 (I2C, 50Hz) or IM10A (USB serial, 300Hz) — axes aligned to base_link |
 | Motors | 12× RobStride (4× RS04, 4× RS03, 4× RS02), can0=right, can1=left |
 | Policy | `student_flat.onnx` — MLP 45→128→128→128→12, ~0.5 ms |
 
@@ -63,7 +63,9 @@ biped_ws/src/
 │   │   └── bus.py           RobstrideBus: MIT R/W, motor ID–filtered reads
 │   ├── robstride_can.py     BipedMotorManager, ankle linkage, soft stops
 │   ├── can_bus_node.py      12-motor CAN loop @ 50 Hz
-│   └── imu_node.py          BNO085 I2C @ 50 Hz
+│   ├── imu_node.py          BNO085 I2C @ 50 Hz
+│   ├── im10a_imu_node.py   IM10A USB serial @ 300 Hz
+│   └── im10a_driver.py     IM10A protocol parser (WIT-motion B6)
 ├── biped_control/      Python
 │   ├── obs_builder.py       Sensor → 45d observation vector
 │   ├── policy_node.py       ONNX inference @ 50 Hz
@@ -193,7 +195,8 @@ With `--tanh`: actions bounded by architecture. Checkpoint keys have `actor.0.X`
 | `can_bus_node_cpp` | biped_driver_cpp | C++ CAN driver, ~300Hz per bus, dual CAN |
 | `can_bus_node` | biped_driver | Python sync CAN driver, ~50Hz |
 | `can_bus_node_async` | biped_driver | Python async CAN driver, ~200Hz |
-| `imu_node` | biped_driver | BNO085 IMU via I2C, 50Hz |
+| `imu_node` | biped_driver | BNO085 IMU via I2C, 50Hz (default) |
+| `im10a_imu_node` | biped_driver | IM10A IMU via USB serial, 300Hz |
 | `policy_node` | biped_control | ONNX inference at 50Hz, publishes motor cmds or viz |
 | `safety_node` | biped_control | Pitch/roll/temp monitoring, triggers ESTOP |
 | `state_machine_node` | biped_control | FSM: IDLE→STAND→WALK/SIM_WALK/WIGGLE→ESTOP |
@@ -357,9 +360,10 @@ MCP2515 TX buffer: 5-attempt retry with 0.5 ms backoff.
 | System | Convention |
 |--------|-----------|
 | URDF / Isaac | Z-up, +X forward, +Y left |
-| BNO085 (mounted) | +X forward, +Y left, +Z up — aligned to base_link, no corrections |
-| BNO085 quaternion | Sensor→Earth rotation, published raw as odom→base_link TF |
-| projected_gravity | `−gravity/‖g‖` → BNO085 (0,0,+9.81) upright → Isaac (0,0,−1) |
+| IMU (mounted) | +X forward, +Y left, +Z up — aligned to base_link, no corrections |
+| IMU quaternion | Sensor→Earth rotation, published raw as odom→base_link TF |
+| projected_gravity | Both IMUs output (0,0,+9.81) upright → obs_builder negates → Isaac (0,0,−1) |
+| IM10A gravity | Derived from quaternion: `R.apply([0,0,-1], inverse=True)` × −9.81 |
 | Motor positions | Radians, output shaft, absolute encoder |
 
 ---

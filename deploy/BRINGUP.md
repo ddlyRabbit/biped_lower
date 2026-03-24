@@ -4,7 +4,7 @@
 
 - RPi 5 with Ubuntu 24.04 + ROS2 Jazzy
 - Waveshare RS485 CAN HAT (B) — MCP2515 on SPI0
-- BNO085 IMU on I2C bus 1 (addr 0x4B, RST on GPIO 4)
+- IMU: BNO085 (I2C) or IM10A (USB serial /dev/ttyUSB0)
 - All 12 motors on dual CAN bus (can0=right, can1=left), IDs 1–12
 - Student policy exported as ONNX (`student_flat.onnx`)
 
@@ -57,7 +57,11 @@ URDF limits ±20%. Press Ctrl+C to save `calibration.yaml`.
 ```bash
 ros2 launch biped_bringup hardware.launch.py \
   can_driver:=can_bus_node_cpp \
+  imu_type:=bno085 \
   calibration_file:=calibration.yaml
+
+# For IM10A IMU (USB):
+#   imu_type:=im10a
 
 # In another terminal:
 ros2 topic echo /joint_states     # motor positions + velocities
@@ -277,7 +281,8 @@ source setup_biped.bash
 |---------|----------|
 | No CAN device | Run `setup_can.sh`, check dtoverlay in `/boot/firmware/config.txt` |
 | Motor no response | Check 48V power, run `scan_motors.py`, verify CAN ID |
-| IMU init fails | Power cycle BNO085, check I2C: `i2cdetect -y 1` (expect 0x4B) |
+| BNO085 IMU init fails | Power cycle BNO085, check I2C: `i2cdetect -y 1` (expect 0x4B) |
+| IM10A IMU no data | Check `ls /dev/ttyUSB0`, add user to `dialout` group, verify 460800 baud |
 | Robot falls immediately | Reduce `gain_scale`, verify calibration offsets |
 | ESTOP triggered | Check: `ros2 topic echo /safety/fault` |
 | Foxglove won't connect | Check Pi IP, ensure port 8765 not blocked |
