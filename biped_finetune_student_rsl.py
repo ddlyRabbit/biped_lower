@@ -41,6 +41,7 @@ parser.add_argument("--distilled", type=str, default=None,
 parser.add_argument("--resume", type=str, default=None,
                     help="Path to PPO fine-tune checkpoint to resume from")
 parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"], help="URDF variant")
+parser.add_argument("--tanh", action="store_true", help="Add tanh output to actor (must match distillation)")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 app_launcher = AppLauncher(args_cli)
@@ -136,10 +137,15 @@ def remap_distilled_to_actor_critic(distilled_path, runner):
     model_sd = ckpt["model_state_dict"]
 
     # Remap student.* → actor.*
+    # Tanh wrapper adds "0." prefix: student.0.X → actor.X (strip "0.")
     remap_sd = {}
     for k, v in model_sd.items():
         if k.startswith("student."):
-            remap_sd[k.replace("student.", "actor.", 1)] = v
+            new_k = k.replace("student.", "actor.", 1)
+            # Strip tanh Sequential wrapper prefix: actor.0.X → actor.X
+            if new_k.startswith("actor.0."):
+                new_k = new_k.replace("actor.0.", "actor.", 1)
+            remap_sd[new_k] = v
         elif k == "std":
             remap_sd["std"] = v
 
@@ -190,6 +196,12 @@ def main():
     os.makedirs(log_dir, exist_ok=True)
 
     runner = OnPolicyRunner(env, train_cfg, log_dir=log_dir, device="cuda:0")
+
+    if args_cli.tanh:
+        import torch.nn as nn
+        original_actor = runner.alg.policy.actor
+        runner.alg.policy.actor = nn.Sequential(original_actor, nn.Tanh())
+        print("[INFO] Tanh output layer added to actor — actions bounded to [-1, +1]")
 
     if args_cli.resume:
         # Resume from PPO fine-tune checkpoint (has actor.* + critic.*)
