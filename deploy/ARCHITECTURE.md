@@ -145,13 +145,28 @@ ONNX inference (MLP 48→128→128→128→12) → raw actions
     ↓
 np.clip(actions, -1.0, 1.0) → clamped actions
     ↓
-action_to_positions: target = default_pos + action × 0.5 → joint targets (rad)
+action_to_positions: target = default_pos + action × scale → joint targets (rad)
     ↓
 MITCommand per joint: { position, velocity=0, kp, kd, torque_ff=0 }
     ↓
 WALK  → /joint_commands → motors
 SIM_WALK → /policy_viz + /policy_viz_joints → Foxglove
 ```
+
+### Tanh Output Layer (V74+)
+
+Training supports `--tanh` flag which adds `nn.Tanh()` after the actor MLP, bounding raw actions to [-1, +1] natively. This eliminates actuator saturation on real hardware.
+
+```bash
+# Training with tanh
+/isaac-sim/python.sh biped_train_rsl.py --tanh --num_envs 8192 --headless
+
+# Play with tanh (must match training)
+/isaac-sim/python.sh biped_play_rsl.py --tanh --checkpoint model.pt --video --headless
+```
+
+Without `--tanh`: actions are unbounded (MLP output), clipped to ±1 in deploy code.
+With `--tanh`: actions bounded by architecture. Checkpoint keys have `actor.0.X` prefix (wrapped Sequential).
 
 ### Topics
 
