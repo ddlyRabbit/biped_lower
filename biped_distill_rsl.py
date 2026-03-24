@@ -32,6 +32,7 @@ parser.add_argument("--teacher_checkpoint", type=str, default=None,
 parser.add_argument("--resume", type=str, default=None,
                     help="Path to distillation checkpoint to resume from")
 parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"], help="URDF variant")
+parser.add_argument("--tanh", action="store_true", help="Add tanh output to student (bounds actions to [-1, +1])")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 app_launcher = AppLauncher(args_cli)
@@ -128,6 +129,12 @@ def main():
     os.makedirs(log_dir, exist_ok=True)
 
     runner = DistillationRunner(env, train_cfg, log_dir=log_dir, device="cuda:0")
+
+    if args_cli.tanh:
+        import torch.nn as nn
+        original_student = runner.alg.policy.student
+        runner.alg.policy.student = nn.Sequential(original_student, nn.Tanh())
+        print("[INFO] Tanh output layer added to student — actions bounded to [-1, +1]")
 
     if args_cli.resume:
         print(f"[INFO] Resuming distillation from: {args_cli.resume}")
