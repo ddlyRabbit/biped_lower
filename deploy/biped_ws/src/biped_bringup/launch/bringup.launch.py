@@ -44,7 +44,7 @@ def _make_imu_node(context):
         return [Node(
             package='biped_driver', executable='im10a_imu_node',
             name='imu_node', output='screen',
-            parameters=[{'serial_port': '/dev/ttyUSB0', 'baudrate': 460800, 'rate_hz': 50.0}],
+            parameters=[{'serial_port': '/dev/ttyUSB0', 'baudrate': 460800, 'rate_hz': 300.0}],
         )]
     else:  # bno085 (default)
         return [Node(
