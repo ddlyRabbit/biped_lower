@@ -28,7 +28,7 @@ class IM10ANode(Node):
 
         # Parameters
         self.declare_parameter('serial_port', '/dev/ttyUSB0')
-        self.declare_parameter('baudrate', 921600)
+        self.declare_parameter('baudrate', 460800)
         self.declare_parameter('rate_hz', 50.0)
         self.declare_parameter('frame_id', 'imu_link')
 
