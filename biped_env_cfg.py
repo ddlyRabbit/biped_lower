@@ -8,7 +8,7 @@
 #   PPO:          [128,128,128], init_noise_std=1.0, entropy_coef=0.005
 #   OBSERVATIONS: base_lin_vel in policy, per-joint-group noise, obs_dim=48
 #   ACTIONS:      scale=0.5
-#   COMMANDS:     lin_vel_x=(-0.5, 1.5) forward, lin_vel_y=(-0.5, 0.5) lateral
+#   COMMANDS:     lin_vel_x=(-0.5, 1.0) forward, lin_vel_y=(-0.5, 0.5) lateral
 #   TERMINATIONS: base_contact (torso, threshold=1.0), time_out
 #   EVENTS:       All Berkeley events + scale_all_actuator_gains (extra)
 #   DECIMATION:   4 (50 Hz control)
@@ -560,7 +560,7 @@ class CommandsCfg:
         rel_standing_envs=0.02,
         rel_heading_envs=1.0,
         ranges=base_mdp.UniformVelocityCommandCfg.Ranges(
-            lin_vel_x=(-0.5, 1.5),      # forward=+X (biased positive)
+            lin_vel_x=(-0.5, 1.0),      # forward=+X (biased positive)
             lin_vel_y=(-0.5, 0.5),      # lateral (small)
             ang_vel_z=(-1.0, 1.0),
             heading=(-math.pi, math.pi),
@@ -936,7 +936,7 @@ class CurriculumsCfg:
         func=modify_command_velocity,
         params={
             "term_name": "track_lin_vel_xy_exp",
-            "max_velocity": [-0.5, 3.0],
+            "max_velocity": [-0.5, 1.0],
             "interval": 200 * 24,
             "starting_step": 5000 * 24,     # start after 5000 iterations
         },
