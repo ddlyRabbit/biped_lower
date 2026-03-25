@@ -32,6 +32,7 @@ parser.add_argument("--teacher_checkpoint", type=str, default=None,
 parser.add_argument("--resume", type=str, default=None,
                     help="Path to distillation checkpoint to resume from")
 parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"], help="URDF variant")
+parser.add_argument("--tanh", action="store_true", help="Add tanh output to student (bounds actions to [-1, +1])")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 app_launcher = AppLauncher(args_cli)
@@ -134,9 +135,31 @@ def main():
         runner.load(args_cli.resume)
     elif args_cli.teacher_checkpoint:
         print(f"[INFO] Loading teacher from: {args_cli.teacher_checkpoint}")
-        runner.load(args_cli.teacher_checkpoint, load_optimizer=False)
+        # Strip tanh wrapper prefix from teacher checkpoint if present
+        ckpt = torch.load(args_cli.teacher_checkpoint, map_location="cuda:0")
+        sd = ckpt["model_state_dict"]
+        clean_sd = {}
+        for k, v in sd.items():
+            # actor.0.X.weight → actor.X.weight (strip tanh Sequential wrapper)
+            if k.startswith("actor.0."):
+                clean_sd[k.replace("actor.0.", "actor.")] = v
+            else:
+                clean_sd[k] = v
+        if any(k.startswith("actor.0.") for k in sd):
+            print("[INFO] Stripped tanh wrapper prefix from teacher checkpoint keys")
+        ckpt["model_state_dict"] = clean_sd
+        torch.save(ckpt, "/tmp/_teacher_clean.pt")
+        runner.load("/tmp/_teacher_clean.pt", load_optimizer=False)
     else:
         raise ValueError("Must provide --teacher_checkpoint or --resume")
+
+    if args_cli.tanh:
+        import torch.nn as nn
+        original_student = runner.alg.policy.student
+        runner.alg.policy.student = nn.Sequential(original_student, nn.Tanh())
+        original_teacher = runner.alg.policy.teacher
+        runner.alg.policy.teacher = nn.Sequential(original_teacher, nn.Tanh())
+        print("[INFO] Tanh output layer added to both student and teacher")
 
     runner.learn(num_learning_iterations=args_cli.max_iterations, init_at_random_ep_len=True)
 

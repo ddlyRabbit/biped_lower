@@ -167,11 +167,17 @@ def main():
         actor_sd = {}
         for k, v in model_sd.items():
             if k.startswith("student."):
-                actor_sd[k.replace("student.", "")] = v
+                clean_k = k.replace("student.", "")
+                if clean_k.startswith("0.") and args_cli.tanh:
+                    clean_k = clean_k[2:]
+                actor_sd[clean_k] = v
         if not actor_sd:
             for k, v in model_sd.items():
                 if k.startswith("actor."):
-                    actor_sd[k.replace("actor.", "")] = v
+                    clean_k = k.replace("actor.", "")
+                    if clean_k.startswith("0.") and args_cli.tanh:
+                        clean_k = clean_k[2:]
+                    actor_sd[clean_k] = v
             print("[INFO] No student.* keys, using actor.* (Phase 3 fine-tuned checkpoint)")
         if not actor_sd:
             raise ValueError(
@@ -192,11 +198,19 @@ def main():
     actor.eval()
     print("[INFO] Actor loaded successfully")
 
+    # Action logging
+    all_actions = []
+    JOINT_NAMES = [
+        "R_hip_yaw", "R_hip_roll", "R_hip_pitch", "R_knee", "R_foot_pitch", "R_foot_roll",
+        "L_hip_yaw", "L_hip_roll", "L_hip_pitch", "L_knee", "L_foot_pitch", "L_foot_roll",
+    ]
+
     timestep = 0
     while simulation_app.is_running():
         with torch.inference_mode():
             actions = actor(obs)
         obs, _, _, _, _ = env.step(actions)
+        all_actions.append(actions[0].cpu().numpy())
         timestep += 1
 
         if timestep % 50 == 0:
@@ -205,6 +219,30 @@ def main():
         if args_cli.video and timestep >= args_cli.video_length:
             print(f"[INFO] Video recording complete ({timestep} steps)")
             break
+
+    # Print action statistics from actual rollout
+    if all_actions:
+        import numpy as np
+        a = np.array(all_actions)
+        print(f"\n[ACT] Action statistics over {len(a)} steps (actual rollout):")
+        print(f"{'Joint':<15} {'abs':>6} {'rms':>6} {'min':>6} {'max':>6} {'off(rad)':>8}")
+        print("-" * 52)
+        for i, name in enumerate(JOINT_NAMES):
+            c = a[:, i]
+            scale = 0.5  # action_scale
+            print(f"{name:<15} {np.mean(np.abs(c)):6.3f} {np.sqrt(np.mean(c**2)):6.3f} "
+                  f"{np.min(c):6.3f} {np.max(c):6.3f} {c.mean()*scale:8.3f}")
+
+        # Save to CSV if video dir exists
+        if args_cli.video:
+            csv_path = os.path.join(args_cli.video_dir, "action_stats.csv")
+            with open(csv_path, "w") as f:
+                f.write("joint,abs_mean,rms,min,max,mean_offset_rad\n")
+                for i, name in enumerate(JOINT_NAMES):
+                    c = a[:, i]
+                    f.write(f"{name},{np.mean(np.abs(c)):.4f},{np.sqrt(np.mean(c**2)):.4f},"
+                            f"{np.min(c):.4f},{np.max(c):.4f},{c.mean()*0.5:.4f}\n")
+            print(f"[ACT] Saved to {csv_path}")
 
     env.close()
     print("[INFO] Done.")

@@ -72,6 +72,45 @@ ALL_JOINTS = [
 # Custom reward functions — EXACT Berkeley implementations
 ###############################################################################
 
+
+def feet_air_time_berkeley(
+    env: "ManagerBasedRLEnv",
+    command_name: str,
+    sensor_cfg: SceneEntityCfg = SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
+    threshold_min: float = 0.2,
+    threshold_max: float = 0.5,
+) -> torch.Tensor:
+    """Pure Berkeley impact-based air time reward.
+
+    Uses ContactSensor.compute_first_contact() directly.
+    Rewards at the moment of first ground contact after an air phase.
+    """
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    first_contact = contact_sensor.compute_first_contact(env.step_dt)[:, sensor_cfg.body_ids]
+    last_air_time = contact_sensor.data.last_air_time[:, sensor_cfg.body_ids]
+    reward = torch.sum((last_air_time - threshold_min) * first_contact, dim=1)
+    reward = torch.clamp(reward, min=-0.25, max=threshold_max - threshold_min)
+
+    reward *= torch.norm(
+        env.command_manager.get_command(command_name)[:, :2], dim=1
+    ) > 0.1
+
+    return reward
+
+
+def feet_slide_berkeley(
+    env: "ManagerBasedRLEnv",
+    sensor_cfg: SceneEntityCfg,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Berkeley contact-sensor feet slide penalty."""
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    contacts = contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
+    asset: Articulation = env.scene[asset_cfg.name]
+    body_vel = asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2]
+    reward = torch.sum(body_vel.norm(dim=-1) * contacts, dim=1)
+    return reward
+
 def feet_air_time(
     env: "ManagerBasedRLEnv",
     command_name: str,
@@ -369,7 +408,7 @@ BIPED_CFG = ArticulationCfg(
             max_depenetration_velocity=1.0,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            enabled_self_collisions=True,
+            enabled_self_collisions=False,
             solver_position_iteration_count=4,
             solver_velocity_iteration_count=4,
         ),
@@ -386,12 +425,12 @@ BIPED_CFG = ArticulationCfg(
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.0, 0.0, 0.80),
         joint_pos={
-            "right_hip_pitch.*": 0.2,
-            "left_hip_pitch.*": -0.2,
+            "right_hip_pitch.*": 0.08,
+            "left_hip_pitch.*": -0.08,
             ".*hip_roll.*": 0.0,
             ".*hip_yaw.*": 0.0,
-            ".*knee.*": 0.4,
-            ".*foot_pitch.*": -0.2,
+            ".*knee.*": 0.25,
+            ".*foot_pitch.*": -0.17,
             ".*foot_roll.*": 0.0,
         },
         joint_vel={".*": 0.0},
@@ -401,44 +440,44 @@ BIPED_CFG = ArticulationCfg(
         "hip_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_roll.*"],
             effort_limit=50.0, velocity_limit=10.0,
-            stiffness=10.0, damping=3.0, armature=0.0112,
-            friction=0.75,
-            min_delay=3, max_delay=5,
+            stiffness=120.0, damping=3.0, armature=0.0112,
+            friction=0.375,
+            min_delay=0, max_delay=1,
         ),
         "hip_yaw": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
             effort_limit=50.0, velocity_limit=10.0,
-            stiffness=10.0, damping=3.0, armature=0.0112,
-            friction=0.75,
-            min_delay=3, max_delay=5,
+            stiffness=60.0, damping=3.0, armature=0.0112,
+            friction=0.375,
+            min_delay=0, max_delay=1,
         ),
         "hip_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
             effort_limit=100.0, velocity_limit=10.0,
-            stiffness=15.0, damping=3.0, armature=0.0152,
-            friction=1.0,
-            min_delay=3, max_delay=5,
+            stiffness=180.0, damping=3.0, armature=0.0152,
+            friction=0.5,
+            min_delay=0, max_delay=1,
         ),
         "knee": DelayedPDActuatorCfg(
             joint_names_expr=[".*knee.*"],
             effort_limit=100.0, velocity_limit=10.0,
-            stiffness=15.0, damping=3.0, armature=0.024,
-            friction=1.0,
-            min_delay=3, max_delay=5,
+            stiffness=180.0, damping=3.0, armature=0.024,
+            friction=0.5,
+            min_delay=0, max_delay=1,
         ),
         "foot_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=4.0, damping=0.2, armature=0.0112,
-            friction=0.5,
-            min_delay=3, max_delay=5,
+            stiffness=96.0, damping=2.0, armature=0.0112,
+            friction=0.25,
+            min_delay=0, max_delay=1,
         ),
         "foot_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=4.0, damping=0.2, armature=0.001,
-            friction=0.5,
-            min_delay=3, max_delay=5,
+            stiffness=48.0, damping=2.0, armature=0.001,
+            friction=0.25,
+            min_delay=0, max_delay=1,
         ),
     },
 )
@@ -602,13 +641,7 @@ class ActionsCfg:
     joint_pos = base_mdp.JointPositionActionCfg(
         asset_name="robot",
         joint_names=ALL_JOINTS,
-        scale={
-            "right_foot_roll_02": 0.25, "left_foot_roll_02": 0.25,
-            "right_hip_yaw_03": 0.5, "right_hip_roll_03": 0.5, "right_hip_pitch_04": 0.5,
-            "right_knee_04": 0.5, "right_foot_pitch_02": 0.5,
-            "left_hip_yaw_03": 0.5, "left_hip_roll_03": 0.5, "left_hip_pitch_04": 0.5,
-            "left_knee_04": 0.5, "left_foot_pitch_02": 0.5,
-        },
+        scale=0.5,
         preserve_order=True,
         use_default_offset=True,
     )
@@ -646,24 +679,21 @@ class RewardsCfg:
     )
     action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.01)
     feet_air_time = RewTerm(
-        func="biped_env_cfg:feet_air_time_adaptive",
+        func="biped_env_cfg:feet_air_time_berkeley",
         weight=2.0,
         params={
             "command_name": "base_velocity",
-            "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
-            "threshold_min": 0.075,
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
+            "threshold_min": 0.15,
             "threshold_max": 0.5,
-            "height_threshold": 0.063,
-            "switch_step": 500 * 24,  # continuous → impact after 500 iters
         },
     )
     feet_slide = RewTerm(
-        func="biped_env_cfg:feet_slide",
+        func="biped_env_cfg:feet_slide_berkeley",
         weight=-0.25,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
             "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
-            "height_threshold": 0.063,
         },
     )
     undesired_contacts = RewTerm(
@@ -694,13 +724,6 @@ class RewardsCfg:
         weight=-0.01,
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*knee.*"]),
-        },
-    )
-    joint_deviation_foot_roll = RewTerm(
-        func=base_mdp.joint_deviation_l1,
-        weight=-0.1,
-        params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_roll.*"]),
         },
     )
     flat_orientation_l2 = RewTerm(func=base_mdp.flat_orientation_l2, weight=-0.5)
@@ -737,8 +760,8 @@ class EventsCfg:
         func=base_mdp.randomize_rigid_body_material,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "static_friction_range": (0.2, 1.25),
-            "dynamic_friction_range": (0.2, 1.25),
+            "static_friction_range": (0.5, 1.25),
+            "dynamic_friction_range": (0.5, 1.25),
             "restitution_range": (0.0, 0.1),
             "num_buckets": 64,
         },
@@ -863,21 +886,21 @@ class EventsCfg:
 @configclass
 class CurriculumsCfg:
     push_force_levels = CurrTerm(
-        func="biped_env_cfg:modify_push_force",
+        func=modify_push_force,
         params={
             "term_name": "push_robot",
-            "max_velocity": [0.75, 0.75],
-            "interval": 200 * 24,         # check every 200 iterations
+            "max_velocity": [1.5, 1.5],     # max push 1.5 m/s
+            "interval": 200 * 24,
             "starting_step": 1000 * 24,     # start after 1000 iterations
         },
     )
     command_vel = CurrTerm(
-        func="biped_env_cfg:modify_command_velocity",
+        func=modify_command_velocity,
         params={
             "term_name": "track_lin_vel_xy_exp",
-            "max_velocity": [-0.5, 3.0],  # expand +X forward range
-            "interval": 200 * 24,         # check every 200 iterations
-            "starting_step": 5000 * 24,     # start after 3000 iterations
+            "max_velocity": [-0.5, 3.0],
+            "interval": 200 * 24,
+            "starting_step": 5000 * 24,     # start after 5000 iterations
         },
     )
 

@@ -27,6 +27,106 @@ ROS2 Jazzy · RPi 5 · Dual SocketCAN (`can0` + `can1`) · 12 RobStride motors �
 
 Host CAN ID: `0xFD`. Per-motor `direction` (±1) stored in `calibration.yaml`.
 
+## Motor Calibration
+
+Each motor has an arbitrary encoder zero position that doesn't correspond to the URDF joint zero.
+Calibration maps between **encoder space** (raw motor position) and **joint space** (URDF radians).
+
+### Conversion
+
+```
+Joint → Motor (sending commands):
+    motor_cmd = joint_pos * direction + offset
+
+Motor → Joint (reading feedback):
+    joint_pos = (encoder_pos - offset) * direction
+```
+
+Where:
+- `offset`: encoder position when joint is at URDF zero (or URDF lower limit)
+- `direction`: +1 (encoder increases = joint increases) or -1 (inverted)
+
+### Calibration File (`calibration.yaml`)
+
+```yaml
+R_hip_pitch:
+  motor_min: -0.6397    # encoder value at physical min stop
+  motor_max: 2.6328     # encoder value at physical max stop
+  offset: 1.5769        # encoder value at URDF joint zero
+  direction: 1           # +1 normal, -1 inverted
+```
+
+### Offset Calculation
+
+The offset maps the encoder zero to the URDF joint zero. Derived from the physical minimum stop:
+
+**direction = +1 (normal):**
+```
+joint = (encoder - offset) × 1
+
+At motor_min, joint = urdf_lower:
+    urdf_lower = motor_min - offset
+    offset = motor_min - urdf_lower
+```
+
+**direction = -1 (inverted):**
+```
+joint = (encoder - offset) × (-1)
+
+At motor_min, joint = urdf_lower:
+    urdf_lower = -(motor_min - offset)
+    offset = motor_min + urdf_lower
+```
+
+**Example — R_hip_pitch (dir=+1):**
+```
+motor_min = -0.6397,  urdf_lower = -2.217 rad
+offset = -0.6397 - (-2.217) = 1.577
+
+Verify at motor_min:  joint = (-0.6397 - 1.577) × 1 = -2.217 ✓
+Verify at motor_max:  joint = (2.6328 - 1.577) × 1  =  1.056 ≈ 1.047 ✓
+```
+
+**Example — R_knee (dir=-1):**
+```
+motor_min = 2.3175,  urdf_lower = 0.0 rad
+offset = 2.3175 + 0.0 = 2.3175
+
+Verify at motor_min:  joint = (2.3175 - 2.3175) × (-1) = 0.0 ✓
+Verify at motor_max:  joint = (4.925 - 2.3175) × (-1)  = -2.607
+    → abs = 2.607 ≈ 2.705 (URDF upper, difference from mechanical tolerance)
+```
+
+**Ankle motors:** Same formula but `urdf_lower` is replaced by `cmd_lo` — the theoretical
+motor command-space lower limit computed from the linkage transform at URDF corner positions.
+
+### Calibration Procedure
+
+1. `ros2 launch biped_bringup calibrate.launch.py` — starts calibration node
+2. Manually move each joint to both mechanical limits
+3. Node records `motor_min` and `motor_max` from encoder feedback
+4. Offset computed automatically using the formulas above
+5. `direction` preserved from existing calibration (set via `setup_directions.py`)
+6. Ctrl+C saves to `calibration.yaml`
+
+### Ankle Linkage
+
+Ankle motors (foot_top, foot_bottom) operate in **motor command space**, not joint space:
+
+```
+motor_upper =  pitch_sign × K_P × pitch − K_R × roll
+motor_lower = −pitch_sign × K_P × pitch − K_R × roll
+```
+
+Where `K_P=1.276`, `K_R=0.974`, `pitch_sign=+1 (R) / -1 (L)`.
+
+The CAN node handles this transform:
+- **Outbound**: policy sends foot_pitch/roll → CAN node converts to foot_top/foot_bottom motor commands
+- **Inbound**: motor encoders report in motor space → CAN node converts back to foot_pitch/roll for `/joint_states`
+
+Motor command limits for ankles are computed by evaluating all four URDF corner combinations
+of (pitch_min/max, roll_min/max) through the linkage transform.
+
 ## Joint Limits & Defaults
 
 | Joint | Lower | Upper | Default | | Joint | Lower | Upper | Default |
@@ -169,6 +269,34 @@ Training supports `--tanh` flag which adds `nn.Tanh()` after the actor MLP, boun
 
 Without `--tanh`: actions are unbounded (MLP output), clipped to ±1 in deploy code.
 With `--tanh`: actions bounded by architecture. Checkpoint keys have `actor.0.X` prefix (wrapped Sequential).
+
+Full tanh pipeline:
+```
+Phase 1: biped_train_rsl.py --tanh           → teacher (actor.0.X keys)
+Phase 2: biped_distill_rsl.py --tanh          → student (student.0.X keys)
+Phase 3: biped_finetune_student_rsl.py --tanh → student PPO (actor.0.X keys)
+Export:  export_onnx.py --tanh                → ONNX with Tanh op in graph
+Deploy:  policy_node.py                       → no changes (output already bounded)
+```
+
+### Action Statistics
+
+The play script logs per-joint action magnitudes from actual simulation rollout:
+
+```bash
+/isaac-sim/python.sh biped_play_rsl.py --tanh --checkpoint model.pt \
+  --video --video_length 300 --video_dir /results/videos/test --headless
+```
+
+Output at end of playback:
+```
+[ACT] Action statistics over 300 steps (actual rollout):
+Joint              abs    rms    min    max off(rad)
+R_hip_yaw        0.13  0.17  -0.37  +0.38   +0.02
+...
+```
+
+Also saves `action_stats.csv` alongside the video for post-analysis.
 
 ### Topics
 

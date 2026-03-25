@@ -128,6 +128,7 @@ def main():
     log_dir = os.path.join("/results/logs/rsl_rl", train_cfg["experiment_name"])
     os.makedirs(log_dir, exist_ok=True)
 
+
     runner = OnPolicyRunner(env, train_cfg, log_dir=log_dir, device="cuda:0")
 
     if args_cli.tanh:

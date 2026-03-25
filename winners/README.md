@@ -19,7 +19,99 @@
 
 **Metrics (5999):** reward 20.5, vel 0.89, falls 2.4%
 
-**Note:** Unbounded actions — policy saturates actuators. Needs student distillation with bounded actions for deploy.
+**Note:** Unbounded actions — policy saturates actuators. Superseded by V74 (tanh).
+
+## V74 Teacher (active training, Mar 24, 2026)
+
+**Config:**
+- Tanh output layer (actions bounded [-1, +1])
+- Actuator: DelayedPDActuator, delay 0-5ms
+- Kp: hip_roll=120, hip_yaw=60, hip_pitch=180, knee=180, foot_pitch=96, foot_roll=48
+- Kd: hip=3, foot=2 | action_scale=0.5
+- Push curriculum: active, ramped to 3.0 m/s (max)
+- Heavy URDF (0.5kg battery), 8192 envs
+- Symmetry loss ON, Berkeley impact air_time
+
+**Metrics (iter ~17800):** reward 9.8 (under 3.0 m/s push), vel 0.74, 70% survive
+**Pre-push peak (iter ~16400):** reward 21.7, vel 0.92, 99% survive
+
+**Full tanh pipeline verified:** Train → Distill → Fine-tune → Play → ONNX export
+
+### V74 iter 18400 — push-hardened checkpoint
+
+| File | Description |
+|------|-------------|
+| `v74_teacher_18400.pt` | Trained with push curriculum at 3.0 m/s (max) |
+
+| File | Description |
+|------|-------------|
+| `v74_teacher_18400.pt` | Push-hardened checkpoint |
+| `v74_teacher_18400.mp4` | Video under 3.0 m/s push |
+| `v74_teacher_18400_actions.csv` | Per-joint action stats (300-step rollout) |
+
+**Metrics (18400):** reward 11.7, vel ~0.80, falls 23%, push 3.0 m/s
+
+**Action magnitudes (300-step rollout):**
+```
+Joint           abs   rms    min    max   off(rad) Kp
+R_hip_yaw      0.61  0.68  -0.97  +0.78   -0.22   60
+R_hip_roll     0.25  0.30  -0.78  +0.80   +0.02  120
+R_hip_pitch    0.60  0.64  -0.96  +0.22   -0.30  180
+R_knee         0.75  0.80  -0.13  +1.00   +0.38  180
+R_foot_pitch   0.60  0.67  -1.00  +0.98   -0.21   96
+R_foot_roll    0.82  0.85  -1.00  +1.00   +0.26   48
+L_hip_yaw      0.58  0.64  -0.71  +0.99   +0.16   60
+L_hip_roll     0.33  0.41  -0.69  +0.91   +0.01  120
+L_hip_pitch    0.49  0.53  -0.27  +0.86   +0.24  180
+L_knee         0.69  0.75  -0.11  +1.00   +0.34  180
+L_foot_pitch   0.57  0.67  -1.00  +0.98   -0.21   96
+L_foot_roll    0.75  0.80  -1.00  +0.89   -0.24   48
+```
+
+**Training history:** Kp×1.5 at iter 15000, push ramped 0.5→3.0 over iters 16100-17200.
+Policy survived max push for 1200+ iters, survival improved 58%→77%.
+**To resume:** `--resume model_18400.pt --max_iterations 6000 --urdf heavy --tanh`
+
+## V74 Student iter 1000 — Best Deployable Policy
+
+| File | Description |
+|------|-------------|
+| `v74_student_1000.pt` | Phase 3 fine-tune, pre-push peak (reward 19.2) |
+| `v74_student_1000.mp4` | Video (heavy URDF, 300-step rollout) |
+
+**Config:** 45d obs (no base_lin_vel), tanh output, action_scale=0.5
+**Metrics:** reward 19.2, vel 0.81, falls 3%, 97% survive
+**ONNX:** `deploy/v74_student_1000_tanh.onnx` (163KB, 45→12, tanh bounded)
+
+**Deploy:**
+```bash
+ros2 launch biped_bringup bringup.launch.py \
+  can_driver:=can_bus_node_cpp \
+  imu_type:=im10a \
+  onnx_model:=~/biped_lower/deploy/v74_student_1000_tanh.onnx \
+  gain_scale:=0.3
+```
+
+### V74 iter 16600 — saved checkpoint
+
+| File | Description |
+|------|-------------|
+| `v74_teacher_16600.pt` | Trained with push curriculum (1.69 m/s at this point) |
+| `v74_teacher_16600.mp4` | Video with push active |
+
+**Metrics (16600):** reward 20.3, vel 0.89, falls 3.4%, push 1.69 m/s
+**Pre-push peak (16400):** reward 21.7, vel 0.92, falls 0.7%
+
+**Play:**
+```bash
+docker run --gpus all \
+  -e DISPLAY=:2 -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v /home/ubuntu/workspace/biped_locomotion:/workspace/biped_locomotion \
+  -v /home/ubuntu/uploads:/uploads -v /home/ubuntu/results:/results \
+  isaaclab:latest /isaac-sim/python.sh /workspace/biped_locomotion/biped_play_rsl.py \
+  --checkpoint /results/winners/v74_teacher_16600.pt \
+  --num_envs 8 --urdf heavy --tanh --video --global_camera --headless
+```
 
 **Play:**
 ```bash

@@ -214,6 +214,9 @@ docker run --gpus all -d --name biped_play \
 
 # For tanh-trained teacher (add --tanh to match training):
 #   --tanh --checkpoint model.pt --num_envs 8 --global_camera
+# For tanh student (Phase 3):
+#   --tanh --student --checkpoint student_model.pt
+# Action stats (abs/rms/min/max per joint) printed at end + saved as action_stats.csv
 ```
 
 ### Typical Training Timeline (L4 GPU)
