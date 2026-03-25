@@ -1,7 +1,7 @@
-"""Inverse kinematics for biped using pinocchio + URDF.
+"""Inverse kinematics for biped using pinocchio CLIK.
 
-Uses pinocchio's CLIK (Closed-Loop IK) with position-only Jacobian.
-Each leg solved independently using frame Jacobian masking.
+Uses damped least-squares with regularization toward default pose.
+Each leg solved independently using frame Jacobian column masking.
 
 The full trajectory is pre-computed before execution (not real-time).
 Requires: pip install pin
@@ -14,8 +14,6 @@ from typing import Dict, Tuple
 import pinocchio as pin
 
 
-# Deploy joint names — pinocchio joint order is alphabetical from URDF
-# pinocchio joints[1..12]: left first, then right
 PIN_JOINT_TO_DEPLOY = {
     "left_hip_pitch_04": "L_hip_pitch",
     "left_hip_roll_03": "L_hip_roll",
@@ -31,70 +29,64 @@ PIN_JOINT_TO_DEPLOY = {
     "right_foot_roll_02": "R_foot_roll",
 }
 
+# Mirroring map: how to initialize left leg from right leg solution
+# The URDF has mirrored joint frames (π rotations), so joint angles
+# have opposite signs for pitch/yaw, same sign for roll/knee
+MIRROR_MAP = {
+    # right_joint_idx → (left_joint_idx, sign)
+    # Pitch axes are inverted between L/R due to frame π rotation
+    # Roll keeps sign, Yaw inverts
+}
+
 
 class BipedIK:
-    """IK solver using pinocchio CLIK."""
+    """IK solver using pinocchio CLIK with proper L/R initialization."""
 
-    def __init__(self, urdf_path: str, dt: float = 0.1, max_iter: int = 100,
-                 eps: float = 1e-4, reg_weight: float = 0.1):
-        """
-        Args:
-            urdf_path: Path to robot URDF.
-            dt: CLIK step size.
-            max_iter: Max CLIK iterations.
-            eps: Convergence threshold (meters).
-            reg_weight: Regularization weight pulling toward default pose.
-        """
+    def __init__(self, urdf_path: str, dt: float = 0.1, max_iter: int = 150,
+                 eps: float = 5e-4, damping: float = 1e-3):
         self.urdf_path = str(Path(urdf_path).resolve())
         self.model = pin.buildModelFromUrdf(self.urdf_path)
         self.data = self.model.createData()
         self.dt = dt
         self.max_iter = max_iter
         self.eps = eps
-        self.reg_weight = reg_weight
+        self.damping = damping
 
-        # Find foot frame IDs
         self.r_foot_id = self.model.getFrameId("foot_6061")
         self.l_foot_id = self.model.getFrameId("foot_6061_2")
 
-        # Build joint index mapping: pinocchio idx_q → deploy name
+        # Build index maps
         self._pin_to_deploy = {}
         self._deploy_to_pin_idx = {}
-        for i in range(1, self.model.njoints):
-            pin_name = self.model.names[i]
-            deploy_name = PIN_JOINT_TO_DEPLOY.get(pin_name)
-            if deploy_name:
-                idx = self.model.joints[i].idx_q
-                self._pin_to_deploy[idx] = deploy_name
-                self._deploy_to_pin_idx[deploy_name] = idx
-
-        # Right/left leg joint indices in q vector (for Jacobian masking)
         self._r_indices = []
         self._l_indices = []
-        for i in range(1, self.model.njoints):
-            idx = self.model.joints[i].idx_q
-            if self.model.names[i].startswith("right"):
-                self._r_indices.append(idx)
-            else:
-                self._l_indices.append(idx)
 
-        # Default config
-        self._q_default = pin.neutral(self.model)
         for i in range(1, self.model.njoints):
             name = self.model.names[i]
             idx = self.model.joints[i].idx_q
-            if "right_hip_pitch" in name:
-                self._q_default[idx] = 0.08
-            elif "left_hip_pitch" in name:
-                self._q_default[idx] = -0.08
-            elif "knee" in name:
-                self._q_default[idx] = 0.25
-            elif "foot_pitch" in name:
-                self._q_default[idx] = -0.17
+            deploy_name = PIN_JOINT_TO_DEPLOY.get(name)
+            if deploy_name:
+                self._pin_to_deploy[idx] = deploy_name
+                self._deploy_to_pin_idx[deploy_name] = idx
+                if name.startswith("right"):
+                    self._r_indices.append(idx)
+                else:
+                    self._l_indices.append(idx)
+
+        # Default config
+        self._q_default = pin.neutral(self.model)
+        defaults = {
+            "R_hip_pitch": 0.08, "L_hip_pitch": -0.08,
+            "R_knee": 0.25, "L_knee": 0.25,
+            "R_foot_pitch": -0.17, "L_foot_pitch": -0.17,
+        }
+        for name, val in defaults.items():
+            if name in self._deploy_to_pin_idx:
+                self._q_default[self._deploy_to_pin_idx[name]] = val
 
         self._last_q = self._q_default.copy()
 
-        # Standing foot positions (torso-relative)
+        # Standing foot positions
         pin.forwardKinematics(self.model, self.data, self._q_default)
         pin.updateFramePlacements(self.model, self.data)
         self.right_foot_standing = self.data.oMf[self.r_foot_id].translation.copy()
@@ -102,37 +94,36 @@ class BipedIK:
 
     def _solve_one_foot(self, q: np.ndarray, foot_id: int,
                         target_pos: np.ndarray, leg_indices: list) -> np.ndarray:
-        """CLIK for one foot, only moving the specified leg joints."""
+        """Damped least-squares CLIK for one foot."""
         q = q.copy()
         oMdes = pin.SE3(np.eye(3), target_pos)
 
-        for _ in range(self.max_iter):
+        for it in range(self.max_iter):
             pin.forwardKinematics(self.model, self.data, q)
             pin.updateFramePlacements(self.model, self.data)
 
-            dMf = oMdes.inverse() * self.data.oMf[foot_id]
-            err = pin.log(dMf).vector[:3]
+            current_pos = self.data.oMf[foot_id].translation
+            err = target_pos - current_pos
 
             if np.linalg.norm(err) < self.eps:
                 break
 
-            # Full Jacobian, position rows only
             J_full = pin.computeFrameJacobian(
                 self.model, self.data, q, foot_id, pin.LOCAL_WORLD_ALIGNED
             )[:3, :]
 
-            # Mask: only use columns for this leg
-            J_leg = np.zeros_like(J_full)
-            J_leg[:, leg_indices] = J_full[:, leg_indices]
+            # Extract only this leg's columns
+            J_leg = J_full[:, leg_indices]
 
-            # Damped least-squares with regularization toward default pose
-            # min ||J*dq - err||^2 + reg * ||q + dq - q_default||^2
-            n = J_leg.shape[1]
-            reg = self.reg_weight * np.eye(n)
-            A = np.vstack([J_leg, reg])
-            q_err = self._q_default - q  # pull toward default
-            b = np.concatenate([err, self.reg_weight * q_err])
-            dq = np.linalg.lstsq(A, b, rcond=None)[0]
+            # Damped least-squares: dq = J^T (J J^T + λI)^{-1} err
+            JJT = J_leg @ J_leg.T + self.damping * np.eye(3)
+            dq_leg = J_leg.T @ np.linalg.solve(JJT, err)
+
+            # Apply to full q
+            dq = np.zeros(self.model.nv)
+            for i, idx in enumerate(leg_indices):
+                dq[idx] = dq_leg[i]
+
             q = pin.integrate(self.model, q, dq * self.dt)
 
             # Clamp to joint limits
@@ -150,47 +141,53 @@ class BipedIK:
         left_foot_pos: np.ndarray,
         right_foot_pos: np.ndarray,
     ) -> Dict[str, float]:
-        """Solve IK for both legs.
-
-        Foot positions in world frame → torso-relative → IK.
-        Torso XY ≈ CoM XY.
-        """
+        """Solve IK for both legs."""
         # Foot targets relative to torso
-        r_rel = right_foot_pos.copy()
-        r_rel[0] -= com_x
-        r_rel[1] -= com_y
+        # Planner gives world-frame XY + swing Z offset (ground = 0).
+        # IK needs torso-frame coordinates where standing foot Z ≈ -0.74.
+        # Convert: torso-relative = world_foot - torso_pos
+        # torso_pos ≈ (com_x, com_y, 0) in world (torso on ground plane + leg height)
+        # But in torso frame, foot Z = standing_z + swing_offset
+        r_rel = np.array([
+            right_foot_pos[0] - com_x,
+            right_foot_pos[1] - com_y,
+            self.right_foot_standing[2] + right_foot_pos[2],  # standing Z + swing clearance
+        ])
 
-        l_rel = left_foot_pos.copy()
-        l_rel[0] -= com_x
-        l_rel[1] -= com_y
+        l_rel = np.array([
+            left_foot_pos[0] - com_x,
+            left_foot_pos[1] - com_y,
+            self.left_foot_standing[2] + left_foot_pos[2],  # standing Z + swing clearance
+        ])
 
-        # Solve right leg
+        # Solve right leg first
         q = self._solve_one_foot(self._last_q, self.r_foot_id, r_rel, self._r_indices)
-        # Solve left leg (from updated q)
+
+        # Initialize left leg from mirrored right leg solution
+        # All left joint axes are negated relative to right in our URDF,
+        # so q_left = -q_right gives the same physical pose (mirrored).
+        for r_idx, l_idx in zip(self._r_indices, self._l_indices):
+            q[l_idx] = -q[r_idx]
+
+        # Solve left leg (CLIK fine-tunes from mirrored init)
         q = self._solve_one_foot(q, self.l_foot_id, l_rel, self._l_indices)
 
         self._last_q = q.copy()
 
-        # Convert to deploy names
         joints = {}
         for idx, name in self._pin_to_deploy.items():
             joints[name] = float(q[idx])
-
         return joints
 
     def forward_kinematics(self, joints: Dict[str, float]) -> Tuple[np.ndarray, np.ndarray]:
-        """Compute foot positions from joint angles (torso-relative)."""
         q = self._q_default.copy()
         for name, angle in joints.items():
             if name in self._deploy_to_pin_idx:
                 q[self._deploy_to_pin_idx[name]] = angle
-
         pin.forwardKinematics(self.model, self.data, q)
         pin.updateFramePlacements(self.model, self.data)
-        r = self.data.oMf[self.r_foot_id].translation.copy()
-        l = self.data.oMf[self.l_foot_id].translation.copy()
-        return r, l
+        return (self.data.oMf[self.r_foot_id].translation.copy(),
+                self.data.oMf[self.l_foot_id].translation.copy())
 
     def reset(self):
-        """Reset warm-start cache."""
         self._last_q = self._q_default.copy()
