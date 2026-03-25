@@ -1,87 +1,137 @@
-"""Inverse kinematics for biped using ikpy + URDF.
+"""Inverse kinematics for biped using pinocchio + URDF.
 
-Uses ikpy with strict joint bounds to prevent flipped configurations.
-Each leg is an independent 6-DOF serial chain from torso to foot.
+Uses pinocchio's CLIK (Closed-Loop IK) with position-only Jacobian.
+Each leg solved independently using frame Jacobian masking.
 
 The full trajectory is pre-computed before execution (not real-time).
+Requires: pip install pin
 """
 
 import numpy as np
-import ikpy.chain
-import ikpy.link
 from pathlib import Path
 from typing import Dict, Tuple
 
+import pinocchio as pin
 
-RIGHT_NAMES = ["R_hip_pitch", "R_hip_roll", "R_hip_yaw", "R_knee", "R_foot_pitch", "R_foot_roll"]
-LEFT_NAMES = ["L_hip_pitch", "L_hip_roll", "L_hip_yaw", "L_knee", "L_foot_pitch", "L_foot_roll"]
+
+# Deploy joint names — pinocchio joint order is alphabetical from URDF
+# pinocchio joints[1..12]: left first, then right
+PIN_JOINT_TO_DEPLOY = {
+    "left_hip_pitch_04": "L_hip_pitch",
+    "left_hip_roll_03": "L_hip_roll",
+    "left_hip_yaw_03": "L_hip_yaw",
+    "left_knee_04": "L_knee",
+    "left_foot_pitch_02": "L_foot_pitch",
+    "left_foot_roll_02": "L_foot_roll",
+    "right_hip_pitch_04": "R_hip_pitch",
+    "right_hip_roll_03": "R_hip_roll",
+    "right_hip_yaw_03": "R_hip_yaw",
+    "right_knee_04": "R_knee",
+    "right_foot_pitch_02": "R_foot_pitch",
+    "right_foot_roll_02": "R_foot_roll",
+}
 
 
 class BipedIK:
-    """IK solver using ikpy with strict joint bounds per leg."""
+    """IK solver using pinocchio CLIK."""
 
-    def __init__(self, urdf_path: str):
+    def __init__(self, urdf_path: str, dt: float = 0.1, max_iter: int = 100, eps: float = 1e-4):
+        """
+        Args:
+            urdf_path: Path to robot URDF.
+            dt: CLIK step size.
+            max_iter: Max CLIK iterations.
+            eps: Convergence threshold (meters).
+        """
         self.urdf_path = str(Path(urdf_path).resolve())
+        self.model = pin.buildModelFromUrdf(self.urdf_path)
+        self.data = self.model.createData()
+        self.dt = dt
+        self.max_iter = max_iter
+        self.eps = eps
 
-        # Build chains from URDF
-        self._r_chain = ikpy.chain.Chain.from_urdf_file(
-            self.urdf_path,
-            base_elements=["assy_formfg___kd_b_102b_torso_btm", "right_hip_pitch_04"],
-            name="right_leg",
-        )
-        self._l_chain = ikpy.chain.Chain.from_urdf_file(
-            self.urdf_path,
-            base_elements=["assy_formfg___kd_b_102b_torso_btm", "left_hip_pitch_04"],
-            name="left_leg",
-        )
+        # Find foot frame IDs
+        self.r_foot_id = self.model.getFrameId("foot_6061")
+        self.l_foot_id = self.model.getFrameId("foot_6061_2")
 
-        # Override ikpy's bounds with tight walking-range limits
-        # These prevent the solver from finding flipped configurations.
-        # Format: (lower, upper) for each link [base(fixed), hp, hr, hy, kn, fp, fr]
-        # Right leg
-        self._r_bounds = [
-            None,                     # base (fixed)
-            (-0.5, 0.8),             # R hip pitch: small range for walking
-            (-0.3, 0.3),             # R hip roll: small lateral
-            (-0.3, 0.3),             # R hip yaw: small rotation
-            (0.0, 1.2),              # R knee: only flexion, moderate range
-            (-0.5, 0.3),             # R foot pitch
-            (-0.2, 0.2),             # R foot roll
-        ]
-        # Left leg (mirrored pitch)
-        self._l_bounds = [
-            None,
-            (-0.8, 0.5),             # L hip pitch (mirrored)
-            (-0.3, 0.3),
-            (-0.3, 0.3),
-            (0.0, 1.2),
-            (-0.5, 0.3),
-            (-0.2, 0.2),
-        ]
+        # Build joint index mapping: pinocchio idx_q → deploy name
+        self._pin_to_deploy = {}
+        self._deploy_to_pin_idx = {}
+        for i in range(1, self.model.njoints):
+            pin_name = self.model.names[i]
+            deploy_name = PIN_JOINT_TO_DEPLOY.get(pin_name)
+            if deploy_name:
+                idx = self.model.joints[i].idx_q
+                self._pin_to_deploy[idx] = deploy_name
+                self._deploy_to_pin_idx[deploy_name] = idx
 
-        # Apply bounds to chains
-        self._apply_bounds(self._r_chain, self._r_bounds)
-        self._apply_bounds(self._l_chain, self._l_bounds)
+        # Right/left leg joint indices in q vector (for Jacobian masking)
+        self._r_indices = []
+        self._l_indices = []
+        for i in range(1, self.model.njoints):
+            idx = self.model.joints[i].idx_q
+            if self.model.names[i].startswith("right"):
+                self._r_indices.append(idx)
+            else:
+                self._l_indices.append(idx)
 
-        # Default angles: [base, hp, hr, hy, kn, fp, fr]
-        self._r_default = np.array([0, 0.08, 0, 0, 0.25, -0.17, 0])
-        self._l_default = np.array([0, -0.08, 0, 0, 0.25, -0.17, 0])
+        # Default config
+        self._q_default = pin.neutral(self.model)
+        for i in range(1, self.model.njoints):
+            name = self.model.names[i]
+            idx = self.model.joints[i].idx_q
+            if "right_hip_pitch" in name:
+                self._q_default[idx] = 0.08
+            elif "left_hip_pitch" in name:
+                self._q_default[idx] = -0.08
+            elif "knee" in name:
+                self._q_default[idx] = 0.25
+            elif "foot_pitch" in name:
+                self._q_default[idx] = -0.17
 
-        # Warm-start
-        self._last_r = self._r_default.copy()
-        self._last_l = self._l_default.copy()
+        self._last_q = self._q_default.copy()
 
-        # Standing foot positions
-        r_fk = self._r_chain.forward_kinematics(self._r_default)
-        l_fk = self._l_chain.forward_kinematics(self._l_default)
-        self.right_foot_standing = r_fk[:3, 3].copy()
-        self.left_foot_standing = l_fk[:3, 3].copy()
+        # Standing foot positions (torso-relative)
+        pin.forwardKinematics(self.model, self.data, self._q_default)
+        pin.updateFramePlacements(self.model, self.data)
+        self.right_foot_standing = self.data.oMf[self.r_foot_id].translation.copy()
+        self.left_foot_standing = self.data.oMf[self.l_foot_id].translation.copy()
 
-    def _apply_bounds(self, chain, bounds):
-        """Override joint bounds on an ikpy chain."""
-        for i, link in enumerate(chain.links):
-            if bounds[i] is not None and hasattr(link, 'bounds'):
-                link.bounds = bounds[i]
+    def _solve_one_foot(self, q: np.ndarray, foot_id: int,
+                        target_pos: np.ndarray, leg_indices: list) -> np.ndarray:
+        """CLIK for one foot, only moving the specified leg joints."""
+        q = q.copy()
+        oMdes = pin.SE3(np.eye(3), target_pos)
+
+        for _ in range(self.max_iter):
+            pin.forwardKinematics(self.model, self.data, q)
+            pin.updateFramePlacements(self.model, self.data)
+
+            dMf = oMdes.inverse() * self.data.oMf[foot_id]
+            err = pin.log(dMf).vector[:3]
+
+            if np.linalg.norm(err) < self.eps:
+                break
+
+            # Full Jacobian, position rows only
+            J_full = pin.computeFrameJacobian(
+                self.model, self.data, q, foot_id, pin.LOCAL_WORLD_ALIGNED
+            )[:3, :]
+
+            # Mask: only use columns for this leg
+            J_leg = np.zeros_like(J_full)
+            J_leg[:, leg_indices] = J_full[:, leg_indices]
+
+            dq = np.linalg.lstsq(J_leg, err, rcond=None)[0]
+            q = pin.integrate(self.model, q, -dq * self.dt)
+
+            # Clamp to joint limits
+            for idx in leg_indices:
+                lo = self.model.lowerPositionLimit[idx]
+                hi = self.model.upperPositionLimit[idx]
+                q[idx] = np.clip(q[idx], lo, hi)
+
+        return q
 
     def solve(
         self,
@@ -90,48 +140,47 @@ class BipedIK:
         left_foot_pos: np.ndarray,
         right_foot_pos: np.ndarray,
     ) -> Dict[str, float]:
-        """Solve IK for both legs independently.
+        """Solve IK for both legs.
 
         Foot positions in world frame → torso-relative → IK.
+        Torso XY ≈ CoM XY.
         """
-        # Right foot relative to torso (torso XY ≈ CoM XY)
+        # Foot targets relative to torso
         r_rel = right_foot_pos.copy()
         r_rel[0] -= com_x
         r_rel[1] -= com_y
 
-        q_r = self._r_chain.inverse_kinematics(
-            r_rel, initial_position=self._last_r,
-        )
-        self._last_r = q_r.copy()
-
-        # Left foot relative to torso
         l_rel = left_foot_pos.copy()
         l_rel[0] -= com_x
         l_rel[1] -= com_y
 
-        q_l = self._l_chain.inverse_kinematics(
-            l_rel, initial_position=self._last_l,
-        )
-        self._last_l = q_l.copy()
+        # Solve right leg
+        q = self._solve_one_foot(self._last_q, self.r_foot_id, r_rel, self._r_indices)
+        # Solve left leg (from updated q)
+        q = self._solve_one_foot(q, self.l_foot_id, l_rel, self._l_indices)
 
-        # Build output (skip base link at index 0)
+        self._last_q = q.copy()
+
+        # Convert to deploy names
         joints = {}
-        for i, name in enumerate(RIGHT_NAMES):
-            joints[name] = float(q_r[i + 1])
-        for i, name in enumerate(LEFT_NAMES):
-            joints[name] = float(q_l[i + 1])
+        for idx, name in self._pin_to_deploy.items():
+            joints[name] = float(q[idx])
 
         return joints
 
     def forward_kinematics(self, joints: Dict[str, float]) -> Tuple[np.ndarray, np.ndarray]:
-        """Compute foot positions (torso-relative)."""
-        q_r = np.array([0] + [joints.get(n, 0) for n in RIGHT_NAMES])
-        q_l = np.array([0] + [joints.get(n, 0) for n in LEFT_NAMES])
-        r_fk = self._r_chain.forward_kinematics(q_r)[:3, 3]
-        l_fk = self._l_chain.forward_kinematics(q_l)[:3, 3]
-        return r_fk, l_fk
+        """Compute foot positions from joint angles (torso-relative)."""
+        q = self._q_default.copy()
+        for name, angle in joints.items():
+            if name in self._deploy_to_pin_idx:
+                q[self._deploy_to_pin_idx[name]] = angle
+
+        pin.forwardKinematics(self.model, self.data, q)
+        pin.updateFramePlacements(self.model, self.data)
+        r = self.data.oMf[self.r_foot_id].translation.copy()
+        l = self.data.oMf[self.l_foot_id].translation.copy()
+        return r, l
 
     def reset(self):
-        """Reset warm-start caches."""
-        self._last_r = self._r_default.copy()
-        self._last_l = self._l_default.copy()
+        """Reset warm-start cache."""
+        self._last_q = self._q_default.copy()
