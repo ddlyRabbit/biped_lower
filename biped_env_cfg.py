@@ -329,9 +329,10 @@ class RewardsCfg:
                 body_names=[
                     "assy_formfg___kd_b_102b_torso_btm",
                     "kd_d_102r_6061", "kd_d_102l_6061",
-                    "kd_d_201r_6061", "kd_d_201l_6061",
+                    "kd_d_201r_6061", "rs03",
                     "kd_d_301r_6061", "kd_d_301l_6061",
                     "kd_d_401r_6061", "kd_d_401l_6061",
+                    "arb_uj111_cross_bearing", "arb_uj111_cross_bearing_2",
                 ],
             ),
             "threshold": 1.0,
