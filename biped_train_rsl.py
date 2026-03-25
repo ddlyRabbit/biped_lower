@@ -1,12 +1,12 @@
-"""Train biped V58 — +X forward, dual URDF (heavy/light).
+"""Train biped — Unitree G1-style rewards, obs, model.
 
-PPO config (Berkeley-matched):
-  - actor/critic: [128, 128, 128], ELU
+PPO config:
+  - actor/critic: [512, 256, 128], ELU
   - init_noise_std: 1.0
-  - entropy_coef: 0.005
+  - entropy_coef: 0.01
   - LR: 1e-3 (adaptive)
-  - max_iterations: 15000
-  - save_interval: 200
+  - max_iterations: 50000
+  - save_interval: 100
 """
 
 import argparse
@@ -19,18 +19,19 @@ from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--num_envs", type=int, default=4096)
-parser.add_argument("--max_iterations", type=int, default=15000)
+parser.add_argument("--max_iterations", type=int, default=50000)
 parser.add_argument("--seed", type=int, default=42)
 parser.add_argument("--resume", type=str, default=None)
 parser.add_argument("--rough", action="store_true", help="Use rough terrain config")
 parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"], help="URDF variant")
-parser.add_argument("--tanh", action="store_true", help="Add tanh output layer to actor (bounds actions to [-1, +1])")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 import gymnasium as gym
+
+
 def apply_urdf_selection(env_cfg, urdf_choice):
     """Override URDF path based on --urdf flag."""
     from biped_env_cfg import URDF_HEAVY, URDF_LIGHT
@@ -40,6 +41,7 @@ def apply_urdf_selection(env_cfg, urdf_choice):
     else:
         env_cfg.scene.robot.spawn.asset_path = URDF_HEAVY
         print(f"[INFO] Using heavy URDF: {URDF_HEAVY}")
+
 
 import torch
 
@@ -65,14 +67,14 @@ gym.register(
     kwargs={"env_cfg_entry_point": "biped_rough_env_cfg:BipedRoughEnvCfg"},
 )
 
-# EXACT Berkeley Flat PPO config
+# G1-style PPO config
 TRAIN_CFG = {
     "seed": 42,
     "runner_class_name": "OnPolicyRunner",
     "num_steps_per_env": 24,
-    "max_iterations": 15000,
-    "save_interval": 200,
-    "experiment_name": "biped_flat_v52",
+    "max_iterations": 50000,
+    "save_interval": 100,
+    "experiment_name": "biped_unitree_g1",
     "empirical_normalization": False,
     "obs_groups": {
         "policy": ["policy"],
@@ -81,8 +83,8 @@ TRAIN_CFG = {
     "policy": {
         "class_name": "ActorCritic",
         "init_noise_std": 1.0,
-        "actor_hidden_dims": [128, 128, 128],
-        "critic_hidden_dims": [128, 128, 128],
+        "actor_hidden_dims": [512, 256, 128],
+        "critic_hidden_dims": [512, 256, 128],
         "activation": "elu",
     },
     "algorithm": {
@@ -90,7 +92,7 @@ TRAIN_CFG = {
         "value_loss_coef": 1.0,
         "use_clipped_value_loss": True,
         "clip_param": 0.2,
-        "entropy_coef": 0.005,
+        "entropy_coef": 0.01,
         "num_learning_epochs": 5,
         "num_mini_batches": 4,
         "learning_rate": 1.0e-3,
@@ -107,11 +109,11 @@ def main():
     if args_cli.rough:
         env_cfg = BipedRoughEnvCfg()
         env_id = "Biped-Rough-v0"
-        experiment = "biped_rough_v57"
+        experiment = "biped_rough_unitree_g1"
     else:
         env_cfg = BipedFlatEnvCfg()
         env_id = "Biped-Flat-v0"
-        experiment = "biped_flat_v52"
+        experiment = "biped_unitree_g1"
 
     env_cfg.scene.num_envs = args_cli.num_envs
     env_cfg.seed = args_cli.seed
@@ -128,14 +130,7 @@ def main():
     log_dir = os.path.join("/results/logs/rsl_rl", train_cfg["experiment_name"])
     os.makedirs(log_dir, exist_ok=True)
 
-
     runner = OnPolicyRunner(env, train_cfg, log_dir=log_dir, device="cuda:0")
-
-    if args_cli.tanh:
-        import torch.nn as nn
-        original_actor = runner.alg.policy.actor
-        runner.alg.policy.actor = nn.Sequential(original_actor, nn.Tanh())
-        print("[INFO] Tanh output layer added to actor — actions bounded to [-1, +1]")
 
     if args_cli.resume:
         print(f"[INFO] Resuming from: {args_cli.resume}")

@@ -1,65 +1,39 @@
-"""Observation vector builder — maps real sensor data to 45d policy input.
+"""Observation vector builder — G1-style with history stacking.
 
-Must match training observation order EXACTLY:
-  [0-2]   base_ang_vel (3d)     ← IMU gyro (rad/s, body frame)
-  [3-5]   projected_gravity (3d) ← IMU gravity normalized to unit vector
-  [6-8]   velocity_commands (3d) ← cmd_vel (lin_x, lin_y, ang_z)
-  [9-14]  hip_pos (6d)           ← joint_pos_rel: L_roll,R_roll,L_yaw,R_yaw,L_pitch,R_pitch
-  [15-16] knee_pos (2d)          ← joint_pos_rel: L_knee, R_knee
-  [17-18] foot_pitch_pos (2d)    ← joint_pos_rel: L_foot_pitch, R_foot_pitch
-  [19-20] foot_roll_pos (2d)     ← joint_pos_rel: L_foot_roll, R_foot_roll
-  [21-32] joint_vel (12d)        ← all joint velocities (Isaac runtime order)
-  [33-44] last_action (12d)      ← previous policy output
+Obs per frame (45d):
+  [0-2]   base_ang_vel * 0.2   (3d)  ← IMU gyro (rad/s, body frame)
+  [3-5]   projected_gravity    (3d)  ← IMU gravity normalized
+  [6-8]   velocity_commands    (3d)  ← cmd_vel (lin_x, lin_y, ang_z)
+  [9-20]  joint_pos_rel        (12d) ← joint positions - defaults (Isaac alphabetical)
+  [21-32] joint_vel_rel * 0.05 (12d) ← joint velocities (Isaac alphabetical)
+  [33-44] last_action          (12d) ← previous policy output (raw, before scaling)
+
+History: 5 frames, newest first → total obs = 5 × 45 = 225
+Action: scale=0.25, uniform across all joints, no tanh
 """
 
 import numpy as np
-from typing import Dict, Optional
+from collections import deque
+from typing import Dict
 
 
-# Isaac runtime joint order (from training — verified via joint_order.txt)
-ISAAC_JOINT_ORDER = [
-    "L_hip_pitch", "R_hip_pitch",
-    "L_hip_roll", "R_hip_roll",
-    "L_hip_yaw", "R_hip_yaw",
-    "L_knee", "R_knee",
-    "L_foot_pitch", "R_foot_pitch",
-    "L_foot_roll", "R_foot_roll",
+# Isaac alphabetical joint order (matches training with joint_names=[".*"])
+JOINT_ORDER = [
+    "L_foot_pitch", "L_foot_roll", "L_hip_pitch", "L_hip_roll", "L_hip_yaw", "L_knee",
+    "R_foot_pitch", "R_foot_roll", "R_hip_pitch", "R_hip_roll", "R_hip_yaw", "R_knee",
 ]
 
-# Observation group joint order (from biped_env_cfg.py obs config)
-# hip_pos uses regex [".*hip_roll.*", ".*hip_yaw.*", ".*hip_pitch.*"]
-# Isaac resolves to: L_roll, R_roll, L_yaw, R_yaw, L_pitch, R_pitch
-HIP_POS_ORDER = ["L_hip_roll", "R_hip_roll", "L_hip_yaw", "R_hip_yaw", "L_hip_pitch", "R_hip_pitch"]
-KNEE_POS_ORDER = ["L_knee", "R_knee"]
-FOOT_PITCH_ORDER = ["L_foot_pitch", "R_foot_pitch"]
-FOOT_ROLL_ORDER = ["L_foot_roll", "R_foot_roll"]
-
-# Default joint positions (+X forward, from biped_env_cfg.py)
+# Default joint positions (from biped_env_cfg.py init_state)
 DEFAULT_POSITIONS = {
-    "L_hip_pitch": -0.08, "R_hip_pitch":  0.08,
-    "L_hip_roll":   0.0,  "R_hip_roll":   0.0,
-    "L_hip_yaw":    0.0,  "R_hip_yaw":    0.0,
-    "L_knee":       0.25, "R_knee":       0.25,
-    "L_foot_pitch": -0.17,"R_foot_pitch": -0.17,
-    "L_foot_roll":  0.0,  "R_foot_roll":  0.0,
+    "L_foot_pitch": -0.17, "L_foot_roll": 0.0,
+    "L_hip_pitch": -0.08, "L_hip_roll": 0.0, "L_hip_yaw": 0.0, "L_knee": 0.25,
+    "R_foot_pitch": -0.17, "R_foot_roll": 0.0,
+    "R_hip_pitch": 0.08, "R_hip_roll": 0.0, "R_hip_yaw": 0.0, "R_knee": 0.25,
 }
 
-# Action scale (from training config, per-joint)
-ACTION_SCALE = 0.5
-ACTION_SCALE_OVERRIDES = {
-    "R_foot_roll": 0.25,
-    "L_foot_roll": 0.25,
-}
+# Action scale (uniform for all joints)
+ACTION_SCALE = 0.25
 
-# Action output order from ONNX (must match training ALL_JOINTS with preserve_order=True)
-ACTION_ORDER = [
-    "R_hip_yaw", "R_hip_roll", "R_hip_pitch",
-    "R_knee", "R_foot_pitch", "R_foot_roll",
-    "L_hip_yaw", "L_hip_roll", "L_hip_pitch",
-    "L_knee", "L_foot_pitch", "L_foot_roll",
-]
-
-# Default PD gains (from training config, halved Berkeley values)
 # Deploy PD gains — matched to training (same Kp/Kd as sim)
 DEFAULT_GAINS = {
     "L_hip_pitch": (200.0, 7.5), "R_hip_pitch": (200.0, 7.5),
@@ -70,12 +44,21 @@ DEFAULT_GAINS = {
     "L_foot_roll":  (30.0, 2.0), "R_foot_roll":  (30.0, 2.0),
 }
 
+FRAME_DIM = 45
+HISTORY_LENGTH = 5
+OBS_DIM = FRAME_DIM * HISTORY_LENGTH  # 225
+
 
 class ObsBuilder:
-    """Build 45d observation vector from sensor data."""
+    """Build 225d observation vector (5 frames × 45d) from sensor data."""
 
     def __init__(self):
         self._last_action = np.zeros(12, dtype=np.float32)
+        # History buffer: deque of frames, newest appended last
+        self._history: deque = deque(maxlen=HISTORY_LENGTH)
+        # Initialize with zero frames
+        for _ in range(HISTORY_LENGTH):
+            self._history.append(np.zeros(FRAME_DIM, dtype=np.float32))
 
     def build(self,
               gyro: np.ndarray,             # (3,) rad/s body frame
@@ -84,55 +67,49 @@ class ObsBuilder:
               joint_positions: Dict[str, float],  # {name: rad}
               joint_velocities: Dict[str, float],  # {name: rad/s}
               ) -> np.ndarray:
-        """Build observation vector. Returns (45,) float32 array."""
+        """Build observation vector. Returns (225,) float32 array."""
 
-        obs = np.zeros(45, dtype=np.float32)
+        frame = np.zeros(FRAME_DIM, dtype=np.float32)
 
-        # [0-2] base_ang_vel
-        obs[0:3] = gyro
+        # [0-2] base_ang_vel * 0.2
+        frame[0:3] = gyro * 0.2
 
         # [3-5] projected_gravity
         # BNO085 SH2_GRAVITY: upright → (0, 0, +9.81) (points up)
         # Isaac projected_gravity: upright → (0, 0, -1) (points down)
-        # BNO085 X/Y axes are inverted relative to Isaac convention,
-        # so we keep X/Y sign (no negate) and only negate Z.
         g_norm = np.linalg.norm(gravity)
         if g_norm > 0.1:
             g_unit = gravity / g_norm
-            obs[3:6] = [g_unit[0], g_unit[1], -g_unit[2]]
+            frame[3:6] = [g_unit[0], g_unit[1], -g_unit[2]]
         else:
-            obs[3:6] = [0.0, 0.0, -1.0]  # fallback (Isaac convention)
+            frame[3:6] = [0.0, 0.0, -1.0]
 
         # [6-8] velocity_commands
-        obs[6:9] = cmd_vel
+        frame[6:9] = cmd_vel
 
-        # [9-14] hip_pos (relative to default)
-        for i, name in enumerate(HIP_POS_ORDER):
-            obs[9 + i] = joint_positions.get(name, 0.0) - DEFAULT_POSITIONS[name]
+        # [9-20] joint_pos_rel (Isaac alphabetical order)
+        for i, name in enumerate(JOINT_ORDER):
+            frame[9 + i] = joint_positions.get(name, 0.0) - DEFAULT_POSITIONS[name]
 
-        # [15-16] knee_pos
-        for i, name in enumerate(KNEE_POS_ORDER):
-            obs[15 + i] = joint_positions.get(name, 0.0) - DEFAULT_POSITIONS[name]
-
-        # [17-18] foot_pitch_pos
-        for i, name in enumerate(FOOT_PITCH_ORDER):
-            obs[17 + i] = joint_positions.get(name, 0.0) - DEFAULT_POSITIONS[name]
-
-        # [19-20] foot_roll_pos
-        for i, name in enumerate(FOOT_ROLL_ORDER):
-            obs[19 + i] = joint_positions.get(name, 0.0) - DEFAULT_POSITIONS[name]
-
-        # [21-32] joint_vel (Isaac runtime order)
-        for i, name in enumerate(ISAAC_JOINT_ORDER):
-            obs[21 + i] = joint_velocities.get(name, 0.0)
+        # [21-32] joint_vel_rel * 0.05 (Isaac alphabetical order)
+        for i, name in enumerate(JOINT_ORDER):
+            frame[21 + i] = joint_velocities.get(name, 0.0) * 0.05
 
         # [33-44] last_action
-        obs[33:45] = self._last_action
+        frame[33:45] = self._last_action
+
+        # Append current frame to history
+        self._history.append(frame)
+
+        # Stack: newest first, oldest last
+        obs = np.zeros(OBS_DIM, dtype=np.float32)
+        for i, hist_frame in enumerate(reversed(self._history)):
+            obs[i * FRAME_DIM : (i + 1) * FRAME_DIM] = hist_frame
 
         return obs
 
     def update_last_action(self, action: np.ndarray):
-        """Store action for next observation (before scaling)."""
+        """Store raw action (before scaling) for next observation."""
         self._last_action = action.copy()
 
     @staticmethod
@@ -140,10 +117,9 @@ class ObsBuilder:
         """Convert policy output to joint position targets.
 
         target[i] = default_pos[i] + action[i] * ACTION_SCALE
-        Action order matches training ALL_JOINTS (ONNX output order).
+        Action order matches Isaac alphabetical (JOINT_ORDER).
         """
         targets = {}
-        for i, name in enumerate(ACTION_ORDER):
-            scale = ACTION_SCALE_OVERRIDES.get(name, ACTION_SCALE)
-            targets[name] = DEFAULT_POSITIONS[name] + float(action[i]) * scale
+        for i, name in enumerate(JOINT_ORDER):
+            targets[name] = DEFAULT_POSITIONS[name] + float(action[i]) * ACTION_SCALE
         return targets
