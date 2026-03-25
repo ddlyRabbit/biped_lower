@@ -35,13 +35,15 @@ PIN_JOINT_TO_DEPLOY = {
 class BipedIK:
     """IK solver using pinocchio CLIK."""
 
-    def __init__(self, urdf_path: str, dt: float = 0.1, max_iter: int = 100, eps: float = 1e-4):
+    def __init__(self, urdf_path: str, dt: float = 0.1, max_iter: int = 100,
+                 eps: float = 1e-4, reg_weight: float = 0.1):
         """
         Args:
             urdf_path: Path to robot URDF.
             dt: CLIK step size.
             max_iter: Max CLIK iterations.
             eps: Convergence threshold (meters).
+            reg_weight: Regularization weight pulling toward default pose.
         """
         self.urdf_path = str(Path(urdf_path).resolve())
         self.model = pin.buildModelFromUrdf(self.urdf_path)
@@ -49,6 +51,7 @@ class BipedIK:
         self.dt = dt
         self.max_iter = max_iter
         self.eps = eps
+        self.reg_weight = reg_weight
 
         # Find foot frame IDs
         self.r_foot_id = self.model.getFrameId("foot_6061")
@@ -122,8 +125,15 @@ class BipedIK:
             J_leg = np.zeros_like(J_full)
             J_leg[:, leg_indices] = J_full[:, leg_indices]
 
-            dq = np.linalg.lstsq(J_leg, err, rcond=None)[0]
-            q = pin.integrate(self.model, q, -dq * self.dt)
+            # Damped least-squares with regularization toward default pose
+            # min ||J*dq - err||^2 + reg * ||q + dq - q_default||^2
+            n = J_leg.shape[1]
+            reg = self.reg_weight * np.eye(n)
+            A = np.vstack([J_leg, reg])
+            q_err = self._q_default - q  # pull toward default
+            b = np.concatenate([err, self.reg_weight * q_err])
+            dq = np.linalg.lstsq(A, b, rcond=None)[0]
+            q = pin.integrate(self.model, q, dq * self.dt)
 
             # Clamp to joint limits
             for idx in leg_indices:
