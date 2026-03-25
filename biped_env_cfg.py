@@ -682,7 +682,7 @@ class RewardsCfg:
     )
     joint_deviation_hip = RewTerm(
         func=base_mdp.joint_deviation_l1,
-        weight=-0.1,
+        weight=-0.3,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot", joint_names=[".*hip_roll.*", ".*hip_yaw.*"],
@@ -698,7 +698,7 @@ class RewardsCfg:
     )
     joint_deviation_foot_roll = RewTerm(
         func=base_mdp.joint_deviation_l1,
-        weight=-0.1,
+        weight=-0.3,
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_roll.*"]),
         },
