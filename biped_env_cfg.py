@@ -804,8 +804,8 @@ class EventsCfg:
         func=base_mdp.randomize_rigid_body_material,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "static_friction_range": (0.5, 1.25),
-            "dynamic_friction_range": (0.5, 1.25),
+            "static_friction_range": (0.3, 1.0),
+            "dynamic_friction_range": (0.3, 1.0),
             "restitution_range": (0.0, 0.1),
             "num_buckets": 64,
         },
