@@ -21,6 +21,7 @@ setup(
             'policy_node = biped_control.policy_node:main',
             'safety_node = biped_control.safety_node:main',
             'state_machine_node = biped_control.state_machine_node:main',
+            'zmp_trajectory_node = biped_control.zmp.zmp_trajectory_node:main',
         ],
     },
 )

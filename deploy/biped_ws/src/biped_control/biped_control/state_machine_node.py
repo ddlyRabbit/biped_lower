@@ -1,4 +1,4 @@
-"""State machine node — IDLE → STAND → WALK / SIM_WALK / WIGGLE_SEQ / WIGGLE_ALL → ESTOP.
+"""State machine node — IDLE → STAND → WALK / SIM_WALK / WALK_ZMP / WALK_SIM_ZMP / WIGGLE_SEQ / WIGGLE_ALL → ESTOP.
 
 Manages robot lifecycle transitions. Publishes current state.
 Reads safety status and gamepad buttons for transitions.
@@ -159,7 +159,11 @@ class StateMachineNode(Node):
             self._transition("WALK")
         elif cmd == "SIM_WALK" and self._state == "STAND":
             self._transition("SIM_WALK")
-        elif cmd == "STOP" and self._state in ("WALK", "SIM_WALK", "WIGGLE_SEQ", "WIGGLE_ALL"):
+        elif cmd == "WALK_ZMP" and self._state == "STAND":
+            self._transition("WALK_ZMP")
+        elif cmd == "WALK_SIM_ZMP" and self._state == "STAND":
+            self._transition("WALK_SIM_ZMP")
+        elif cmd == "STOP" and self._state in ("WALK", "SIM_WALK", "WALK_ZMP", "WALK_SIM_ZMP", "WIGGLE_SEQ", "WIGGLE_ALL"):
             self._transition("STAND")
         elif cmd == "WIGGLE_SEQ" and self._state == "STAND":
             self._transition("WIGGLE_SEQ")

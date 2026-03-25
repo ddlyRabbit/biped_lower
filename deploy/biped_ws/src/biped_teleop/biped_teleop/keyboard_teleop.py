@@ -35,6 +35,8 @@ BANNER = """
 │   SPACE : IDLE → STAND (enable motors)   │
 │   g     : STAND → WALK (policy active)   │
 │   v     : STAND → SIM_WALK (viz only)    │
+│   z     : STAND → WALK_SIM_ZMP (viz)     │
+│   Z     : STAND → WALK_ZMP (real motors) │
 │   t     : STAND → WIGGLE_SEQ             │
 │   y     : STAND → WIGGLE_ALL             │
 │   b     : any → STAND (stop walk/wiggle) │
@@ -112,10 +114,12 @@ class KeyboardTeleop(Node):
         # State transition key map
         self._state_keys = {
             ' ': 'START',       # IDLE → STAND
-            'g': 'WALK',        # STAND → WALK
-            'v': 'SIM_WALK',    # STAND → SIM_WALK
-            't': 'WIGGLE_SEQ',  # STAND → WIGGLE_SEQ
-            'y': 'WIGGLE_ALL',  # STAND → WIGGLE_ALL
+            'g': 'WALK',            # STAND → WALK
+            'v': 'SIM_WALK',        # STAND → SIM_WALK
+            'z': 'WALK_SIM_ZMP',    # STAND → WALK_SIM_ZMP (viz only)
+            'Z': 'WALK_ZMP',        # STAND → WALK_ZMP (real motors)
+            't': 'WIGGLE_SEQ',      # STAND → WIGGLE_SEQ
+            'y': 'WIGGLE_ALL',      # STAND → WIGGLE_ALL
             'b': 'STOP',        # any → STAND
         }
 
