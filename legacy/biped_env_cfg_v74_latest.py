@@ -73,6 +73,29 @@ ALL_JOINTS = [
 ###############################################################################
 
 
+def stand_still(
+    env: "ManagerBasedRLEnv",
+    command_name: str,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot", body_names="foot_6061.*"),
+    vel_threshold: float = 0.1,
+) -> torch.Tensor:
+    """Penalize foot body velocity when commanded velocity is near zero.
+
+    Encourages the robot to stand still and not shuffle feet.
+    G1-style contact_no_vel.
+    """
+    cmd = env.command_manager.get_command(command_name)
+    cmd_norm = torch.norm(cmd[:, :2], dim=1)
+    near_zero = cmd_norm < vel_threshold  # True when should stand still
+
+    asset: Articulation = env.scene[asset_cfg.name]
+    foot_vel = asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2]  # XY velocity
+    foot_speed = torch.sum(foot_vel.norm(dim=-1), dim=1)  # sum over both feet
+
+    # Only penalize when cmd is near zero
+    return foot_speed * near_zero.float()
+
+
 def feet_air_time_berkeley(
     env: "ManagerBasedRLEnv",
     command_name: str,
@@ -680,11 +703,11 @@ class RewardsCfg:
     action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.01)
     feet_air_time = RewTerm(
         func="biped_env_cfg:feet_air_time_berkeley",
-        weight=2.0,
+        weight=10.0,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
-            "threshold_min": 0.15,
+            "threshold_min": 0.2,
             "threshold_max": 0.5,
         },
     )
@@ -724,6 +747,21 @@ class RewardsCfg:
         weight=-0.01,
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*knee.*"]),
+        },
+    )
+    joint_deviation_foot_roll = RewTerm(
+        func=base_mdp.joint_deviation_l1,
+        weight=-0.3,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_roll.*"]),
+        },
+    )
+    stand_still = RewTerm(
+        func="biped_env_cfg:stand_still",
+        weight=-0.2,
+        params={
+            "command_name": "base_velocity",
+            "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
         },
     )
     flat_orientation_l2 = RewTerm(func=base_mdp.flat_orientation_l2, weight=-0.5)
@@ -889,7 +927,7 @@ class CurriculumsCfg:
         func=modify_push_force,
         params={
             "term_name": "push_robot",
-            "max_velocity": [1.5, 1.5],     # max push 1.5 m/s
+            "max_velocity": [0.75, 0.75],     # max push 0.75 m/s
             "interval": 200 * 24,
             "starting_step": 1000 * 24,     # start after 1000 iterations
         },
