@@ -260,7 +260,7 @@ class ActionsCfg:
 @configclass
 class RewardsCfg:
     track_lin_vel_xy = RewTerm(
-        func=base_mdp.track_lin_vel_xy_yaw_frame_exp,
+        func="biped_mdp:track_lin_vel_xy_yaw_frame_exp",
         weight=1.0,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
@@ -303,7 +303,7 @@ class RewardsCfg:
         },
     )
     feet_slide = RewTerm(
-        func=base_mdp.feet_slide,
+        func="biped_mdp:feet_slide",
         weight=-0.2,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
