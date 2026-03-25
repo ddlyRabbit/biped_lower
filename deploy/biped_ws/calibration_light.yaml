@@ -1,0 +1,60 @@
+R_hip_pitch:
+  motor_min: -0.6397
+  motor_max: 2.6328
+  offset: 1.5769
+  direction: 1
+R_hip_roll:
+  motor_min: -2.1101
+  motor_max: 0.3735
+  offset: 0.1589
+  direction: 1
+R_hip_yaw:
+  motor_min: 2.4276
+  motor_max: 5.5831
+  offset: 3.9984
+  direction: 1
+R_knee:
+  motor_min: 2.3175
+  motor_max: 4.925
+  offset: 2.3175
+  direction: -1
+R_foot_top:
+  motor_min: 1.6583
+  motor_max: 3.9344
+  offset: 2.5811
+  direction: -1
+R_foot_bottom:
+  motor_min: -0.15
+  motor_max: 2.033
+  offset: 1.2182
+  direction: -1
+L_hip_pitch:
+  motor_min: -0.861
+  motor_max: 2.4245
+  offset: 0.1862
+  direction: 1
+L_hip_roll:
+  motor_min: 4.9384
+  motor_max: 7.427
+  offset: 5.1479
+  direction: 1
+L_hip_yaw:
+  motor_min: 3.0017
+  motor_max: 6.1622
+  offset: 4.5725
+  direction: 1
+L_knee:
+  motor_min: 0.2941
+  motor_max: 2.8882
+  offset: 0.2941
+  direction: 1
+L_foot_top:
+  motor_min: -0.7287
+  motor_max: 1.483
+  offset: 0.6395
+  direction: -1
+L_foot_bottom:
+  motor_min: 1.0171
+  motor_max: 3.2648
+  offset: 1.9399
+  direction: -1
