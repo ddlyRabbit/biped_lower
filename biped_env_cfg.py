@@ -703,6 +703,14 @@ class RewardsCfg:
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_roll.*"]),
         },
     )
+    stand_still = RewTerm(
+        func="biped_env_cfg:stand_still",
+        weight=-0.2,
+        params={
+            "command_name": "base_velocity",
+            "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
+        },
+    )
     flat_orientation_l2 = RewTerm(func=base_mdp.flat_orientation_l2, weight=-0.5)
     dof_pos_limits = RewTerm(func=base_mdp.joint_pos_limits, weight=-1.0)
 
