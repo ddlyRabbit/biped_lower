@@ -1,0 +1,6 @@
+# Deploy dependencies for biped_lower (Pi, arm64, Python 3.12)
+numpy
+scipy
+pin              # pinocchio — analytical robotics (FK, IK, dynamics)
+ikpy             # backup IK (not used currently, pinocchio preferred)
+onnxruntime      # ONNX policy inference
