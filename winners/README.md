@@ -72,6 +72,26 @@ L_foot_roll    0.75  0.80  -1.00  +0.89   -0.24   48
 Policy survived max push for 1200+ iters, survival improved 58%→77%.
 **To resume:** `--resume model_18400.pt --max_iterations 6000 --urdf heavy --tanh`
 
+## V74 Student iter 1000 — Best Deployable Policy
+
+| File | Description |
+|------|-------------|
+| `v74_student_1000.pt` | Phase 3 fine-tune, pre-push peak (reward 19.2) |
+| `v74_student_1000.mp4` | Video (heavy URDF, 300-step rollout) |
+
+**Config:** 45d obs (no base_lin_vel), tanh output, action_scale=0.5
+**Metrics:** reward 19.2, vel 0.81, falls 3%, 97% survive
+**ONNX:** `deploy/v74_student_1000_tanh.onnx` (163KB, 45→12, tanh bounded)
+
+**Deploy:**
+```bash
+ros2 launch biped_bringup bringup.launch.py \
+  can_driver:=can_bus_node_cpp \
+  imu_type:=im10a \
+  onnx_model:=~/biped_lower/deploy/v74_student_1000_tanh.onnx \
+  gain_scale:=0.3
+```
+
 ### V74 iter 16600 — saved checkpoint
 
 | File | Description |
