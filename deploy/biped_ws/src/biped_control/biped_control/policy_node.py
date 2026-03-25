@@ -190,15 +190,17 @@ class PolicyNode(Node):
                 f'hip_pos={obs[9:15]} knee={obs[15:17]} '
                 f'foot_p={obs[17:19]} foot_r={obs[19:21]}'
             )
-            from biped_control.obs_builder import ACTION_ORDER
             self.get_logger().info(
                 f'[ACT] raw={actions[:6]} | {actions[6:12]}'
             )
-            tgt_str = ' '.join(f'{n}={targets[n]:+.3f}' for n in ACTION_ORDER)
-            self.get_logger().info(f'[TGT] {tgt_str}')
 
         # Convert to position targets
         targets = ObsBuilder.action_to_positions(actions)
+
+        if self._debug_timer % (int(self._rate) * 10) == 1:
+            from biped_control.obs_builder import ACTION_ORDER
+            tgt_str = ' '.join(f'{n}={targets[n]:+.3f}' for n in ACTION_ORDER)
+            self.get_logger().info(f'[TGT] {tgt_str}')
 
         # Build MIT command array
         cmd_msg = MITCommandArray()
