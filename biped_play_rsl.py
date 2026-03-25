@@ -1,4 +1,8 @@
-"""Play biped rsl_rl policy — supports teacher and student models."""
+"""Play biped rsl_rl policy — G1-style.
+
+Supports teacher and student models.
+Model: [512, 256, 128], linear output, scale=0.25.
+"""
 
 import argparse
 import sys
@@ -13,13 +17,11 @@ parser.add_argument("--num_envs", type=int, default=16)
 parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--video", action="store_true")
 parser.add_argument("--video_length", type=int, default=300)
-parser.add_argument("--rough", action="store_true", help="Use rough terrain config")
 parser.add_argument("--student", action="store_true", help="Play student (distilled) policy")
 parser.add_argument("--env_index", type=int, default=0, help="Which env to follow with camera")
-parser.add_argument("--global_camera", action="store_true", help="Fixed global camera view (for multi-env recording)")
+parser.add_argument("--global_camera", action="store_true", help="Fixed global camera view")
 parser.add_argument("--video_dir", type=str, default="/results/videos", help="Video output directory")
 parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"], help="URDF variant")
-parser.add_argument("--tanh", action="store_true", help="Actor has tanh output layer")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -30,6 +32,8 @@ app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 import gymnasium as gym
+
+
 def apply_urdf_selection(env_cfg, urdf_choice):
     """Override URDF path based on --urdf flag."""
     from biped_env_cfg import URDF_HEAVY, URDF_LIGHT
@@ -40,6 +44,7 @@ def apply_urdf_selection(env_cfg, urdf_choice):
         env_cfg.scene.robot.spawn.asset_path = URDF_HEAVY
         print(f"[INFO] Using heavy URDF: {URDF_HEAVY}")
 
+
 import torch
 import torch.nn as nn
 
@@ -47,14 +52,9 @@ from isaaclab_rl.skrl import SkrlVecEnvWrapper
 
 # Import configs based on mode
 if args_cli.student:
-    if args_cli.rough:
-        from biped_student_env_cfg import BipedStudentRoughEnvCfg_PLAY
-    else:
-        from biped_student_env_cfg import BipedStudentFlatEnvCfg_PLAY
+    from biped_student_env_cfg import BipedStudentFlatEnvCfg_PLAY
 else:
     from biped_env_cfg import BipedFlatEnvCfg_PLAY
-    if args_cli.rough:
-        from biped_rough_env_cfg import BipedRoughEnvCfg_PLAY
 
 # Register environments
 gym.register(
@@ -64,48 +64,33 @@ gym.register(
     kwargs={"env_cfg_entry_point": "biped_env_cfg:BipedFlatEnvCfg_PLAY"},
 )
 gym.register(
-    id="Biped-Rough-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={"env_cfg_entry_point": "biped_rough_env_cfg:BipedRoughEnvCfg_PLAY"},
-)
-gym.register(
     id="Biped-Student-Flat-Play-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={"env_cfg_entry_point": "biped_student_env_cfg:BipedStudentFlatEnvCfg_PLAY"},
 )
-gym.register(
-    id="Biped-Student-Rough-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={"env_cfg_entry_point": "biped_student_env_cfg:BipedStudentRoughEnvCfg_PLAY"},
-)
+
+# Isaac alphabetical joint order (matches training with joint_names=[".*"])
+JOINT_NAMES = [
+    "L_foot_pitch", "L_foot_roll", "L_hip_pitch", "L_hip_roll", "L_hip_yaw", "L_knee",
+    "R_foot_pitch", "R_foot_roll", "R_hip_pitch", "R_hip_roll", "R_hip_yaw", "R_knee",
+]
 
 
 def main():
     # Select env config
     if args_cli.student:
-        if args_cli.rough:
-            env_cfg = BipedStudentRoughEnvCfg_PLAY()
-            env_id = "Biped-Student-Rough-Play-v0"
-        else:
-            env_cfg = BipedStudentFlatEnvCfg_PLAY()
-            env_id = "Biped-Student-Flat-Play-v0"
+        env_cfg = BipedStudentFlatEnvCfg_PLAY()
+        env_id = "Biped-Student-Flat-Play-v0"
     else:
-        if args_cli.rough:
-            env_cfg = BipedRoughEnvCfg_PLAY()
-            env_id = "Biped-Rough-Play-v0"
-        else:
-            env_cfg = BipedFlatEnvCfg_PLAY()
-            env_id = "Biped-Flat-Play-v0"
+        env_cfg = BipedFlatEnvCfg_PLAY()
+        env_id = "Biped-Flat-Play-v0"
 
     env_cfg.scene.num_envs = args_cli.num_envs
     apply_urdf_selection(env_cfg, args_cli.urdf)
 
     # Camera setup
     if args_cli.global_camera:
-        # Fixed global view — see all envs at once
         env_cfg.viewer.origin_type = "world"
         n = args_cli.num_envs
         spacing = env_cfg.scene.env_spacing if hasattr(env_cfg.scene, 'env_spacing') else 2.5
@@ -113,7 +98,6 @@ def main():
         env_cfg.viewer.eye = (grid_size * 1.2, grid_size * 1.2, grid_size * 0.8)
         env_cfg.viewer.lookat = (grid_size * 0.3, grid_size * 0.3, 0.0)
     else:
-        # Follow single robot
         env_cfg.viewer.origin_type = "asset_root"
         env_cfg.viewer.asset_name = "robot"
         env_cfg.viewer.env_index = args_cli.env_index
@@ -148,36 +132,26 @@ def main():
     num_actions = env.action_space.shape[-1]
     print(f"[INFO] obs_dim={num_obs}, actions={num_actions}, student={args_cli.student}")
 
-    # Build actor MLP: [128, 128, 128]
-    actor_layers = [
-        nn.Linear(num_obs, 128), nn.ELU(),
-        nn.Linear(128, 128), nn.ELU(),
-        nn.Linear(128, 128), nn.ELU(),
+    # Build actor MLP: [512, 256, 128], linear output
+    actor = nn.Sequential(
+        nn.Linear(num_obs, 512), nn.ELU(),
+        nn.Linear(512, 256), nn.ELU(),
+        nn.Linear(256, 128), nn.ELU(),
         nn.Linear(128, num_actions),
-    ]
-    if args_cli.tanh:
-        actor_layers.append(nn.Tanh())
-        print("[INFO] Tanh output layer added to actor")
-    actor = nn.Sequential(*actor_layers).to("cuda:0")
+    ).to("cuda:0")
 
-    # Load weights — different key prefix for student vs teacher
+    # Load weights
     model_sd = ckpt["model_state_dict"]
     if args_cli.student:
         # Try student.* (distilled) first, fall back to actor.* (fine-tuned)
         actor_sd = {}
         for k, v in model_sd.items():
             if k.startswith("student."):
-                clean_k = k.replace("student.", "")
-                if clean_k.startswith("0.") and args_cli.tanh:
-                    clean_k = clean_k[2:]
-                actor_sd[clean_k] = v
+                actor_sd[k.replace("student.", "")] = v
         if not actor_sd:
             for k, v in model_sd.items():
                 if k.startswith("actor."):
-                    clean_k = k.replace("actor.", "")
-                    if clean_k.startswith("0.") and args_cli.tanh:
-                        clean_k = clean_k[2:]
-                    actor_sd[clean_k] = v
+                    actor_sd[k.replace("actor.", "")] = v
             print("[INFO] No student.* keys, using actor.* (Phase 3 fine-tuned checkpoint)")
         if not actor_sd:
             raise ValueError(
@@ -189,21 +163,14 @@ def main():
         actor_sd = {}
         for k, v in model_sd.items():
             if k.startswith("actor."):
-                clean_k = k.replace("actor.", "")
-                # Tanh wrapper adds "0." prefix to inner MLP keys (actor.0.X → 0.X)
-                if clean_k.startswith("0.") and args_cli.tanh:
-                    clean_k = clean_k[2:]  # strip "0." → flat sequential keys
-                actor_sd[clean_k] = v
+                actor_sd[k.replace("actor.", "")] = v
+
     actor.load_state_dict(actor_sd)
     actor.eval()
     print("[INFO] Actor loaded successfully")
 
     # Action logging
     all_actions = []
-    JOINT_NAMES = [
-        "R_hip_yaw", "R_hip_roll", "R_hip_pitch", "R_knee", "R_foot_pitch", "R_foot_roll",
-        "L_hip_yaw", "L_hip_roll", "L_hip_pitch", "L_knee", "L_foot_pitch", "L_foot_roll",
-    ]
 
     timestep = 0
     while simulation_app.is_running():
@@ -220,7 +187,7 @@ def main():
             print(f"[INFO] Video recording complete ({timestep} steps)")
             break
 
-    # Print action statistics from actual rollout
+    # Print action statistics
     if all_actions:
         import numpy as np
         a = np.array(all_actions)
@@ -229,11 +196,11 @@ def main():
         print("-" * 52)
         for i, name in enumerate(JOINT_NAMES):
             c = a[:, i]
-            scale = 0.5  # action_scale
+            scale = 0.25
             print(f"{name:<15} {np.mean(np.abs(c)):6.3f} {np.sqrt(np.mean(c**2)):6.3f} "
                   f"{np.min(c):6.3f} {np.max(c):6.3f} {c.mean()*scale:8.3f}")
 
-        # Save to CSV if video dir exists
+        # Save to CSV
         if args_cli.video:
             csv_path = os.path.join(args_cli.video_dir, "action_stats.csv")
             with open(csv_path, "w") as f:
@@ -241,7 +208,7 @@ def main():
                 for i, name in enumerate(JOINT_NAMES):
                     c = a[:, i]
                     f.write(f"{name},{np.mean(np.abs(c)):.4f},{np.sqrt(np.mean(c**2)):.4f},"
-                            f"{np.min(c):.4f},{np.max(c):.4f},{c.mean()*0.5:.4f}\n")
+                            f"{np.min(c):.4f},{np.max(c):.4f},{c.mean()*0.25:.4f}\n")
             print(f"[ACT] Saved to {csv_path}")
 
     env.close()

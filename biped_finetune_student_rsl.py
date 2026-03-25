@@ -1,25 +1,20 @@
-"""Phase 3: Fine-tune distilled student with PPO.
+"""Phase 3: Fine-tune distilled student with PPO — G1-style.
 
 Loads a distilled student checkpoint (from biped_distill_rsl.py) and runs
 standard PPO training using student observations only (no base_lin_vel).
+
+Model: [512, 256, 128], obs=225d (45d × 5 history), linear output, scale=0.25.
 
 The distilled checkpoint contains student.* keys which are remapped to
 actor.* for rsl_rl's ActorCritic. Critic is initialized fresh.
 
 Usage:
-  # Flat fine-tune
-  python biped_finetune_student_rsl.py \
-      --distilled /results/logs/rsl_rl/biped_distill_flat/model_3000.pt \
+  python biped_finetune_student_rsl.py \\
+      --distilled /results/logs/rsl_rl/biped_distill_flat/model_3000.pt \\
       --max_iterations 5000
 
-  # Rough fine-tune
-  python biped_finetune_student_rsl.py --rough \
-      --distilled /results/logs/rsl_rl/biped_distill_rough/model_3000.pt \
-      --max_iterations 5000
-
-  # Resume PPO fine-tuning
-  python biped_finetune_student_rsl.py --rough \
-      --resume /results/logs/rsl_rl/biped_student_rough/model_2000.pt \
+  python biped_finetune_student_rsl.py \\
+      --resume /results/logs/rsl_rl/biped_student_flat/model_2000.pt \\
       --max_iterations 5000
 """
 
@@ -35,19 +30,19 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--num_envs", type=int, default=4096)
 parser.add_argument("--max_iterations", type=int, default=5000)
 parser.add_argument("--seed", type=int, default=42)
-parser.add_argument("--rough", action="store_true", help="Use rough terrain env")
 parser.add_argument("--distilled", type=str, default=None,
                     help="Path to distilled student checkpoint (Phase 2 output)")
 parser.add_argument("--resume", type=str, default=None,
                     help="Path to PPO fine-tune checkpoint to resume from")
 parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"], help="URDF variant")
-parser.add_argument("--tanh", action="store_true", help="Add tanh output to actor (must match distillation)")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 import gymnasium as gym
+
+
 def apply_urdf_selection(env_cfg, urdf_choice):
     """Override URDF path based on --urdf flag."""
     from biped_env_cfg import URDF_HEAVY, URDF_LIGHT
@@ -58,21 +53,16 @@ def apply_urdf_selection(env_cfg, urdf_choice):
         env_cfg.scene.robot.spawn.asset_path = URDF_HEAVY
         print(f"[INFO] Using heavy URDF: {URDF_HEAVY}")
 
+
 import torch
 
 from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 from rsl_rl.runners import OnPolicyRunner
 
-if args_cli.rough:
-    from biped_student_env_cfg import BipedStudentRoughEnvCfg
-    env_cfg_class = BipedStudentRoughEnvCfg
-    env_id = "Biped-Student-Rough-v0"
-    experiment = "biped_student_rough"
-else:
-    from biped_student_env_cfg import BipedStudentFlatEnvCfg
-    env_cfg_class = BipedStudentFlatEnvCfg
-    env_id = "Biped-Student-Flat-v0"
-    experiment = "biped_student_flat"
+from biped_student_env_cfg import BipedStudentFlatEnvCfg
+env_cfg_class = BipedStudentFlatEnvCfg
+env_id = "Biped-Student-Flat-v0"
+experiment = "biped_student_flat"
 
 gym.register(
     id=env_id,
@@ -81,8 +71,7 @@ gym.register(
     kwargs={"env_cfg_entry_point": f"biped_student_env_cfg:{env_cfg_class.__name__}"},
 )
 
-# Same PPO config as teacher training — lower init_noise_std since
-# student is already pre-trained via distillation
+# PPO config — conservative fine-tuning of pre-trained student
 TRAIN_CFG = {
     "seed": 42,
     "runner_class_name": "OnPolicyRunner",
@@ -98,8 +87,8 @@ TRAIN_CFG = {
     "policy": {
         "class_name": "ActorCritic",
         "init_noise_std": 0.5,   # overwritten by distilled std (~0.1)
-        "actor_hidden_dims": [128, 128, 128],
-        "critic_hidden_dims": [128, 128, 128],
+        "actor_hidden_dims": [512, 256, 128],
+        "critic_hidden_dims": [512, 256, 128],
         "activation": "elu",
     },
     "algorithm": {
@@ -137,10 +126,6 @@ def remap_distilled_to_actor_critic(distilled_path, runner):
     model_sd = ckpt["model_state_dict"]
 
     # Remap student.* → actor.*
-    # With --tanh: both student and actor are Sequential(MLP, Tanh)
-    #   student.0.X → actor.0.X (straight replace, keep "0." prefix)
-    # Without --tanh: both are plain MLP
-    #   student.X → actor.X (straight replace)
     remap_sd = {}
     for k, v in model_sd.items():
         if k.startswith("student."):
@@ -179,10 +164,6 @@ def main():
     env_cfg.seed = args_cli.seed
     apply_urdf_selection(env_cfg, args_cli.urdf)
 
-    if args_cli.rough and args_cli.num_envs > 8192:
-        env_cfg.scene.num_envs = 8192
-        print(f"[INFO] Reduced num_envs to 8192 for rough terrain")
-
     env = gym.make(env_id, cfg=env_cfg)
     env = RslRlVecEnvWrapper(env)
 
@@ -196,18 +177,10 @@ def main():
 
     runner = OnPolicyRunner(env, train_cfg, log_dir=log_dir, device="cuda:0")
 
-    if args_cli.tanh:
-        import torch.nn as nn
-        original_actor = runner.alg.policy.actor
-        runner.alg.policy.actor = nn.Sequential(original_actor, nn.Tanh())
-        print("[INFO] Tanh output layer added to actor — actions bounded to [-1, +1]")
-
     if args_cli.resume:
-        # Resume from PPO fine-tune checkpoint (has actor.* + critic.*)
         print(f"[INFO] Resuming PPO fine-tune from: {args_cli.resume}")
         runner.load(args_cli.resume)
     elif args_cli.distilled:
-        # Load distilled student weights → actor, critic stays random
         print(f"[INFO] Loading distilled student from: {args_cli.distilled}")
         remap_distilled_to_actor_critic(args_cli.distilled, runner)
     else:

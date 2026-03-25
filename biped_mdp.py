@@ -1,83 +1,89 @@
 """Custom MDP functions for Unitree G1-style biped training.
 
-Contains: energy reward, feet_gait reward, foot_clearance_reward,
-lin_vel_cmd_levels curriculum, UniformLevelVelocityCommandCfg.
+Copied exactly from unitree_rl_lab G1 29dof config:
+  https://github.com/unitreerobotics/unitree_rl_lab
+
+Contains: energy, feet_gait, foot_clearance_reward, lin_vel_cmd_levels,
+           UniformLevelVelocityCommandCfg.
 """
 
 from __future__ import annotations
 
-import math
 import torch
 from dataclasses import MISSING
 from typing import TYPE_CHECKING
+from collections.abc import Sequence
 
-from isaaclab.managers import CommandTermCfg, SceneEntityCfg
+from isaaclab.assets import Articulation, RigidObject
+from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import ContactSensor
+from isaaclab.envs.mdp.commands import UniformVelocityCommandCfg
 from isaaclab.utils import configclass
-from isaaclab.envs.mdp.commands import UniformVelocityCommand, UniformVelocityCommandCfg
 
 if TYPE_CHECKING:
-    from isaaclab.envs import ManagerBasedEnv, ManagerBasedRLEnv
+    from isaaclab.envs import ManagerBasedRLEnv
 
 
 # ---------------------------------------------------------------------------
-# Reward functions
+# Command config
 # ---------------------------------------------------------------------------
 
+@configclass
+class UniformLevelVelocityCommandCfg(UniformVelocityCommandCfg):
+    """Uniform velocity command config with limit_ranges for curriculum."""
+    limit_ranges: UniformVelocityCommandCfg.Ranges = MISSING
 
-def energy(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Energy penalty: sum of |torque * joint_vel| over all joints."""
-    return torch.sum(
-        torch.abs(
-            env.scene["robot"].data.applied_torque
-            * env.scene["robot"].data.joint_vel
-        ),
-        dim=1,
-    )
+
+# ---------------------------------------------------------------------------
+# Reward functions — EXACT G1 implementations
+# ---------------------------------------------------------------------------
+
+def energy(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Penalize the energy used by the robot's joints.
+
+    Exact G1: sum(|joint_vel| * |applied_torque|)
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    qvel = asset.data.joint_vel[:, asset_cfg.joint_ids]
+    qfrc = asset.data.applied_torque[:, asset_cfg.joint_ids]
+    return torch.sum(torch.abs(qvel) * torch.abs(qfrc), dim=-1)
 
 
 def feet_gait(
     env: ManagerBasedRLEnv,
-    sensor_cfg: SceneEntityCfg,
-    command_name: str,
     period: float,
     offset: list[float],
-    threshold: float,
+    sensor_cfg: SceneEntityCfg,
+    threshold: float = 0.5,
+    command_name=None,
 ) -> torch.Tensor:
-    """Gait reward — encourages alternating foot contacts at desired phase.
+    """Phase-based gait reward — EXACT G1 implementation.
 
-    Each foot should be in contact when cos(phase + offset) > 0, and in air otherwise.
-    Phase = 2π * (t % period) / period.
+    Each foot has a phase offset. During stance phase (phase < threshold),
+    foot should be in contact. During swing (phase >= threshold), foot
+    should be in air. Reward = count of correct feet.
     """
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
-    forces = contact_sensor.data.net_forces_w_history[:, 0, sensor_cfg.body_ids, :]
-    in_contact = forces.norm(dim=-1) > 1.0  # [num_envs, num_feet]
+    is_contact = contact_sensor.data.current_contact_time[:, sensor_cfg.body_ids] > 0
 
-    # Time since episode start
-    t = env.episode_length_buf * env.step_dt  # [num_envs]
-    phase = 2 * math.pi * t / period  # [num_envs]
+    global_phase = ((env.episode_length_buf * env.step_dt) % period / period).unsqueeze(1)
+    phases = []
+    for offset_ in offset:
+        phase = (global_phase + offset_) % 1.0
+        phases.append(phase)
+    leg_phase = torch.cat(phases, dim=-1)
 
-    num_feet = len(offset)
-    offsets = torch.tensor(offset, device=phase.device, dtype=phase.dtype)  # [num_feet]
+    reward = torch.zeros(env.num_envs, dtype=torch.float, device=env.device)
+    for i in range(len(sensor_cfg.body_ids)):
+        is_stance = leg_phase[:, i] < threshold
+        reward += ~(is_stance ^ is_contact[:, i])
 
-    # Desired contact state
-    desired_contact = torch.cos(phase.unsqueeze(1) + 2 * math.pi * offsets.unsqueeze(0)) > 0  # [envs, feet]
-
-    reward = torch.where(
-        desired_contact == in_contact,
-        torch.ones_like(in_contact, dtype=torch.float),
-        torch.zeros_like(in_contact, dtype=torch.float),
-    ).mean(dim=1)
-
-    # Scale by command magnitude — no gait reward when standing still
-    cmd = env.command_manager.get_command(command_name)
-    cmd_norm = torch.norm(cmd[:, :2], dim=1)
-    moving = cmd_norm > 0.1
-
-    # Standing: reward for both feet on ground
-    both_contact = in_contact.all(dim=1).float()
-    reward = torch.where(moving, reward, both_contact)
-
+    if command_name is not None:
+        cmd_norm = torch.norm(env.command_manager.get_command(command_name), dim=1)
+        reward *= cmd_norm > 0.1
     return reward
 
 
@@ -88,70 +94,56 @@ def foot_clearance_reward(
     std: float,
     tanh_mult: float,
 ) -> torch.Tensor:
-    """Reward feet for reaching target clearance height during swing.
+    """Reward swinging feet for clearing target height — EXACT G1 implementation.
 
-    Only rewards when foot is moving (has nonzero velocity).
-    Uses exp(-((h - target)^2) / (2*std^2)) * tanh(speed).
+    reward = exp(-sum((foot_z - target)^2 * tanh(mult * |foot_xy_vel|)) / std)
     """
-    asset = env.scene[asset_cfg.name]
-    foot_z = asset.data.body_pos_w[:, asset_cfg.body_ids, 2]  # [envs, feet]
-    foot_vel = asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :]  # [envs, feet, 3]
-    foot_speed = foot_vel.norm(dim=-1)  # [envs, feet]
-
-    height_error = (foot_z - target_height) ** 2
-    height_reward = torch.exp(-height_error / (2 * std**2))
-
-    # Only reward moving feet (swing phase)
-    speed_mask = torch.tanh(tanh_mult * foot_speed)
-
-    reward = (height_reward * speed_mask).mean(dim=1)
-    return reward
+    asset: RigidObject = env.scene[asset_cfg.name]
+    foot_z_target_error = torch.square(
+        asset.data.body_pos_w[:, asset_cfg.body_ids, 2] - target_height
+    )
+    foot_velocity_tanh = torch.tanh(
+        tanh_mult * torch.norm(asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2], dim=2)
+    )
+    reward = foot_z_target_error * foot_velocity_tanh
+    return torch.exp(-torch.sum(reward, dim=1) / std)
 
 
 # ---------------------------------------------------------------------------
-# Curriculum functions
+# Curriculum functions — EXACT G1 implementation
 # ---------------------------------------------------------------------------
-
 
 def lin_vel_cmd_levels(
     env: ManagerBasedRLEnv,
-    env_ids: torch.Tensor,
-    term_name: str,
-) -> float:
-    """Curriculum that linearly expands velocity command ranges over training.
+    env_ids: Sequence[int],
+    reward_term_name: str = "track_lin_vel_xy",
+) -> torch.Tensor:
+    """Expand velocity command ranges when tracking reward is good.
 
-    Ramps from initial ranges to limit_ranges over 10000 iterations.
+    Exact G1: at each episode boundary, if mean reward > weight * 0.8,
+    expand lin_vel_x and lin_vel_y by ±0.1, clamped to limit_ranges.
     """
-    cmd_term = env.command_manager.get_term("base_velocity")
-    cfg = cmd_term.cfg
+    command_term = env.command_manager.get_term("base_velocity")
+    ranges = command_term.cfg.ranges
+    limit_ranges = command_term.cfg.limit_ranges
 
-    if not hasattr(cfg, "limit_ranges") or cfg.limit_ranges is None:
-        return 0.0
+    reward_term = env.reward_manager.get_term_cfg(reward_term_name)
+    reward = torch.mean(
+        env.reward_manager._episode_sums[reward_term_name][env_ids]
+    ) / env.max_episode_length_s
 
-    # Linear ramp over 10000 iterations (each iter = num_steps_per_env steps)
-    steps_per_iter = 24  # num_steps_per_env
-    ramp_iters = 10000
-    progress = min(env.common_step_counter / (ramp_iters * steps_per_iter), 1.0)
+    if env.common_step_counter % env.max_episode_length == 0:
+        if reward > reward_term.weight * 0.8:
+            delta_command = torch.tensor([-0.1, 0.1], device=env.device)
+            ranges.lin_vel_x = torch.clamp(
+                torch.tensor(ranges.lin_vel_x, device=env.device) + delta_command,
+                limit_ranges.lin_vel_x[0],
+                limit_ranges.lin_vel_x[1],
+            ).tolist()
+            ranges.lin_vel_y = torch.clamp(
+                torch.tensor(ranges.lin_vel_y, device=env.device) + delta_command,
+                limit_ranges.lin_vel_y[0],
+                limit_ranges.lin_vel_y[1],
+            ).tolist()
 
-    # Interpolate ranges
-    for attr in ["lin_vel_x", "lin_vel_y", "ang_vel_z"]:
-        initial = getattr(cfg.ranges, attr)
-        limit = getattr(cfg.limit_ranges, attr)
-        if initial is not None and limit is not None:
-            new_low = initial[0] + (limit[0] - initial[0]) * progress
-            new_high = initial[1] + (limit[1] - initial[1]) * progress
-            setattr(cfg.ranges, attr, (new_low, new_high))
-
-    return progress
-
-
-# ---------------------------------------------------------------------------
-# Custom command: UniformLevelVelocityCommand with limit_ranges
-# ---------------------------------------------------------------------------
-
-
-@configclass
-class UniformLevelVelocityCommandCfg(UniformVelocityCommandCfg):
-    """Uniform velocity command config with limit_ranges for curriculum."""
-
-    limit_ranges: UniformVelocityCommandCfg.Ranges | None = None
+    return torch.tensor(ranges.lin_vel_x[1], device=env.device)

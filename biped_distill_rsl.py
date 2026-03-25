@@ -1,17 +1,12 @@
-"""Biped Teacher-Student Distillation — G1-style.
+"""Phase 2: Biped Teacher-Student Distillation — G1-style.
 
-Supports both flat and rough terrain distillation.
+Teacher: [512, 256, 128], obs=240d (48d × 5 history, with base_lin_vel)
+Student: [512, 256, 128], obs=225d (45d × 5 history, no base_lin_vel)
 
 Usage:
-  # Flat distillation
-  python biped_distill_rsl.py --teacher_checkpoint /results/winners/flat_teacher.pt --urdf heavy
-
-  # Rough distillation
-  python biped_distill_rsl.py --rough --teacher_checkpoint /results/winners/rough_teacher.pt --urdf heavy
-
-  # Resume
-  python biped_distill_rsl.py --rough --resume /results/logs/rsl_rl/biped_distill_rough/model_1000.pt \\
-      --teacher_checkpoint /results/winners/rough_teacher.pt --urdf heavy
+  python biped_distill_rsl.py --teacher_checkpoint /results/winners/teacher.pt --urdf heavy
+  python biped_distill_rsl.py --resume /results/logs/rsl_rl/biped_distill_flat/model_1000.pt \\
+      --teacher_checkpoint /results/winners/teacher.pt
 """
 
 import argparse
@@ -26,19 +21,19 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--num_envs", type=int, default=16384)
 parser.add_argument("--max_iterations", type=int, default=3000)
 parser.add_argument("--seed", type=int, default=42)
-parser.add_argument("--rough", action="store_true", help="Use rough terrain env")
 parser.add_argument("--teacher_checkpoint", type=str, default=None,
                     help="Path to teacher model checkpoint (PPO-trained)")
 parser.add_argument("--resume", type=str, default=None,
                     help="Path to distillation checkpoint to resume from")
 parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"], help="URDF variant")
-parser.add_argument("--tanh", action="store_true", help="Add tanh output to student (bounds actions to [-1, +1])")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 import gymnasium as gym
+
+
 def apply_urdf_selection(env_cfg, urdf_choice):
     """Override URDF path based on --urdf flag."""
     from biped_env_cfg import URDF_HEAVY, URDF_LIGHT
@@ -49,21 +44,16 @@ def apply_urdf_selection(env_cfg, urdf_choice):
         env_cfg.scene.robot.spawn.asset_path = URDF_HEAVY
         print(f"[INFO] Using heavy URDF: {URDF_HEAVY}")
 
+
 import torch
 
 from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 from rsl_rl.runners import DistillationRunner
 
-if args_cli.rough:
-    from biped_student_env_cfg import BipedStudentRoughEnvCfg
-    env_cfg_class = BipedStudentRoughEnvCfg
-    env_id = "Biped-Student-Rough-v0"
-    experiment_name = "biped_distill_rough"
-else:
-    from biped_student_env_cfg import BipedStudentFlatEnvCfg
-    env_cfg_class = BipedStudentFlatEnvCfg
-    env_id = "Biped-Student-Flat-v0"
-    experiment_name = "biped_distill_flat"
+from biped_student_env_cfg import BipedStudentFlatEnvCfg
+env_cfg_class = BipedStudentFlatEnvCfg
+env_id = "Biped-Student-Flat-v0"
+experiment_name = "biped_distill_flat"
 
 # Register environment
 gym.register(
@@ -73,7 +63,7 @@ gym.register(
     kwargs={"env_cfg_entry_point": f"biped_student_env_cfg:{env_cfg_class.__name__}"},
 )
 
-# Distillation config
+# Distillation config — G1-style model dims
 DISTILL_CFG = {
     "seed": 42,
     "runner_class_name": "DistillationRunner",
@@ -83,14 +73,14 @@ DISTILL_CFG = {
     "experiment_name": experiment_name,
     "empirical_normalization": False,
     "obs_groups": {
-        "policy": ["policy"],     # student obs (45-dim, no base_lin_vel/height_scan)
-        "teacher": ["teacher"],   # teacher obs (48-dim flat / 235-dim rough)
+        "policy": ["policy"],     # student obs (225d = 45d × 5)
+        "teacher": ["teacher"],   # teacher obs (240d = 48d × 5)
         "critic": ["critic"],
     },
     "policy": {
         "class_name": "StudentTeacher",
-        "student_hidden_dims": [128, 128, 128],
-        "teacher_hidden_dims": [128, 128, 128],
+        "student_hidden_dims": [512, 256, 128],
+        "teacher_hidden_dims": [512, 256, 128],
         "activation": "elu",
         "init_noise_std": 0.1,
         "student_obs_normalization": False,
@@ -113,11 +103,6 @@ def main():
     env_cfg.seed = args_cli.seed
     apply_urdf_selection(env_cfg, args_cli.urdf)
 
-    # Reduce envs for rough terrain (VRAM)
-    if args_cli.rough and args_cli.num_envs > 8192:
-        env_cfg.scene.num_envs = 8192
-        print(f"[INFO] Reduced num_envs to 8192 for rough terrain")
-
     env = gym.make(env_id, cfg=env_cfg)
     env = RslRlVecEnvWrapper(env)
 
@@ -135,31 +120,9 @@ def main():
         runner.load(args_cli.resume)
     elif args_cli.teacher_checkpoint:
         print(f"[INFO] Loading teacher from: {args_cli.teacher_checkpoint}")
-        # Strip tanh wrapper prefix from teacher checkpoint if present
-        ckpt = torch.load(args_cli.teacher_checkpoint, map_location="cuda:0")
-        sd = ckpt["model_state_dict"]
-        clean_sd = {}
-        for k, v in sd.items():
-            # actor.0.X.weight → actor.X.weight (strip tanh Sequential wrapper)
-            if k.startswith("actor.0."):
-                clean_sd[k.replace("actor.0.", "actor.")] = v
-            else:
-                clean_sd[k] = v
-        if any(k.startswith("actor.0.") for k in sd):
-            print("[INFO] Stripped tanh wrapper prefix from teacher checkpoint keys")
-        ckpt["model_state_dict"] = clean_sd
-        torch.save(ckpt, "/tmp/_teacher_clean.pt")
-        runner.load("/tmp/_teacher_clean.pt", load_optimizer=False)
+        runner.load(args_cli.teacher_checkpoint, load_optimizer=False)
     else:
         raise ValueError("Must provide --teacher_checkpoint or --resume")
-
-    if args_cli.tanh:
-        import torch.nn as nn
-        original_student = runner.alg.policy.student
-        runner.alg.policy.student = nn.Sequential(original_student, nn.Tanh())
-        original_teacher = runner.alg.policy.teacher
-        runner.alg.policy.teacher = nn.Sequential(original_teacher, nn.Tanh())
-        print("[INFO] Tanh output layer added to both student and teacher")
 
     runner.learn(num_learning_iterations=args_cli.max_iterations, init_at_random_ep_len=True)
 
