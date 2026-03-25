@@ -56,13 +56,14 @@ ACTION_ORDER = [
 ]
 
 # Default PD gains (from training config, halved Berkeley values)
+# Deploy PD gains — must match training (V74)
 DEFAULT_GAINS = {
-    "L_hip_pitch": (15.0, 3.0), "R_hip_pitch": (15.0, 3.0),
-    "L_hip_roll":  (10.0, 3.0), "R_hip_roll":  (10.0, 3.0),
-    "L_hip_yaw":   (10.0, 3.0), "R_hip_yaw":   (10.0, 3.0),
-    "L_knee":      (15.0, 3.0), "R_knee":      (15.0, 3.0),
-    "L_foot_pitch": (8.0, 0.2), "R_foot_pitch": (8.0, 0.2),
-    "L_foot_roll":  (8.0, 0.2), "R_foot_roll":  (8.0, 0.2),
+    "L_hip_pitch": (180.0, 3.0), "R_hip_pitch": (180.0, 3.0),
+    "L_hip_roll":  (120.0, 3.0), "R_hip_roll":  (120.0, 3.0),
+    "L_hip_yaw":    (60.0, 3.0), "R_hip_yaw":    (60.0, 3.0),
+    "L_knee":      (180.0, 3.0), "R_knee":      (180.0, 3.0),
+    "L_foot_pitch": (96.0, 2.0), "R_foot_pitch": (96.0, 2.0),
+    "L_foot_roll":  (48.0, 2.0), "R_foot_roll":  (48.0, 2.0),
 }
 
 
