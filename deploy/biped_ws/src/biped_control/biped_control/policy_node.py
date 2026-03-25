@@ -199,9 +199,7 @@ class PolicyNode(Node):
             from biped_control.obs_builder import ACTION_ORDER
             tgt_str = ' '.join(f'{n}={targets[n]:+.3f}' for n in ACTION_ORDER)
             self.get_logger().info(f'[TGT] {tgt_str}')
-            # Print final MIT commands
-            for cmd in cmd_msg.commands:
-                self.get_logger().info(f'[CMD] {cmd.joint_name} pos={cmd.position:+.4f} kp={cmd.kp:.1f} kd={cmd.kd:.1f}')
+
 
         # Build MIT command array
         cmd_msg = MITCommandArray()
@@ -224,6 +222,10 @@ class PolicyNode(Node):
             cmd.kd = kd * gs * walk_ramp
             cmd.torque_ff = 0.0
             cmd_msg.commands.append(cmd)
+
+        if self._debug_timer % (int(self._rate) * 10) == 1:
+            for cmd in cmd_msg.commands:
+                self.get_logger().info(f'[CMD] {cmd.joint_name} pos={cmd.position:+.4f} kp={cmd.kp:.1f} kd={cmd.kd:.1f}')
 
         if self._fsm_state == "SIM_WALK":
             self._pub_viz.publish(cmd_msg)  # viz only, motors hold STAND
