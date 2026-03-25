@@ -46,10 +46,14 @@ DEFAULT_POSITIONS = {
 
 # Action scale (from training config, per-joint)
 ACTION_SCALE = 0.5
-ACTION_SCALE_OVERRIDES = {
-    "L_foot_roll": 0.25,
-    "R_foot_roll": 0.25,
-}
+
+# Action output order from ONNX (must match training ALL_JOINTS with preserve_order=True)
+ACTION_ORDER = [
+    "R_hip_yaw", "R_hip_roll", "R_hip_pitch",
+    "R_knee", "R_foot_pitch", "R_foot_roll",
+    "L_hip_yaw", "L_hip_roll", "L_hip_pitch",
+    "L_knee", "L_foot_pitch", "L_foot_roll",
+]
 
 # Default PD gains (from training config, halved Berkeley values)
 DEFAULT_GAINS = {
@@ -131,10 +135,9 @@ class ObsBuilder:
         """Convert policy output to joint position targets.
 
         target[i] = default_pos[i] + action[i] * ACTION_SCALE
-        Returns dict mapping Isaac joint order names to position targets.
+        Action order matches training ALL_JOINTS (ONNX output order).
         """
         targets = {}
-        for i, name in enumerate(ISAAC_JOINT_ORDER):
-            scale = ACTION_SCALE_OVERRIDES.get(name, ACTION_SCALE)
-            targets[name] = DEFAULT_POSITIONS[name] + float(action[i]) * scale
+        for i, name in enumerate(ACTION_ORDER):
+            targets[name] = DEFAULT_POSITIONS[name] + float(action[i]) * ACTION_SCALE
         return targets
