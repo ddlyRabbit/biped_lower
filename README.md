@@ -1,6 +1,39 @@
 # Biped Locomotion — RL Training (IsaacLab + rsl_rl)
 
-Bipedal walking via PPO + teacher-student distillation. Isaac Sim / IsaacLab, rsl_rl framework, Berkeley Humanoid-inspired config.
+Bipedal walking via PPO + teacher-student distillation. Isaac Sim / IsaacLab, rsl_rl framework.
+
+**Branch `unitree-g1-rewards`**: Migrated to Unitree G1 29dof training config (rewards, obs, model, curriculum). Our hardware (URDF, actuators) unchanged.
+
+## Architecture
+
+### G1-Style Training Pipeline
+
+```
+Phase 1: Teacher PPO (50K iters)
+  Model: [512, 256, 128] ELU, linear output
+  Obs: 45d/frame × 5 history = 225d (policy), 48d × 5 = 240d (critic)
+  Actions: 12 joints, scale=0.25, joint_names=[".*"] (Isaac alphabetical)
+  Rewards: 17 terms (G1 exact), curriculum velocity ramp
+
+Phase 2: Distillation (3K iters)
+  Teacher obs: 240d → Student obs: 225d (no base_lin_vel)
+  MSE loss on action outputs
+
+Phase 3: Student Fine-tune PPO (5K iters)
+  Student obs: 225d, conservative PPO (clip=0.1, LR=3e-4)
+
+Deploy: ONNX on RPi 5
+  Input: 225d (5-frame history buffer)
+  Output: 12 joint position targets
+  50Hz control loop
+```
+
+### Isaac Alphabetical Joint Order (canonical everywhere)
+
+```
+L_foot_pitch, L_foot_roll, L_hip_pitch, L_hip_roll, L_hip_yaw, L_knee,
+R_foot_pitch, R_foot_roll, R_hip_pitch, R_hip_roll, R_hip_yaw, R_knee
+```
 
 ## File Map
 
@@ -8,278 +41,127 @@ Bipedal walking via PPO + teacher-student distillation. Isaac Sim / IsaacLab, rs
 biped_locomotion/
 │
 ├── Config ─────────────────────────────────────────────────────────
-│   ├── biped_env_cfg.py              ← Flat env (V58). Scene, rewards, obs, actuators
-│   ├── biped_rough_env_cfg.py        ← Rough env (inherits flat + terrain + height scanner)
-│   └── biped_student_env_cfg.py      ← Student env (removes base_lin_vel from policy obs)
-│       ├── FlatStudentObservationsCfg    → policy(45d) + teacher(48d) + critic(48d)
-│       └── RoughStudentObservationsCfg   → policy(232d) + teacher(235d) + critic(235d)
+│   ├── biped_env_cfg.py              ← Flat env. Scene, rewards, obs, actuators
+│   ├── biped_mdp.py                  ← Custom MDP functions (G1 rewards/curriculum)
+│   └── biped_student_env_cfg.py      ← Student env (removes base_lin_vel from obs)
+│       └── FlatStudentObservationsCfg    → policy(225d) + teacher(240d) + critic(240d)
 │
 ├── Training ───────────────────────────────────────────────────────
-│   ├── biped_train_rsl.py            ← Phase 1: PPO teacher (flat/rough)
+│   ├── biped_train_rsl.py            ← Phase 1: PPO teacher [512,256,128]
 │   ├── biped_distill_rsl.py          ← Phase 2: Teacher→student MSE distillation
 │   └── biped_finetune_student_rsl.py ← Phase 3: PPO fine-tune of distilled student
 │
 ├── Inference / Recording ──────────────────────────────────────────
-│   ├── biped_play_rsl.py             ← Play + video (--rough, --student)
-│   ├── biped_play_record.py          ← Torque + video recording (--student)
-│   ├── biped_play_torques.py         ← Torque-only recording (--student)
-│   ├── record_grid.sh                ← 2×2 multi-agent grid video
-│   └── combine_torque_video.py       ← Merge torque plot + video
+│   └── biped_play_rsl.py             ← Play + video recording
 │
-├── legacy/ ────────────────────────────────────────────────────────
-│   ├── biped_env_cfg_v54_continuous.py
-│   └── biped_env_cfg_v55_impact_based.py
+├── URDF ───────────────────────────────────────────────────────────
+│   ├── urdf/heavy/robot.urdf         ← ~21.7kg (with battery)
+│   └── urdf/light/robot.urdf         ← ~15.6kg (light battery)
+│       └── robot/                    ← USD files with physics layer
 │
-└── __init__.py
-
-urdf/
-├── heavy/                            ← Original material (~30.7kg with 10kg battery)
-│   ├── robot.urdf
-│   └── assets/                       ← 35 STL meshes
-└── light/                            ← Lighter material (~15.6kg with 0.5kg battery)
-    ├── robot.urdf
-    └── assets/                       ← 35 STL meshes
-
-winners/
-└── README.md                         ← Checkpoint descriptions + naming convention
-
-deploy/
-├── ARCHITECTURE.md                   ← Full deployment plan, obs mapping, risks
-├── BRINGUP.md                        ← Step-by-step bringup guide
-├── scripts/setup_can.sh              ← CAN interface setup (run after boot)
-├── student_flat.onnx                 ← Exported student policy
-└── biped_ws/src/                     ← ROS2 Jazzy workspace (6 packages)
-    ├── biped_msgs/                   ← Custom messages (MITCommand, MotorState, RobotState)
-    ├── biped_driver/                 ← IMU node, CAN bus node, RobStride protocol
-    ├── biped_control/                ← Policy node, safety node, state machine
-    ├── biped_teleop/                 ← Keyboard velocity commander
-    ├── biped_tools/                  ← Calibration tool, ONNX export
-    └── biped_bringup/                ← Launch files + config
-
-/results/ (GCP only)
-├── logs/rsl_rl/                      ← Training logs + checkpoints
-│   ├── biped_flat_v52/               ← Phase 1 flat teacher
-│   ├── biped_rough_v57/              ← Phase 1 rough teacher
-│   ├── biped_distill_flat/           ← Phase 2 flat distillation
-│   └── biped_student_flat/           ← Phase 3 flat fine-tune
-├── winners/                          ← Best checkpoints
-└── videos/                           ← Recorded videos
+├── Deploy ─────────────────────────────────────────────────────────
+│   ├── deploy/ARCHITECTURE.md
+│   ├── deploy/BRINGUP.md
+│   └── deploy/biped_ws/              ← ROS2 workspace
+│       └── src/
+│           ├── biped_control/        ← policy_node, obs_builder, state_machine
+│           ├── biped_driver/         ← CAN + IMU hardware
+│           ├── biped_bringup/        ← Launch files + config
+│           ├── biped_teleop/         ← Keyboard/gamepad teleop
+│           └── biped_tools/          ← export_onnx (input: 225d)
+│
+└── winners/                          ← Saved best checkpoints
 ```
 
-### Config Inheritance
+## Config Summary (G1-Matched)
+
+### Rewards (17 terms)
+
+| Term | Weight | Function |
+|------|--------|----------|
+| track_lin_vel_xy | +1.0 | yaw-frame exp, std=√0.25 |
+| track_ang_vel_z | +0.5 | exp, std=√0.25 |
+| alive | +0.15 | is_alive |
+| lin_vel_z_l2 | -2.0 | vertical velocity |
+| ang_vel_xy_l2 | -0.05 | roll/pitch rate |
+| joint_vel_l2 | -0.001 | joint velocity |
+| joint_acc_l2 | -2.5e-7 | joint acceleration |
+| action_rate_l2 | -0.05 | action smoothness |
+| joint_pos_limits | -5.0 | near joint limits |
+| energy | -2e-5 | |torque × vel| |
+| joint_deviation_legs | -1.0 | hip_roll + hip_yaw |
+| flat_orientation_l2 | -5.0 | upright posture |
+| base_height_l2 | -10.0 | target 0.73m |
+| feet_gait | +0.5 | phase-based (0.8s period) |
+| feet_slide | -0.2 | contact foot velocity |
+| foot_clearance | +1.0 | swing foot height (0.1m) |
+| undesired_contacts | -1.0 | non-foot body contacts |
+
+### Observations
+
+| Group | Per Frame | History | Total |
+|-------|-----------|---------|-------|
+| Policy | ang_vel×0.2(3) + gravity(3) + cmd(3) + pos_rel(12) + vel×0.05(12) + action(12) = 45d | 5 | 225d |
+| Critic | + base_lin_vel(3) = 48d | 5 | 240d |
+
+### PPO Config
 
 ```
-biped_env_cfg.py (BipedFlatEnvCfg)
-├── biped_rough_env_cfg.py (BipedRoughEnvCfg)
-│   └── biped_student_env_cfg.py (BipedStudentRoughEnvCfg)
-└── biped_student_env_cfg.py (BipedStudentFlatEnvCfg)
+actor/critic: [512, 256, 128] ELU
+init_noise_std: 1.0
+entropy_coef: 0.01
+LR: 1e-3 (adaptive, desired_kl=0.01)
+num_steps_per_env: 24
+max_iterations: 50000
+save_interval: 100
 ```
 
-### Script Dependencies
+### Commands (with curriculum)
 
 ```
-biped_train_rsl.py ──imports──► biped_env_cfg.py, biped_rough_env_cfg.py
-biped_distill_rsl.py ──imports──► biped_student_env_cfg.py ──imports──► biped_env_cfg.py, biped_rough_env_cfg.py
-biped_finetune_student_rsl.py ──imports──► biped_student_env_cfg.py
-biped_play_rsl.py ──imports──► all env configs (based on --rough/--student flags)
+Initial: lin_vel_x ±0.1, lin_vel_y ±0.1, ang_vel_z ±0.1
+Limit:   lin_vel_x (-0.5, 1.0), lin_vel_y ±0.3, ang_vel_z ±0.2
+Ramp:    ±0.1 per episode boundary when tracking > 80%
 ```
 
-## Robot
+### Actuators (OUR HARDWARE — not G1)
 
-- URDFs: `urdf/heavy/robot.urdf` (~30.7 kg) and `urdf/light/robot.urdf` (~15.6 kg)
-- Select variant with `--urdf heavy|light` in all training and inference scripts (default: heavy)
-- Forward axis: **+X**. Asymmetric hip roll/pitch limits.
-- Parallel linkage ankle (G1-style): each PR joint = 2 × motor torque
+| Joint | Kp | Kd | Effort | Type |
+|-------|----|----|--------|------|
+| hip_pitch | 200 | 7.5 | 100Nm | DelayedPD |
+| hip_roll | 150 | 5.5 | 50Nm | DelayedPD |
+| hip_yaw | 150 | 5.0 | 50Nm | DelayedPD |
+| knee | 200 | 5.0 | 100Nm | DelayedPD |
+| foot_pitch | 30 | 2.0 | 30Nm | DelayedPD |
+| foot_roll | 30 | 2.0 | 30Nm | DelayedPD |
 
-## 3-Phase Training Pipeline
+All: armature=0.01, delay 0-1ms, friction 0.25-0.5 Nm
 
-```
-Phase 1: Teacher PPO        Phase 2: Distillation        Phase 3: Student PPO
-┌──────────────────┐        ┌──────────────────┐         ┌──────────────────┐
-│ Full obs (48/235)│───────▶│ Teacher: frozen   │────────▶│ Student obs only │
-│ Standard PPO     │        │ Student: MSE loss │         │ Conservative PPO │
-│ biped_train_rsl  │        │ biped_distill_rsl │         │ biped_finetune   │
-└──────────────────┘        └──────────────────┘         └──────────────────┘
-    LR=1e-3                   ~3000 iters                   LR=3e-4
-    clip=0.2                  Loss: 6.8→0.2                 clip=0.1
-    ~3000 iters               Reward: ~64% teacher          entropy=0.001
-    Reward: ~19               Student: 45d/232d             Reward: ≥teacher
-```
+### Events / Domain Randomization
 
-### Observation Dimensions
+- Ground friction: (0.3, 1.0) static+dynamic
+- Base mass: (-1, +3) kg on torso
+- Push: ±0.5 m/s every 5s
+- Reset: random pose ±0.5m, ±π yaw, zero velocity
+- Reset joints: default position, velocity (-1, 1)
 
-| | Flat | Rough |
-|---|---|---|
-| **Teacher** | 48d (with base_lin_vel) | 235d (+ height_scan 187d) |
-| **Student** | 45d (no base_lin_vel) | 232d (height_scan kept) |
+### Terminations
 
-Student keeps height_scan (real sensor). Only `base_lin_vel` is privileged.
+- time_out (20s)
+- base_height < 0.2m
+- bad_orientation > 0.8 rad (46°)
 
-## Full Training Run from Scratch
+### Physics
 
-All commands inside `isaaclab:latest` on GCP. Docker template:
+- dt=0.005, decimation=4 (50Hz control)
+- episode=20s, num_envs=4096
 
-```bash
-docker run --gpus all -d --name <NAME> \
-  -v /home/ubuntu/workspace:/workspace \
-  -v /home/ubuntu/results:/results \
-  -v /home/ubuntu/uploads:/uploads \
-  isaaclab:latest /isaac-sim/python.sh /workspace/biped_locomotion/<SCRIPT> <ARGS> --headless
-```
+## Deploy
 
-### Step 1: Train Teacher (Phase 1)
+Target: RPi 5, ROS2 Jazzy, 12 RobStride motors, BNO085 IMU, 2× CAN bus.
 
-```bash
-# Flat teacher (~2.5s/iter, ~2h for 3000 iters)
-# Add --tanh for bounded actions [-1, +1] (recommended for deploy)
-docker run --gpus all -d --name biped_train_flat \
-  ... isaaclab:latest /isaac-sim/python.sh \
-  /workspace/biped_locomotion/biped_train_rsl.py \
-  --num_envs 8192 --max_iterations 6000 --urdf light --tanh --headless
-
-# Monitor
-docker logs -f biped_train_flat 2>&1 | grep "Mean reward"
-
-# Checkpoints saved every 200 iters to /results/logs/rsl_rl/biped_flat_v52/
-# Pick best checkpoint (highest reward, typically iter 2500-3000)
-```
-
-**Rough teacher** (optional, for rough terrain deployment):
-```bash
-docker run --gpus all -d --name biped_train_rough \
-  ... isaaclab:latest /isaac-sim/python.sh \
-  /workspace/biped_locomotion/biped_train_rsl.py \
-  --rough --num_envs 8192 --max_iterations 6000 --urdf heavy --headless
-# ~5.2s/iter, ~8.5h
-```
-
-Expected: reward ~19 (flat), ~17-18 (rough).
-
-### Step 2: Distill Student (Phase 2)
-
-```bash
-docker run --gpus all -d --name biped_distill \
-  ... isaaclab:latest /isaac-sim/python.sh \
-  /workspace/biped_locomotion/biped_distill_rsl.py \
-  --teacher_checkpoint /results/logs/rsl_rl/biped_flat_v52/model_2899.pt \
-  --num_envs 16384 --max_iterations 3000 --urdf heavy --headless
-# Add --rough for rough terrain distillation
-
-# Monitor behavior loss (should drop from ~7 to ~0.2)
-docker logs -f biped_distill 2>&1 | grep "behavior loss"
-
-# Checkpoints: /results/logs/rsl_rl/biped_distill_flat/
-# Pick checkpoint with lowest loss (not highest reward — MSE is the objective)
-```
-
-Expected: behavior loss ~0.2, reward ~60-70% of teacher. May need 3000-7000 iters for rough terrain.
-
-### Step 3: Fine-tune Student (Phase 3)
-
-```bash
-docker run --gpus all -d --name biped_finetune \
-  ... isaaclab:latest /isaac-sim/python.sh \
-  /workspace/biped_locomotion/biped_finetune_student_rsl.py \
-  --distilled /results/logs/rsl_rl/biped_distill_flat/model_2400.pt \
-  --num_envs 16384 --max_iterations 5000 --urdf heavy --headless
-# Add --rough for rough terrain
-
-# Monitor reward (should match or exceed teacher)
-docker logs -f biped_finetune 2>&1 | grep "Mean reward"
-
-# Checkpoints: /results/logs/rsl_rl/biped_student_flat/
-```
-
-**Critical**: Phase 3 uses conservative PPO to protect pre-trained actor:
-- LR 3e-4 (not 1e-3) — random critic would destroy actor at high LR
-- clip 0.1 (not 0.2) — limits policy update magnitude
-- entropy 0.001 (not 0.005) — student already knows what to do
-
-Expected: reward starts near 0 (critic warmup), reaches teacher level by iter ~3000-4000.
-
-### Step 4: Verify — Play / Record Video
-
-```bash
-# Start Xvfb (required for video on headless GPU)
-pkill Xvfb; Xvfb :99 -screen 0 1920x1080x24 &>/dev/null &
-
-# Play student policy
-docker run --gpus all -d --name biped_play \
-  -e DISPLAY=:99 -v /tmp/.X11-unix:/tmp/.X11-unix \
-  ... isaaclab:latest /isaac-sim/python.sh \
-  /workspace/biped_locomotion/biped_play_rsl.py \
-  --student --checkpoint /results/logs/rsl_rl/biped_student_flat/model_3400.pt \
-  --video --video_length 500 --num_envs 8 --env_index 0 \
-  --video_dir /results/videos --urdf light --headless
-
-# For tanh-trained teacher (add --tanh to match training):
-#   --tanh --checkpoint model.pt --num_envs 8 --global_camera
-# For tanh student (Phase 3):
-#   --tanh --student --checkpoint student_model.pt
-# Action stats (abs/rms/min/max per joint) printed at end + saved as action_stats.csv
-```
-
-### Typical Training Timeline (L4 GPU)
-
-| Phase | Envs | Iter Time | Iters | Wall Time |
-|-------|------|-----------|-------|-----------|
-| 1. Teacher flat | 16384 | 2.5s | 3000 | ~2h |
-| 1. Teacher rough | 8192 | 5.2s | 6000 | ~8.5h |
-| 2. Distill flat | 16384 | 5.7s | 3000 | ~4.5h |
-| 3. Fine-tune flat | 16384 | 5.7s | 5000 | ~8h |
-| **Total (flat)** | | | | **~14.5h** |
-
-## Actuator Config
-
-| Joint | Kp | Kd | Effort (Nm) | Armature |
-|-------|----|----|-------------|----------|
-| hip_roll/yaw | 10 | 3.0 | 50 | 0.0112 |
-| hip_pitch | 15 | 3.0 | 100 | 0.0152 |
-| knee | 15 | 3.0 | 100 | 0.024 |
-| foot_pitch | 2.0 | 0.2 | 30 | 0.0112 |
-| foot_roll | 2.0 | 0.2 | 30 | 0.001 |
-
-All hip/knee stiffness halved from original Berkeley values. Foot stiffness unchanged.
-Foot: 30Nm each via parallel linkage (2 motors × 15Nm). ImplicitActuator for training.
-
-## Reward Terms (13)
-
-| Term | Weight | | Term | Weight |
-|------|--------|-|------|--------|
-| track_lin_vel_xy_exp | 1.0 | | feet_slide | -0.25 |
-| track_ang_vel_z_exp | 0.5 | | undesired_contacts | -1.0 |
-| lin_vel_z_l2 | -2.0 | | joint_deviation_hip | -0.1 |
-| ang_vel_xy_l2 | -0.05 | | joint_deviation_knee | -0.01 |
-| joint_torques_l2 | -1e-5 | | flat_orientation_l2 | -0.5 |
-| action_rate_l2 | -0.01 | | dof_pos_limits | -1.0 |
-| feet_air_time | 2.0 | | | |
-
-`feet_air_time` uses adaptive mode: continuous reward for iters 0–500 (bootstraps stepping), then impact-based from iter 500+ (refines gait quality).
-
-Rough terrain: `flat_orientation_l2=0`, `dof_pos_limits=0`.
-
-## Command Ranges
-
-```python
-lin_vel_x = (-0.5, 1.5)    # forward=+X (biased positive)
-lin_vel_y = (-0.5, 0.5)    # lateral (small)
-ang_vel_z = (-1.0, 1.0)
-```
-
-Curriculum expands `lin_vel_x` toward (-0.5, 3.0) based on tracking reward.
-
-## Winners (in `winners/`)
-
-No checkpoints yet — training with +X forward URDFs in progress. Old -Y checkpoints available at tag `v1.0-neg-y-forward`.
-
-## Key Lessons
-
-1. **Forward is +X**: Commands, curriculum use lin_vel_x for forward
-2. **ImplicitActuator >> DCMotor**: DCMotor saturation kills exploration
-3. **10kg battery mass**: Prevents sliding exploits, improves feet_air_time 5×
-4. **Impact-based feet_air_time**: Prevents sliding exploits vs continuous reward
-5. **Joint mapping**: Isaac runtime order ≠ URDF order — always verify via `robot.joint_names`
-6. **Parallel ankle**: Set PR effort = 2 × motor torque, don't model coupling in sim
-7. **Phase 3 needs conservative PPO**: Random critic + high LR destroys pre-trained actor. Use LR 3e-4, clip 0.1
-8. **Distillation plateaus at ~60% teacher**: This is normal. Phase 3 closes the gap to 100%+
-9. **Pick distill checkpoint by loss, not reward**: Lowest MSE loss = best initialization for Phase 3
+- ONNX input: 225d (5-frame history, obs scaling applied in obs_builder)
+- ONNX output: 12 joint targets (Isaac alphabetical order)
+- Action: target = default_pos + action × 0.25
+- Gains: same Kp/Kd as training (no 5× multiplier)
+- Control rate: 50Hz
