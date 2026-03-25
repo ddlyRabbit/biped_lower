@@ -180,6 +180,23 @@ class PolicyNode(Node):
         # Update last action
         self._obs_builder.update_last_action(actions)
 
+        # Debug: print obs + actions every 10 seconds
+        if not hasattr(self, '_debug_timer'):
+            self._debug_timer = 0
+        self._debug_timer += 1
+        if self._debug_timer % (int(self._rate) * 10) == 1:  # every 10s
+            self.get_logger().info(
+                f'[OBS] gravity={obs[3:6]} cmd={obs[6:9]} '
+                f'hip_pos={obs[9:15]} knee={obs[15:17]} '
+                f'foot_p={obs[17:19]} foot_r={obs[19:21]}'
+            )
+            from biped_control.obs_builder import ACTION_ORDER
+            self.get_logger().info(
+                f'[ACT] raw={actions[:6]} | {actions[6:12]}'
+            )
+            tgt_str = ' '.join(f'{n}={targets[n]:+.3f}' for n in ACTION_ORDER)
+            self.get_logger().info(f'[TGT] {tgt_str}')
+
         # Convert to position targets
         targets = ObsBuilder.action_to_positions(actions)
 
