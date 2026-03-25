@@ -27,7 +27,7 @@ from sensor_msgs.msg import Imu, JointState
 from geometry_msgs.msg import Twist, Vector3Stamped
 from std_msgs.msg import String
 from biped_msgs.msg import MITCommand, MITCommandArray
-from biped_control.obs_builder import ObsBuilder, ISAAC_JOINT_ORDER, DEFAULT_POSITIONS, DEFAULT_GAINS
+from biped_control.obs_builder import ObsBuilder, ISAAC_JOINT_ORDER, DEFAULT_POSITIONS, DEFAULT_GAINS, ACTION_ORDER
 
 
 # Soft start timing
@@ -185,7 +185,6 @@ class PolicyNode(Node):
             self._debug_timer = 0
         self._debug_timer += 1
         if self._debug_timer % (int(self._rate) * 10) == 1:  # every 10s
-            from biped_control.obs_builder import ACTION_ORDER, ISAAC_JOINT_ORDER
             self.get_logger().info(f'[RAW] gyro={self._gyro} gravity={self._gravity} cmd_vel={self._cmd_vel}')
             self.get_logger().info(f'[RAW] joint_pos={{{", ".join(f"{k}:{v:.4f}" for k,v in sorted(self._joint_positions.items()))}}}')
             self.get_logger().info(f'[RAW] joint_vel={{{", ".join(f"{k}:{v:.4f}" for k,v in sorted(self._joint_velocities.items()))}}}')
@@ -196,7 +195,6 @@ class PolicyNode(Node):
         targets = ObsBuilder.action_to_positions(actions)
 
         if self._debug_timer % (int(self._rate) * 10) == 1:
-            from biped_control.obs_builder import ACTION_ORDER
             tgt_str = ' '.join(f'{n}={targets[n]:+.3f}' for n in ACTION_ORDER)
             self.get_logger().info(f'[TGT] {tgt_str}')
 
