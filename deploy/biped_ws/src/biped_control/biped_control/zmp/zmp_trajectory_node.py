@@ -80,7 +80,7 @@ class ZMPTrajectoryNode(Node):
 
         # Publishers
         self._cmd_pub = self.create_publisher(MITCommandArray, '/joint_commands', 10)
-        self._viz_pub = self.create_publisher(JointState, '/policy_viz', 10)
+        self._viz_pub = self.create_publisher(JointState, '/policy_viz_joints', 10)
 
         # Timer at control rate
         self._timer = self.create_timer(self._dt, self._step)
