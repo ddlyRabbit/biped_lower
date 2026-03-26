@@ -289,7 +289,7 @@ class RewardsCfg:
     base_height = RewTerm(
         func=base_mdp.base_height_l2,
         weight=-10.0,
-        params={"target_height": 0.73},
+        params={"target_height": 0.79},
     )
     gait = RewTerm(
         func="biped_mdp:feet_gait",
