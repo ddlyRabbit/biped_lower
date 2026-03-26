@@ -24,8 +24,6 @@ JOINT_ORDER = [
 ]
 
 # Backward compatibility — state_machine_node and policy_node use these names
-ISAAC_JOINT_ORDER = JOINT_ORDER
-ACTION_ORDER = JOINT_ORDER
 
 # Default joint positions (from biped_env_cfg.py init_state)
 DEFAULT_POSITIONS = {

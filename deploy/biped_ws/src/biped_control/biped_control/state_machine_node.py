@@ -25,7 +25,7 @@ from std_msgs.msg import Bool, String
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import JointState
 from biped_msgs.msg import MITCommand, MITCommandArray, RobotState
-from biped_control.obs_builder import ISAAC_JOINT_ORDER, DEFAULT_POSITIONS, DEFAULT_GAINS
+from biped_control.obs_builder import JOINT_ORDER, DEFAULT_POSITIONS, DEFAULT_GAINS
 
 # URDF joint limits (rad) — safety clamp for wiggle
 JOINT_LIMITS = {
@@ -71,7 +71,7 @@ class StateMachineNode(Node):
         self._state = "IDLE"
         self._state_start_time = time.time()
         self._safety_ok = True
-        self._current_positions = {n: 0.0 for n in ISAAC_JOINT_ORDER}
+        self._current_positions = {n: 0.0 for n in JOINT_ORDER}
         self._stand_start_positions = {}  # captured on IDLE→STAND
         self._transition_requested = None
 
@@ -135,7 +135,7 @@ class StateMachineNode(Node):
             except Exception as e:
                 self.get_logger().warn(f'Failed to load wiggle config: {e}')
         # Fill missing joints with defaults
-        for name in ISAAC_JOINT_ORDER:
+        for name in JOINT_ORDER:
             if name not in cfg['joints']:
                 cfg['joints'][name] = {'pos': 0.087, 'neg': -0.087, 'freq': cfg['frequency']}
         return cfg
@@ -230,7 +230,7 @@ class StateMachineNode(Node):
         cmd_msg = MITCommandArray()
         cmd_msg.header.stamp = self.get_clock().now().to_msg()
 
-        for name in ISAAC_JOINT_ORDER:
+        for name in JOINT_ORDER:
             start_pos = self._stand_start_positions.get(name, DEFAULT_POSITIONS[name])
             target_pos = DEFAULT_POSITIONS[name]
             current_target = start_pos + (target_pos - start_pos) * pos_alpha
@@ -259,7 +259,7 @@ class StateMachineNode(Node):
         cmd_msg.header.stamp = self.get_clock().now().to_msg()
         gs = float(self.get_parameter("gain_scale").value)
 
-        for name in ISAAC_JOINT_ORDER:
+        for name in JOINT_ORDER:
             kp_base, kd_base = DEFAULT_GAINS[name]
             cmd = MITCommand()
             cmd.joint_name = name
@@ -278,23 +278,23 @@ class StateMachineNode(Node):
         dur = self._wiggle_cfg['duration_per_joint']
         joint_idx = int(elapsed / dur)
 
-        if joint_idx >= len(ISAAC_JOINT_ORDER):
+        if joint_idx >= len(JOINT_ORDER):
             self.get_logger().info('Wiggle sequential complete')
             self._transition("STAND")
             return
 
-        active_name = ISAAC_JOINT_ORDER[joint_idx]
+        active_name = JOINT_ORDER[joint_idx]
         phase_t = elapsed - joint_idx * dur
 
         if joint_idx != self._wiggle_joint_idx:
             self._wiggle_joint_idx = joint_idx
-            self.get_logger().info(f'Wiggle: {active_name} ({joint_idx+1}/{len(ISAAC_JOINT_ORDER)})')
+            self.get_logger().info(f'Wiggle: {active_name} ({joint_idx+1}/{len(JOINT_ORDER)})')
 
         cmd_msg = MITCommandArray()
         cmd_msg.header.stamp = self.get_clock().now().to_msg()
         gs = float(self.get_parameter("gain_scale").value)
 
-        for name in ISAAC_JOINT_ORDER:
+        for name in JOINT_ORDER:
             default = DEFAULT_POSITIONS[name]
             if name == active_name:
                 jcfg = self._wiggle_cfg['joints'][name]
@@ -333,7 +333,7 @@ class StateMachineNode(Node):
         cmd_msg.header.stamp = self.get_clock().now().to_msg()
         gs = float(self.get_parameter("gain_scale").value)
 
-        for name in ISAAC_JOINT_ORDER:
+        for name in JOINT_ORDER:
             default = DEFAULT_POSITIONS[name]
             jcfg = self._wiggle_cfg['joints'][name]
             freq = jcfg['freq']
@@ -367,7 +367,7 @@ class StateMachineNode(Node):
         cmd_msg = MITCommandArray()
         cmd_msg.header.stamp = self.get_clock().now().to_msg()
 
-        for name in ISAAC_JOINT_ORDER:
+        for name in JOINT_ORDER:
             cmd = MITCommand()
             cmd.joint_name = name
             cmd.position = 0.0
