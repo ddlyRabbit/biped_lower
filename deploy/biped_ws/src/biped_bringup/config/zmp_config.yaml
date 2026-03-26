@@ -18,7 +18,6 @@ preview_horizon: 320    # look-ahead samples
 
 # Control
 dt: 0.02                # control timestep (50Hz)
-gain_scale: 0.3         # PD gain multiplier
 
 # URDF
 urdf_path: /home/roy/biped_lower/urdf/light/robot.urdf

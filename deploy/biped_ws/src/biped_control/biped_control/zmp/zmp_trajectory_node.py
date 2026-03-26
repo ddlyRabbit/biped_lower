@@ -34,6 +34,9 @@ class ZMPTrajectoryNode(Node):
     def __init__(self):
         super().__init__('zmp_trajectory_node')
 
+        # gain_scale from launch file (same param as other nodes)
+        self.declare_parameter('gain_scale', 0.3)
+
         # Config path — can override via ROS param
         self.declare_parameter('config_path', '')
         config_path = self.get_parameter('config_path').value
@@ -69,7 +72,7 @@ class ZMPTrajectoryNode(Node):
         self._traj_index = 0
         self._active = False
         self._sim_only = False
-        self._gain_scale = cfg.get('gain_scale', 0.3)
+        self._gain_scale = float(self.get_parameter('gain_scale').value)
         self._dt = cfg.get('dt', 0.02)
 
         # Subscriptions
@@ -126,7 +129,7 @@ class ZMPTrajectoryNode(Node):
         ds_ratio = cfg.get('double_support_ratio', 0.1)
         com_height = cfg.get('com_height', 0.40)
         preview_horizon = int(cfg.get('preview_horizon', 320))
-        self._gain_scale = cfg.get('gain_scale', 0.3)
+        self._gain_scale = float(self.get_parameter('gain_scale').value)
         self._dt = cfg.get('dt', 0.02)
 
         self.get_logger().info(

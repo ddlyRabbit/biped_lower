@@ -161,6 +161,15 @@ def generate_launch_description():
             }],
         ),
 
+        # ZMP trajectory generator
+        Node(
+            package='biped_control', executable='zmp_trajectory_node',
+            name='zmp_trajectory_node', output='screen',
+            parameters=[{
+                'gain_scale': LaunchConfiguration('gain_scale'),
+            }],
+        ),
+
         # Rosbag recording (MCAP format — open directly in Foxglove)
         ExecuteProcess(
             condition=IfCondition(LaunchConfiguration('record')),
