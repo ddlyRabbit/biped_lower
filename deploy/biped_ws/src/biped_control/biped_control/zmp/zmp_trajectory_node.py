@@ -205,38 +205,56 @@ class ZMPTrajectoryNode(Node):
             )
             trajectory.append(joints)
 
-        # Ramp down: smoothly return to default standing using IK at each frame
-        # Interpolate CoM back to center, feet stay at final positions.
-        # Full 6-DOF IK keeps feet flat throughout.
-        ramp_duration = 2.0  # seconds
-        ramp_frames = int(ramp_duration / self._dt)
+        # Ramp down: IK phase (1s) then joint interpolation to default (1s)
+        ramp_ik_frames = int(1.0 / self._dt)    # 1s IK ramp
+        ramp_joint_frames = int(1.0 / self._dt)  # 1s joint interpolation
 
-        # End state from walking
+        # Phase 1: IK ramp — move CoM + feet back toward standing
         end_com_x = com_x[-1]
         end_com_y = com_y[-1]
         end_l_foot = plan.left_foot[-1].copy()
         end_r_foot = plan.right_foot[-1].copy()
 
-        # Target: CoM centered between feet (default standing)
+        # Standing foot positions (relative to CoM=0): centered
+        stand_l_foot = np.array([0.0, self.ik.left_foot_standing[1] - self.ik.right_foot_standing[1], 0.0]) * 0.5
+        stand_r_foot = -stand_l_foot.copy()
+        # Actually just use zero offset (feet directly under torso at default)
+        stand_l_foot = np.array([0.0, end_l_foot[1], 0.0])
+        stand_r_foot = np.array([0.0, end_r_foot[1], 0.0])
         center_x = (end_l_foot[0] + end_r_foot[0]) / 2.0
-        center_y = 0.0  # centered laterally
 
-        for i in range(1, ramp_frames + 1):
-            alpha = i / ramp_frames
-            alpha = 0.5 * (1 - np.cos(np.pi * alpha))  # cosine ease
+        for i in range(1, ramp_ik_frames + 1):
+            alpha = i / ramp_ik_frames
+            alpha = 0.5 * (1 - np.cos(np.pi * alpha))
 
-            # Interpolate CoM back to center
             ramp_com_x = end_com_x + alpha * (center_x - end_com_x)
-            ramp_com_y = end_com_y + alpha * (center_y - end_com_y)
+            ramp_com_y = end_com_y + alpha * (0.0 - end_com_y)
 
-            # Feet stay at final positions, on ground
-            joints = self.ik.solve(
-                com_x=ramp_com_x,
-                com_y=ramp_com_y,
-                left_foot_pos=end_l_foot,
-                right_foot_pos=end_r_foot,
-            )
+            # Interpolate foot positions back to standing (under torso)
+            ramp_l = end_l_foot + alpha * (stand_l_foot - end_l_foot)
+            ramp_r = end_r_foot + alpha * (stand_r_foot - end_r_foot)
+
+            joints = self.ik.solve(ramp_com_x, ramp_com_y, ramp_l, ramp_r)
             trajectory.append(joints)
+
+        # Phase 2: smooth joint interpolation from last IK frame to exact default
+        last_ik_joints = trajectory[-1]
+        default_joints = {
+            "R_hip_pitch": 0.08, "R_hip_roll": 0.0, "R_hip_yaw": 0.0,
+            "R_knee": 0.25, "R_foot_pitch": -0.17, "R_foot_roll": 0.0,
+            "L_hip_pitch": -0.08, "L_hip_roll": 0.0, "L_hip_yaw": 0.0,
+            "L_knee": 0.25, "L_foot_pitch": -0.17, "L_foot_roll": 0.0,
+        }
+
+        for i in range(1, ramp_joint_frames + 1):
+            alpha = i / ramp_joint_frames
+            alpha = 0.5 * (1 - np.cos(np.pi * alpha))
+            frame = {}
+            for name in last_ik_joints:
+                frame[name] = last_ik_joints[name] + alpha * (default_joints[name] - last_ik_joints[name])
+            trajectory.append(frame)
+
+        ramp_frames = ramp_ik_frames + ramp_joint_frames
 
         self._trajectory = trajectory
         self.get_logger().info(
