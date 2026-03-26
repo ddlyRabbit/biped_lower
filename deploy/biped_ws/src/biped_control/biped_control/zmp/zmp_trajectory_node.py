@@ -172,7 +172,14 @@ class ZMPTrajectoryNode(Node):
         com_height = cfg.get('com_height', 0.40)
         preview_horizon = int(cfg.get('preview_horizon', 320))
         self._gain_scale = float(self.get_parameter('gain_scale').value)
-        self._dt = cfg.get('dt', 0.01)
+        new_dt = cfg.get('dt', 0.01)
+        if new_dt != self._dt:
+            self.get_logger().info(f'dt changed {self._dt} → {new_dt}, recreating timer')
+            self._timer.cancel()
+            self._dt = new_dt
+            self._ramp_in_frames = int(self._ramp_in_secs / self._dt)
+            self._timer = self.create_timer(self._dt, self._step)
+        self._dt = new_dt
 
         self.get_logger().info(
             f'Generating ZMP: length={step_length}m, width={step_width}m, '
