@@ -13,3 +13,5 @@ scipy>=1.14
 pin>=3.9.0               # pinocchio — FK, IK, dynamics
 onnxruntime>=1.17        # ONNX policy inference
 pyyaml>=6.0              # config file loading
+python-can>=4.0          # CAN bus driver (socketcan backend)
+
