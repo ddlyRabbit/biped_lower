@@ -159,7 +159,7 @@ class StateMachineNode(Node):
             self._transition("WALK")
         elif cmd == "SIM_WALK" and self._state == "STAND":
             self._transition("SIM_WALK")
-        elif cmd == "WALK_ZMP" and self._state == "STAND":
+        elif cmd == "WALK_ZMP" and self._state in ("STAND", "WALK_SIM_ZMP"):
             self._transition("WALK_ZMP")
         elif cmd == "WALK_SIM_ZMP" and self._state == "STAND":
             self._transition("WALK_SIM_ZMP")

@@ -107,14 +107,26 @@ class ZMPTrajectoryNode(Node):
             return
         self._last_state = state
 
-        if state in ('WALK_ZMP', 'WALK_SIM_ZMP'):
-            self._sim_only = (state == 'WALK_SIM_ZMP')
+        if state == 'WALK_SIM_ZMP':
+            self._sim_only = True
             self._generate_trajectory()
             self._traj_index = 0
             self._active = True
-            mode = 'SIM' if self._sim_only else 'REAL'
             self.get_logger().info(
-                f'ZMP walk started ({mode}), {len(self._trajectory)} steps'
+                f'ZMP SIM started, {len(self._trajectory)} steps'
+            )
+
+        elif state == 'WALK_ZMP':
+            if self._trajectory is None:
+                self.get_logger().error(
+                    'No trajectory! Run WALK_SIM_ZMP first to generate.'
+                )
+                return
+            self._sim_only = False
+            self._traj_index = 0
+            self._active = True
+            self.get_logger().info(
+                f'ZMP REAL replay, {len(self._trajectory)} steps'
             )
 
         elif state in ('STAND', 'IDLE', 'ESTOP'):
