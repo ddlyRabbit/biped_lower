@@ -183,9 +183,9 @@ class CommandsCfg:
         heading_command=False,
         debug_vis=True,
         ranges=UniformLevelVelocityCommandCfg.Ranges(
-            lin_vel_x=(-0.1, 0.1),
-            lin_vel_y=(-0.1, 0.1),
-            ang_vel_z=(-0.1, 0.1),
+            lin_vel_x=(-0.3, 0.3),
+            lin_vel_y=(-0.3, 0.3),
+            ang_vel_z=(-0.3, 0.3),
             heading=(-math.pi, math.pi),
         ),
         limit_ranges=UniformLevelVelocityCommandCfg.Ranges(
