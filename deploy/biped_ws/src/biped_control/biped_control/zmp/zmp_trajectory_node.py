@@ -268,7 +268,7 @@ class ZMPTrajectoryNode(Node):
             cmd.velocity = 0.0
             cmd.kp = float(kp * self._gain_scale)
             cmd.kd = float(kd * self._gain_scale)
-            cmd.torque = 0.0
+            cmd.torque_ff = 0.0
             msg.commands.append(cmd)
         self._cmd_pub.publish(msg)
 
