@@ -76,7 +76,7 @@ class ZMPTrajectoryNode(Node):
         self._sim_only = False
         self._last_state = ""
         self._gain_scale = float(self.get_parameter('gain_scale').value)
-        self._dt = cfg.get('dt', 0.02)
+        self._dt = cfg.get('dt', 0.01)
         self._start_time = None           # set on WALK_ZMP / WALK_SIM_ZMP entry
         self._gain_ramp_secs = 1.0        # 1s gain ramp on entry
         self._ramp_in_secs = 2.0          # 2s interpolation from current pose to ZMP start
@@ -172,7 +172,7 @@ class ZMPTrajectoryNode(Node):
         com_height = cfg.get('com_height', 0.40)
         preview_horizon = int(cfg.get('preview_horizon', 320))
         self._gain_scale = float(self.get_parameter('gain_scale').value)
-        self._dt = cfg.get('dt', 0.02)
+        self._dt = cfg.get('dt', 0.01)
 
         self.get_logger().info(
             f'Generating ZMP: length={step_length}m, width={step_width}m, '

@@ -17,7 +17,7 @@ com_height: 0.40        # CoM height above ground (meters)
 preview_horizon: 320    # look-ahead samples
 
 # Control
-dt: 0.02                # control timestep (50Hz)
+dt: 0.01                # control timestep (100Hz)
 
 # URDF
 urdf_path: /home/roy/biped_lower/urdf/light/robot.urdf
