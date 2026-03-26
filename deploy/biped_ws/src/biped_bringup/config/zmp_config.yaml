@@ -1,0 +1,24 @@
+zmp_trajectory_node:
+  ros__parameters:
+    # URDF path (absolute on Pi)
+    urdf_path: /home/roy/biped_lower/urdf/light/robot.urdf
+
+    # Control rate
+    dt: 0.02  # 50Hz
+
+    # PD gain scale (multiplier on Kp/Kd sent to motors)
+    gain_scale: 0.3
+
+    # Gait parameters
+    step_length: 0.10       # meters forward per step
+    step_width: 0.25        # meters lateral (foot-to-foot)
+    step_height: 0.05       # swing foot clearance (meters)
+    step_period: 0.8        # seconds per step
+    num_steps: 10           # number of steps
+    double_support_ratio: 0.1  # fraction of step in double support
+
+    # Robot geometry (from pinocchio FK)
+    com_height: 0.40        # CoM height above ground (meters)
+
+    # Preview controller
+    preview_horizon: 320    # look-ahead samples
