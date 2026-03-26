@@ -288,8 +288,8 @@ class RewardsCfg:
     flat_orientation_l2 = RewTerm(func=base_mdp.flat_orientation_l2, weight=-5.0)
     base_height = RewTerm(
         func=base_mdp.base_height_l2,
-        weight=-10.0,
-        params={"target_height": 0.79},
+        weight=-1.0,
+        params={"target_height": 0.795},
     )
     gait = RewTerm(
         func="biped_mdp:feet_gait",
