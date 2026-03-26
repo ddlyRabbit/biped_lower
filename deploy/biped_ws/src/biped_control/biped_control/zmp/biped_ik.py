@@ -1,11 +1,11 @@
 """Inverse kinematics for biped using pinocchio — full 6-DOF.
 
-Solves for all 6 joints per leg: position + flat foot orientation.
-Uses world-aligned Jacobian (LOCAL_WORLD_ALIGNED) which converges
-reliably for our URDF geometry.
-
+Solves for all 6 joints per leg: position + orientation.
 Target orientation = foot orientation at default standing pose (flat on ground).
-The full trajectory is pre-computed before execution (not real-time).
+
+Each frame starts from default pose (no warm-start) to prevent
+solution drift into wrong kinematic branch.
+
 Requires: pip install pin
 """
 
@@ -33,9 +33,9 @@ PIN_JOINT_TO_DEPLOY = {
 
 
 class BipedIK:
-    """6-DOF IK solver: foot position + flat orientation."""
+    """6-DOF IK: foot position + default standing orientation."""
 
-    def __init__(self, urdf_path: str, dt: float = 0.1, max_iter: int = 150,
+    def __init__(self, urdf_path: str, dt: float = 0.1, max_iter: int = 200,
                  eps_pos: float = 5e-4, eps_ori: float = 1e-2, damping: float = 1e-3):
         self.urdf_path = str(Path(urdf_path).resolve())
         self.model = pin.buildModelFromUrdf(self.urdf_path)
@@ -78,34 +78,23 @@ class BipedIK:
             if name in self._deploy_to_pin_idx:
                 self._q_default[self._deploy_to_pin_idx[name]] = val
 
-        self._last_q = self._q_default.copy()
-
-        # Compute standing foot positions and "flat" orientations
+        # Compute standing foot positions and orientations
         pin.forwardKinematics(self.model, self.data, self._q_default)
         pin.updateFramePlacements(self.model, self.data)
         self.right_foot_standing = self.data.oMf[self.r_foot_id].translation.copy()
         self.left_foot_standing = self.data.oMf[self.l_foot_id].translation.copy()
-        # Target orientation = standing flat on ground
         self._R_flat_right = self.data.oMf[self.r_foot_id].rotation.copy()
         self._R_flat_left = self.data.oMf[self.l_foot_id].rotation.copy()
 
-    def _solve_one_foot(self, q: np.ndarray, foot_id: int,
-                        target_pos: np.ndarray, R_flat: np.ndarray,
-                        leg_indices: list) -> np.ndarray:
-        """6-DOF CLIK: position + flat foot orientation.
-
-        Uses world-aligned error formulation:
-          pos_error = target_pos - current_pos
-          ori_error = log3(R_target @ R_current.T)
-        Jacobian: LOCAL_WORLD_ALIGNED (stable convergence).
-        """
-        q = q.copy()
+    def _solve_one_foot(self, foot_id: int, target_pos: np.ndarray,
+                        R_flat: np.ndarray, leg_indices: list) -> np.ndarray:
+        """6-DOF CLIK from default pose. No warm-start."""
+        q = self._q_default.copy()
 
         for it in range(self.max_iter):
             pin.forwardKinematics(self.model, self.data, q)
             pin.updateFramePlacements(self.model, self.data)
 
-            # World-frame errors
             pos_err = target_pos - self.data.oMf[foot_id].translation
             ori_err = pin.log3(R_flat @ self.data.oMf[foot_id].rotation.T)
             err = np.concatenate([pos_err, ori_err])
@@ -127,7 +116,6 @@ class BipedIK:
 
             q = pin.integrate(self.model, q, dq * self.dt)
 
-            # Clamp to joint limits
             for idx in leg_indices:
                 lo = self.model.lowerPositionLimit[idx]
                 hi = self.model.upperPositionLimit[idx]
@@ -135,15 +123,9 @@ class BipedIK:
 
         return q
 
-    def solve(
-        self,
-        com_x: float,
-        com_y: float,
-        left_foot_pos: np.ndarray,
-        right_foot_pos: np.ndarray,
-    ) -> Dict[str, float]:
-        """Solve IK for both legs. Foot positions in world frame."""
-        # Foot targets relative to torso
+    def solve(self, com_x: float, com_y: float,
+              left_foot_pos: np.ndarray, right_foot_pos: np.ndarray) -> Dict[str, float]:
+        """Solve IK for both legs. Each starts from default pose."""
         r_rel = np.array([
             right_foot_pos[0] - com_x,
             right_foot_pos[1] - com_y,
@@ -155,16 +137,15 @@ class BipedIK:
             self.left_foot_standing[2] + left_foot_pos[2],
         ])
 
-        # Solve right leg (6-DOF: position + flat orientation)
-        q = self._solve_one_foot(
-            self._last_q, self.r_foot_id, r_rel, self._R_flat_right, self._r_indices
-        )
-        # Solve left leg
-        q = self._solve_one_foot(
-            q, self.l_foot_id, l_rel, self._R_flat_left, self._l_indices
-        )
+        q_r = self._solve_one_foot(self.r_foot_id, r_rel, self._R_flat_right, self._r_indices)
+        q_l = self._solve_one_foot(self.l_foot_id, l_rel, self._R_flat_left, self._l_indices)
 
-        self._last_q = q.copy()
+        # Merge both legs
+        q = self._q_default.copy()
+        for idx in self._r_indices:
+            q[idx] = q_r[idx]
+        for idx in self._l_indices:
+            q[idx] = q_l[idx]
 
         joints = {}
         for idx, name in self._pin_to_deploy.items():
@@ -182,4 +163,4 @@ class BipedIK:
                 self.data.oMf[self.l_foot_id].translation.copy())
 
     def reset(self):
-        self._last_q = self._q_default.copy()
+        pass  # No state to reset — each solve starts from default
