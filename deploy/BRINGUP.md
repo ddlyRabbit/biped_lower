@@ -77,8 +77,9 @@ echo 'source ~/biped_lower/deploy/biped_ws/install/setup.bash' >> ~/.bashrc
 Add to `/boot/firmware/config.txt`:
 ```
 dtparam=spi=on
-dtoverlay=mcp2515-can0,oscillator=12000000,interrupt=25
-dtoverlay=mcp2515-can1,oscillator=12000000,interrupt=24
+dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=25
+dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=23
+dtoverlay=spi-bcm2835-overlay
 ```
 Reboot. Verify: `ls /sys/class/net/ | grep can` → should show `can0` and `can1`.
 
