@@ -94,9 +94,16 @@ class BipedIK:
 
     def _solve_one_foot(self, q: np.ndarray, foot_id: int,
                         target_pos: np.ndarray, leg_indices: list) -> np.ndarray:
-        """Damped least-squares CLIK for one foot."""
+        """Damped least-squares CLIK for one foot — position only.
+
+        Solves for foot position. Foot pitch/roll are locked to 0 after
+        solving to keep the foot flat on the ground.
+        """
         q = q.copy()
-        oMdes = pin.SE3(np.eye(3), target_pos)
+
+        # Only solve with the first 4 joints (hip_pitch, hip_roll, hip_yaw, knee)
+        # Foot pitch and roll are the last 2 in each leg's indices
+        solve_indices = leg_indices[:4]
 
         for it in range(self.max_iter):
             pin.forwardKinematics(self.model, self.data, q)
@@ -112,25 +119,28 @@ class BipedIK:
                 self.model, self.data, q, foot_id, pin.LOCAL_WORLD_ALIGNED
             )[:3, :]
 
-            # Extract only this leg's columns
-            J_leg = J_full[:, leg_indices]
+            # Only use hip + knee columns (not foot pitch/roll)
+            J_leg = J_full[:, solve_indices]
 
-            # Damped least-squares: dq = J^T (J J^T + λI)^{-1} err
+            # Damped least-squares
             JJT = J_leg @ J_leg.T + self.damping * np.eye(3)
             dq_leg = J_leg.T @ np.linalg.solve(JJT, err)
 
-            # Apply to full q
             dq = np.zeros(self.model.nv)
-            for i, idx in enumerate(leg_indices):
+            for i, idx in enumerate(solve_indices):
                 dq[idx] = dq_leg[i]
 
             q = pin.integrate(self.model, q, dq * self.dt)
 
             # Clamp to joint limits
-            for idx in leg_indices:
+            for idx in solve_indices:
                 lo = self.model.lowerPositionLimit[idx]
                 hi = self.model.upperPositionLimit[idx]
                 q[idx] = np.clip(q[idx], lo, hi)
+
+        # Lock foot pitch and roll to 0 (flat foot)
+        q[leg_indices[4]] = 0.0  # foot_pitch
+        q[leg_indices[5]] = 0.0  # foot_roll
 
         return q
 
@@ -163,13 +173,7 @@ class BipedIK:
         # Solve right leg first
         q = self._solve_one_foot(self._last_q, self.r_foot_id, r_rel, self._r_indices)
 
-        # Initialize left leg from mirrored right leg solution
-        # All left joint axes are negated relative to right in our URDF,
-        # so q_left = -q_right gives the same physical pose (mirrored).
-        for r_idx, l_idx in zip(self._r_indices, self._l_indices):
-            q[l_idx] = -q[r_idx]
-
-        # Solve left leg (CLIK fine-tunes from mirrored init)
+        # Solve left leg (warm-started from last solution)
         q = self._solve_one_foot(q, self.l_foot_id, l_rel, self._l_indices)
 
         self._last_q = q.copy()
