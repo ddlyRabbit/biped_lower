@@ -193,8 +193,33 @@ class ZMPTrajectoryNode(Node):
             )
             trajectory.append(joints)
 
+        # Ramp down: smoothly interpolate from last walking frame to default standing
+        ramp_duration = 2.0  # seconds
+        ramp_frames = int(ramp_duration / self._dt)
+        last_joints = trajectory[-1]
+
+        # Default standing joint angles
+        default_joints = {
+            "R_hip_pitch": 0.08, "R_hip_roll": 0.0, "R_hip_yaw": 0.0,
+            "R_knee": 0.25, "R_foot_pitch": -0.17, "R_foot_roll": 0.0,
+            "L_hip_pitch": -0.08, "L_hip_roll": 0.0, "L_hip_yaw": 0.0,
+            "L_knee": 0.25, "L_foot_pitch": -0.17, "L_foot_roll": 0.0,
+        }
+
+        for i in range(1, ramp_frames + 1):
+            alpha = i / ramp_frames  # 0→1 smooth interpolation
+            # Cosine ease-in-out for smooth motion
+            alpha = 0.5 * (1 - np.cos(np.pi * alpha))
+            frame = {}
+            for name in last_joints:
+                frame[name] = last_joints[name] + alpha * (default_joints[name] - last_joints[name])
+            trajectory.append(frame)
+
         self._trajectory = trajectory
-        self.get_logger().info(f'Trajectory generated: {len(trajectory)} frames')
+        self.get_logger().info(
+            f'Trajectory generated: {len(trajectory)} frames '
+            f'({len(trajectory) - ramp_frames} walk + {ramp_frames} ramp-down)'
+        )
 
     def _step(self):
         """Execute one timestep of the trajectory."""
