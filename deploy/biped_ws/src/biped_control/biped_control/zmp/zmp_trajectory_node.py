@@ -7,12 +7,14 @@ Config loaded from zmp_config.yaml (re-read on every WALK_ZMP command).
 """
 
 import os
+import time
 import yaml
 import numpy as np
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 from sensor_msgs.msg import JointState
+from rclpy.qos import QoSProfile, ReliabilityPolicy
 
 from biped_msgs.msg import MITCommand, MITCommandArray
 
@@ -75,8 +77,16 @@ class ZMPTrajectoryNode(Node):
         self._last_state = ""
         self._gain_scale = float(self.get_parameter('gain_scale').value)
         self._dt = cfg.get('dt', 0.02)
+        self._start_time = None           # set on WALK_ZMP / WALK_SIM_ZMP entry
+        self._gain_ramp_secs = 1.0        # 1s gain ramp on entry
+        self._ramp_in_secs = 2.0          # 2s interpolation from current pose to ZMP start
+        self._ramp_in_frames = int(self._ramp_in_secs / self._dt)
+        self._current_positions = {}      # latest joint positions from /joint_states
+        self._active_trajectory = None    # ramp_in + trajectory, rebuilt on each activation
 
         # Subscriptions
+        sensor_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
+        self.create_subscription(JointState, '/joint_states', self._joint_cb, sensor_qos)
         self.create_subscription(String, '/state_machine', self._state_cb, 10)
 
         # Publishers
@@ -99,6 +109,11 @@ class ZMPTrajectoryNode(Node):
             self.get_logger().error(f'Failed to load config: {e}')
             return {}
 
+    def _joint_cb(self, msg: JointState):
+        for i, name in enumerate(msg.name):
+            if i < len(msg.position):
+                self._current_positions[name] = msg.position[i]
+
     def _state_cb(self, msg: String):
         """Handle state machine transitions. Ignore repeated same-state messages."""
         state = msg.data.strip().upper()
@@ -110,10 +125,15 @@ class ZMPTrajectoryNode(Node):
         if state == 'WALK_SIM_ZMP':
             self._sim_only = True
             self._generate_trajectory()
+            ramp_in = self._build_ramp_in()
+            self._active_trajectory = ramp_in + self._trajectory
             self._traj_index = 0
+            self._start_time = time.time()
             self._active = True
             self.get_logger().info(
-                f'ZMP SIM started, {len(self._trajectory)} steps'
+                f'ZMP SIM started, {len(self._active_trajectory)} steps '
+                f'({len(ramp_in)} ramp-in + {len(self._trajectory)} walk+ramp-down), '
+                f'gain ramp {self._gain_ramp_secs}s'
             )
 
         elif state == 'WALK_ZMP':
@@ -123,10 +143,15 @@ class ZMPTrajectoryNode(Node):
                 )
                 return
             self._sim_only = False
+            ramp_in = self._build_ramp_in()
+            self._active_trajectory = ramp_in + self._trajectory
             self._traj_index = 0
+            self._start_time = time.time()
             self._active = True
             self.get_logger().info(
-                f'ZMP REAL replay, {len(self._trajectory)} steps'
+                f'ZMP REAL started, {len(self._active_trajectory)} steps '
+                f'({len(ramp_in)} ramp-in + {len(self._trajectory)} walk+ramp-down), '
+                f'gain ramp {self._gain_ramp_secs}s'
             )
 
         elif state in ('STAND', 'IDLE', 'ESTOP'):
@@ -254,29 +279,49 @@ class ZMPTrajectoryNode(Node):
                 frame[name] = last_ik_joints[name] + alpha * (default_joints[name] - last_ik_joints[name])
             trajectory.append(frame)
 
-        ramp_frames = ramp_ik_frames + ramp_joint_frames
+        ramp_down_frames = ramp_ik_frames + ramp_joint_frames
 
         self._trajectory = trajectory
+        self._ramp_in_frames = int(self._ramp_in_secs / self._dt)
         self.get_logger().info(
-            f'Trajectory generated: {len(trajectory)} frames '
-            f'({len(trajectory) - ramp_frames} walk + {ramp_frames} ramp-down)'
+            f'Trajectory generated: {len(trajectory)} walk + {ramp_down_frames} ramp-down '
+            f'(ramp-in {self._ramp_in_frames} frames prepended at activation)'
         )
+
+    def _build_ramp_in(self) -> list:
+        """Build ramp-in frames from current joint positions to first trajectory frame."""
+        if not self._trajectory:
+            return []
+        first_ik_joints = self._trajectory[0]
+        start_joints = {}
+        for name in first_ik_joints:
+            start_joints[name] = self._current_positions.get(name, first_ik_joints[name])
+
+        ramp_in = []
+        for i in range(self._ramp_in_frames):
+            alpha = (i + 1) / self._ramp_in_frames
+            alpha = 0.5 * (1 - np.cos(np.pi * alpha))  # cosine ease
+            frame = {}
+            for name in first_ik_joints:
+                frame[name] = start_joints[name] + alpha * (first_ik_joints[name] - start_joints[name])
+            ramp_in.append(frame)
+        return ramp_in
 
     def _step(self):
         """Execute one timestep of the trajectory."""
-        if not self._active or self._trajectory is None:
+        if not self._active or self._active_trajectory is None:
             return
 
-        if self._traj_index >= len(self._trajectory):
+        if self._traj_index >= len(self._active_trajectory):
             self._active = False
             self.get_logger().info('ZMP trajectory complete')
             return
 
-        joints = self._trajectory[self._traj_index]
+        joints = self._active_trajectory[self._traj_index]
 
         if self._traj_index % 50 == 0:
             self.get_logger().info(
-                f'ZMP step {self._traj_index}/{len(self._trajectory)}'
+                f'ZMP step {self._traj_index}/{len(self._active_trajectory)}'
             )
 
         self._traj_index += 1
@@ -288,17 +333,23 @@ class ZMPTrajectoryNode(Node):
             self._publish_viz(joints)
 
     def _publish_commands(self, joints: dict):
-        """Publish joint commands to real motors."""
+        """Publish joint commands to real motors with 1s gain ramp."""
+        # Gain ramp: 10% → 100% over _gain_ramp_secs
+        ramp = 1.0
+        if self._start_time is not None:
+            elapsed = time.time() - self._start_time
+            ramp = min(1.0, 0.1 + 0.9 * (elapsed / self._gain_ramp_secs))
+
         msg = MITCommandArray()
+        gs = float(self.get_parameter('gain_scale').value)
         for name, angle in joints.items():
             kp, kd = self.gains.get(name, (0.0, 0.0))
-            gs = float(self.get_parameter('gain_scale').value)
             cmd = MITCommand()
             cmd.joint_name = name
             cmd.position = float(angle)
             cmd.velocity = 0.0
-            cmd.kp = float(kp * gs)
-            cmd.kd = float(kd * gs)
+            cmd.kp = float(kp * gs * ramp)
+            cmd.kd = float(kd * gs * ramp)
             cmd.torque_ff = 0.0
             msg.commands.append(cmd)
         self._cmd_pub.publish(msg)
