@@ -193,27 +193,38 @@ class ZMPTrajectoryNode(Node):
             )
             trajectory.append(joints)
 
-        # Ramp down: smoothly interpolate from last walking frame to default standing
+        # Ramp down: smoothly return to default standing using IK at each frame
+        # Interpolate CoM back to center, feet stay at final positions.
+        # Full 6-DOF IK keeps feet flat throughout.
         ramp_duration = 2.0  # seconds
         ramp_frames = int(ramp_duration / self._dt)
-        last_joints = trajectory[-1]
 
-        # Default standing joint angles
-        default_joints = {
-            "R_hip_pitch": 0.08, "R_hip_roll": 0.0, "R_hip_yaw": 0.0,
-            "R_knee": 0.25, "R_foot_pitch": -0.17, "R_foot_roll": 0.0,
-            "L_hip_pitch": -0.08, "L_hip_roll": 0.0, "L_hip_yaw": 0.0,
-            "L_knee": 0.25, "L_foot_pitch": -0.17, "L_foot_roll": 0.0,
-        }
+        # End state from walking
+        end_com_x = com_x[-1]
+        end_com_y = com_y[-1]
+        end_l_foot = plan.left_foot[-1].copy()
+        end_r_foot = plan.right_foot[-1].copy()
+
+        # Target: CoM centered between feet (default standing)
+        center_x = (end_l_foot[0] + end_r_foot[0]) / 2.0
+        center_y = 0.0  # centered laterally
 
         for i in range(1, ramp_frames + 1):
-            alpha = i / ramp_frames  # 0→1 smooth interpolation
-            # Cosine ease-in-out for smooth motion
-            alpha = 0.5 * (1 - np.cos(np.pi * alpha))
-            frame = {}
-            for name in last_joints:
-                frame[name] = last_joints[name] + alpha * (default_joints[name] - last_joints[name])
-            trajectory.append(frame)
+            alpha = i / ramp_frames
+            alpha = 0.5 * (1 - np.cos(np.pi * alpha))  # cosine ease
+
+            # Interpolate CoM back to center
+            ramp_com_x = end_com_x + alpha * (center_x - end_com_x)
+            ramp_com_y = end_com_y + alpha * (center_y - end_com_y)
+
+            # Feet stay at final positions, on ground
+            joints = self.ik.solve(
+                com_x=ramp_com_x,
+                com_y=ramp_com_y,
+                left_foot_pos=end_l_foot,
+                right_foot_pos=end_r_foot,
+            )
+            trajectory.append(joints)
 
         self._trajectory = trajectory
         self.get_logger().info(
