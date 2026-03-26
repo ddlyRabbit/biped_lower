@@ -274,12 +274,13 @@ class ZMPTrajectoryNode(Node):
         msg = MITCommandArray()
         for name, angle in joints.items():
             kp, kd = self.gains.get(name, (0.0, 0.0))
+            gs = float(self.get_parameter('gain_scale').value)
             cmd = MITCommand()
             cmd.joint_name = name
             cmd.position = float(angle)
             cmd.velocity = 0.0
-            cmd.kp = float(kp * self._gain_scale)
-            cmd.kd = float(kd * self._gain_scale)
+            cmd.kp = float(kp * gs)
+            cmd.kd = float(kd * gs)
             cmd.torque_ff = 0.0
             msg.commands.append(cmd)
         self._cmd_pub.publish(msg)
