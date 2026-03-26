@@ -204,6 +204,12 @@ class StateMachineNode(Node):
             pass
         elif self._state == "SIM_WALK":
             self._handle_stand_hold()
+        elif self._state == "WALK_ZMP":
+            # ZMP trajectory node publishes /joint_commands — don't interfere
+            pass
+        elif self._state == "WALK_SIM_ZMP":
+            # ZMP plays on /policy_viz_joints, motors hold STAND
+            self._handle_stand_hold()
         elif self._state == "WIGGLE_SEQ":
             self._handle_wiggle_sequential()
         elif self._state == "WIGGLE_ALL":
