@@ -261,7 +261,7 @@ class ActionsCfg:
 class RewardsCfg:
     track_lin_vel_xy = RewTerm(
         func="biped_mdp:track_lin_vel_xy_yaw_frame_exp",
-        weight=1.0,
+        weight=2.0,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     track_ang_vel_z = RewTerm(
@@ -288,8 +288,8 @@ class RewardsCfg:
     flat_orientation_l2 = RewTerm(func=base_mdp.flat_orientation_l2, weight=-5.0)
     base_height = RewTerm(
         func=base_mdp.base_height_l2,
-        weight=-1.0,
-        params={"target_height": 0.795},
+        weight=-0.5,
+        params={"target_height": 0.8},
     )
     gait = RewTerm(
         func="biped_mdp:feet_gait",
