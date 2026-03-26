@@ -1,6 +1,15 @@
-# Deploy dependencies for biped_lower (Pi, arm64, Python 3.12)
-numpy
-scipy
-pin              # pinocchio — analytical robotics (FK, IK, dynamics)
-ikpy             # backup IK (not used currently, pinocchio preferred)
-onnxruntime      # ONNX policy inference
+# Deploy dependencies for biped_lower
+# Target: RPi 5, Ubuntu 24.04 arm64, Python 3.12, ROS2 Jazzy
+#
+# Install:
+#   pip3 install --break-system-packages -r requirements.txt
+#
+# Note: pinocchio (pin) builds from source on arm64 (~5 min, needs 2GB swap on 1GB Pi)
+#   sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+#   sudo mkswap /swapfile && sudo swapon /swapfile
+
+numpy>=2.0
+scipy>=1.14
+pin>=3.9.0               # pinocchio — FK, IK, dynamics
+onnxruntime>=1.17        # ONNX policy inference
+pyyaml>=6.0              # config file loading
