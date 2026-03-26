@@ -66,6 +66,15 @@ ALL_JOINTS = [
     "left_hip_yaw_03", "left_hip_roll_03", "left_hip_pitch_04",
     "left_knee_04", "left_foot_pitch_02", "left_foot_roll_02",
 ]
+JOINTS_MAIN = [
+    "right_hip_yaw_03", "right_hip_roll_03", "right_hip_pitch_04",
+    "right_knee_04", "right_foot_pitch_02",
+    "left_hip_yaw_03", "left_hip_roll_03", "left_hip_pitch_04",
+    "left_knee_04", "left_foot_pitch_02",
+]
+JOINTS_ANKLE_ROLL = [
+    "right_foot_roll_02", "left_foot_roll_02",
+]
 
 
 ###############################################################################
@@ -463,42 +472,42 @@ BIPED_CFG = ArticulationCfg(
         "hip_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_roll.*"],
             effort_limit=50.0, velocity_limit=10.0,
-            stiffness=120.0, damping=3.0, armature=0.0112,
+            stiffness=150.0, damping=5.5, armature=0.01,
             friction=0.375,
             min_delay=0, max_delay=1,
         ),
         "hip_yaw": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
             effort_limit=50.0, velocity_limit=10.0,
-            stiffness=60.0, damping=3.0, armature=0.0112,
+            stiffness=150.0, damping=5.0, armature=0.01,
             friction=0.375,
             min_delay=0, max_delay=1,
         ),
         "hip_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
             effort_limit=100.0, velocity_limit=10.0,
-            stiffness=180.0, damping=3.0, armature=0.0152,
+            stiffness=200.0, damping=7.5, armature=0.01,
             friction=0.5,
             min_delay=0, max_delay=1,
         ),
         "knee": DelayedPDActuatorCfg(
             joint_names_expr=[".*knee.*"],
             effort_limit=100.0, velocity_limit=10.0,
-            stiffness=180.0, damping=3.0, armature=0.024,
+            stiffness=200.0, damping=5.0, armature=0.01,
             friction=0.5,
             min_delay=0, max_delay=1,
         ),
         "foot_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=96.0, damping=2.0, armature=0.0112,
+            stiffness=30.0, damping=2.0, armature=0.01,
             friction=0.25,
             min_delay=0, max_delay=1,
         ),
         "foot_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=48.0, damping=2.0, armature=0.001,
+            stiffness=30.0, damping=2.0, armature=0.01,
             friction=0.25,
             min_delay=0, max_delay=1,
         ),
@@ -661,10 +670,17 @@ class ObservationsCfg:
 
 @configclass
 class ActionsCfg:
-    joint_pos = base_mdp.JointPositionActionCfg(
+    joint_pos_main = base_mdp.JointPositionActionCfg(
         asset_name="robot",
-        joint_names=ALL_JOINTS,
+        joint_names=JOINTS_MAIN,
         scale=0.5,
+        preserve_order=True,
+        use_default_offset=True,
+    )
+    joint_pos_ankle_roll = base_mdp.JointPositionActionCfg(
+        asset_name="robot",
+        joint_names=JOINTS_ANKLE_ROLL,
+        scale=0.25,
         preserve_order=True,
         use_default_offset=True,
     )
