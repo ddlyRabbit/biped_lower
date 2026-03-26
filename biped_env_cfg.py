@@ -907,7 +907,7 @@ class EventsCfg:
     # --- Interval ---
     push_robot = EventTerm(
         func=base_mdp.push_by_setting_velocity,
-        params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
+        params={"velocity_range": {"x": (0.0, 0.0), "y": (0.0, 0.0)}},  # curriculum ramps from 0 at iter 2000
         mode="interval",
         interval_range_s=(10.0, 15.0),
     )
@@ -930,7 +930,7 @@ class CurriculumsCfg:
             "term_name": "push_robot",
             "max_velocity": [0.75, 0.75],     # max push 0.75 m/s
             "interval": 200 * 24,
-            "starting_step": 1000 * 24,     # start after 1000 iterations
+            "starting_step": 2000 * 24,     # start after 2000 iterations
         },
     )
     command_vel = CurrTerm(
