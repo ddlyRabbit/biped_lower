@@ -1,7 +1,8 @@
 """Inverse kinematics for biped using pinocchio CLIK.
 
-Uses damped least-squares with regularization toward default pose.
-Each leg solved independently using frame Jacobian column masking.
+Position-only IK using hip + knee (4 joints per leg).
+Foot pitch set to compensate accumulated tilt (as flat as possible).
+Foot roll set to 0.
 
 The full trajectory is pre-computed before execution (not real-time).
 Requires: pip install pin
@@ -29,18 +30,15 @@ PIN_JOINT_TO_DEPLOY = {
     "right_foot_roll_02": "R_foot_roll",
 }
 
-# Mirroring map: how to initialize left leg from right leg solution
-# The URDF has mirrored joint frames (π rotations), so joint angles
-# have opposite signs for pitch/yaw, same sign for roll/knee
-MIRROR_MAP = {
-    # right_joint_idx → (left_joint_idx, sign)
-    # Pitch axes are inverted between L/R due to frame π rotation
-    # Roll keeps sign, Yaw inverts
-}
-
 
 class BipedIK:
-    """IK solver using pinocchio CLIK with proper L/R initialization."""
+    """IK solver using pinocchio CLIK.
+
+    Strategy:
+    1. Solve hip + knee (4 joints) for foot position
+    2. Set foot_pitch to maximize foot flatness (compensate chain tilt)
+    3. Set foot_roll to 0
+    """
 
     def __init__(self, urdf_path: str, dt: float = 0.1, max_iter: int = 150,
                  eps: float = 5e-4, damping: float = 1e-3):
@@ -94,17 +92,16 @@ class BipedIK:
 
     def _solve_one_foot(self, q: np.ndarray, foot_id: int,
                         target_pos: np.ndarray, leg_indices: list) -> np.ndarray:
-        """Damped least-squares CLIK for one foot — position only.
+        """Position-only CLIK for hip + knee, then flatten foot.
 
-        Solves for foot position. Foot pitch/roll are locked to 0 after
-        solving to keep the foot flat on the ground.
+        1. Solve position with hip_pitch, hip_roll, hip_yaw, knee (4 joints)
+        2. Search foot_pitch for flattest foot orientation
+        3. Set foot_roll = 0
         """
         q = q.copy()
+        solve_indices = leg_indices[:4]  # hip_pitch, hip_roll, hip_yaw, knee
 
-        # Only solve with the first 4 joints (hip_pitch, hip_roll, hip_yaw, knee)
-        # Foot pitch and roll are the last 2 in each leg's indices
-        solve_indices = leg_indices[:4]
-
+        # Step 1: Position IK with 4 joints
         for it in range(self.max_iter):
             pin.forwardKinematics(self.model, self.data, q)
             pin.updateFramePlacements(self.model, self.data)
@@ -119,10 +116,8 @@ class BipedIK:
                 self.model, self.data, q, foot_id, pin.LOCAL_WORLD_ALIGNED
             )[:3, :]
 
-            # Only use hip + knee columns (not foot pitch/roll)
             J_leg = J_full[:, solve_indices]
 
-            # Damped least-squares
             JJT = J_leg @ J_leg.T + self.damping * np.eye(3)
             dq_leg = J_leg.T @ np.linalg.solve(JJT, err)
 
@@ -132,15 +127,34 @@ class BipedIK:
 
             q = pin.integrate(self.model, q, dq * self.dt)
 
-            # Clamp to joint limits
             for idx in solve_indices:
                 lo = self.model.lowerPositionLimit[idx]
                 hi = self.model.upperPositionLimit[idx]
                 q[idx] = np.clip(q[idx], lo, hi)
 
-        # Lock foot pitch and roll to 0 (flat foot)
-        q[leg_indices[4]] = 0.0  # foot_pitch
-        q[leg_indices[5]] = 0.0  # foot_roll
+        # Step 2: Find foot_pitch that makes foot flattest
+        fp_idx = leg_indices[4]  # foot_pitch index
+        fr_idx = leg_indices[5]  # foot_roll index
+
+        fp_lo = self.model.lowerPositionLimit[fp_idx]
+        fp_hi = self.model.upperPositionLimit[fp_idx]
+
+        best_fp = 0.0
+        best_z_up = -1.0
+
+        for fp in np.linspace(fp_lo, fp_hi, 50):
+            q[fp_idx] = fp
+            q[fr_idx] = 0.0
+            pin.forwardKinematics(self.model, self.data, q)
+            pin.updateFramePlacements(self.model, self.data)
+            # Foot Z axis dot world Z — 1.0 = perfectly flat
+            z_up = self.data.oMf[foot_id].rotation[2, 2]
+            if z_up > best_z_up:
+                best_z_up = z_up
+                best_fp = fp
+
+        q[fp_idx] = best_fp
+        q[fr_idx] = 0.0
 
         return q
 
@@ -152,28 +166,19 @@ class BipedIK:
         right_foot_pos: np.ndarray,
     ) -> Dict[str, float]:
         """Solve IK for both legs."""
-        # Foot targets relative to torso
-        # Planner gives world-frame XY + swing Z offset (ground = 0).
-        # IK needs torso-frame coordinates where standing foot Z ≈ -0.74.
-        # Convert: torso-relative = world_foot - torso_pos
-        # torso_pos ≈ (com_x, com_y, 0) in world (torso on ground plane + leg height)
-        # But in torso frame, foot Z = standing_z + swing_offset
         r_rel = np.array([
             right_foot_pos[0] - com_x,
             right_foot_pos[1] - com_y,
-            self.right_foot_standing[2] + right_foot_pos[2],  # standing Z + swing clearance
+            self.right_foot_standing[2] + right_foot_pos[2],
         ])
 
         l_rel = np.array([
             left_foot_pos[0] - com_x,
             left_foot_pos[1] - com_y,
-            self.left_foot_standing[2] + left_foot_pos[2],  # standing Z + swing clearance
+            self.left_foot_standing[2] + left_foot_pos[2],
         ])
 
-        # Solve right leg first
         q = self._solve_one_foot(self._last_q, self.r_foot_id, r_rel, self._r_indices)
-
-        # Solve left leg (warm-started from last solution)
         q = self._solve_one_foot(q, self.l_foot_id, l_rel, self._l_indices)
 
         self._last_q = q.copy()
