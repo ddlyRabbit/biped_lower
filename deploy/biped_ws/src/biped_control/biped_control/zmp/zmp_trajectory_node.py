@@ -72,6 +72,7 @@ class ZMPTrajectoryNode(Node):
         self._traj_index = 0
         self._active = False
         self._sim_only = False
+        self._last_state = ""
         self._gain_scale = float(self.get_parameter('gain_scale').value)
         self._dt = cfg.get('dt', 0.02)
 
@@ -99,8 +100,12 @@ class ZMPTrajectoryNode(Node):
             return {}
 
     def _state_cb(self, msg: String):
-        """Handle state machine transitions."""
+        """Handle state machine transitions. Ignore repeated same-state messages."""
         state = msg.data.strip().upper()
+
+        if state == self._last_state:
+            return
+        self._last_state = state
 
         if state in ('WALK_ZMP', 'WALK_SIM_ZMP'):
             self._sim_only = (state == 'WALK_SIM_ZMP')
@@ -184,6 +189,12 @@ class ZMPTrajectoryNode(Node):
             return
 
         joints = self._trajectory[self._traj_index]
+
+        if self._traj_index % 50 == 0:
+            self.get_logger().info(
+                f'ZMP step {self._traj_index}/{len(self._trajectory)}'
+            )
+
         self._traj_index += 1
 
         if self._sim_only:
