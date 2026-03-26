@@ -11,7 +11,7 @@ num_steps: 6            # number of steps
 double_support_ratio: 0.5  # 50% of step in double support (weight transfer)
 
 # Robot geometry (from pinocchio FK)
-com_height: 0.40        # CoM height above ground (meters)
+com_height: 0.49        # CoM height above ground (meters) — from FK at default pose
 
 # Preview controller
 preview_horizon: 320    # look-ahead samples

@@ -162,5 +162,25 @@ class BipedIK:
         return (self.data.oMf[self.r_foot_id].translation.copy(),
                 self.data.oMf[self.l_foot_id].translation.copy())
 
+    def compute_com(self, joints: Dict[str, float]) -> np.ndarray:
+        """Compute center of mass position relative to base link origin.
+
+        Args:
+            joints: deploy_name → angle (rad)
+
+        Returns:
+            CoM [x, y, z] in base link frame.
+        """
+        q = self._q_default.copy()
+        for name, angle in joints.items():
+            if name in self._deploy_to_pin_idx:
+                q[self._deploy_to_pin_idx[name]] = angle
+        pin.forwardKinematics(self.model, self.data, q)
+        return pin.centerOfMass(self.model, self.data, q).copy()
+
+    def compute_com_default(self) -> np.ndarray:
+        """CoM at default standing pose."""
+        return self.compute_com({})
+
     def reset(self):
         pass  # No state to reset — each solve starts from default

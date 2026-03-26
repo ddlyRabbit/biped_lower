@@ -57,7 +57,11 @@ class ZMPTrajectoryNode(Node):
             return
 
         self.ik = BipedIK(urdf_path)
-        self.get_logger().info(f'IK loaded from {urdf_path}')
+        self._com_default = self.ik.compute_com_default()
+        self.get_logger().info(
+            f'IK loaded from {urdf_path}, '
+            f'default CoM: [{self._com_default[0]:.4f}, {self._com_default[1]:.4f}, {self._com_default[2]:.4f}]'
+        )
 
         # Default PD gains (same as obs_builder.py)
         self.gains = {
@@ -225,17 +229,29 @@ class ZMPTrajectoryNode(Node):
                 f'Consider reducing step_length or increasing step_period.'
             )
 
-        # 3. IK → joint angles
+        # 3. IK → joint angles (with per-frame CoM-to-base correction)
+        # ZMP preview outputs CoM position. IK expects base link position.
+        # base = com - com_offset, where com_offset is CoM relative to base.
+        # First pass uses default offset; second pass refines with actual joint angles.
         self.ik.reset()
         trajectory = []
+        com_offset = self._com_default.copy()  # initial estimate
+
         for i in range(plan.n_samples):
+            # Convert CoM position to base link position
+            base_x = com_x[i] - com_offset[0]
+            base_y = com_y[i] - com_offset[1]
+
             joints = self.ik.solve(
-                com_x=com_x[i],
-                com_y=com_y[i],
+                com_x=base_x,
+                com_y=base_y,
                 left_foot_pos=plan.left_foot[i],
                 right_foot_pos=plan.right_foot[i],
             )
             trajectory.append(joints)
+
+            # Update CoM offset from actual joint angles for next frame
+            com_offset = self.ik.compute_com(joints)
 
         # Ramp down: IK phase (1s) then joint interpolation to default (1s)
         ramp_ik_frames = int(1.0 / self._dt)    # 1s IK ramp
@@ -266,8 +282,13 @@ class ZMPTrajectoryNode(Node):
             ramp_l = end_l_foot + alpha * (stand_l_foot - end_l_foot)
             ramp_r = end_r_foot + alpha * (stand_r_foot - end_r_foot)
 
-            joints = self.ik.solve(ramp_com_x, ramp_com_y, ramp_l, ramp_r)
+            # Apply CoM-to-base offset
+            ramp_base_x = ramp_com_x - com_offset[0]
+            ramp_base_y = ramp_com_y - com_offset[1]
+
+            joints = self.ik.solve(ramp_base_x, ramp_base_y, ramp_l, ramp_r)
             trajectory.append(joints)
+            com_offset = self.ik.compute_com(joints)
 
         # Phase 2: smooth joint interpolation from last IK frame to exact default
         last_ik_joints = trajectory[-1]
