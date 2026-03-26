@@ -66,15 +66,7 @@ ALL_JOINTS = [
     "left_hip_yaw_03", "left_hip_roll_03", "left_hip_pitch_04",
     "left_knee_04", "left_foot_pitch_02", "left_foot_roll_02",
 ]
-JOINTS_MAIN = [
-    "right_hip_yaw_03", "right_hip_roll_03", "right_hip_pitch_04",
-    "right_knee_04", "right_foot_pitch_02",
-    "left_hip_yaw_03", "left_hip_roll_03", "left_hip_pitch_04",
-    "left_knee_04", "left_foot_pitch_02",
-]
-JOINTS_ANKLE_ROLL = [
-    "right_foot_roll_02", "left_foot_roll_02",
-]
+
 
 
 ###############################################################################
@@ -670,17 +662,10 @@ class ObservationsCfg:
 
 @configclass
 class ActionsCfg:
-    joint_pos_main = base_mdp.JointPositionActionCfg(
+    joint_pos = base_mdp.JointPositionActionCfg(
         asset_name="robot",
-        joint_names=JOINTS_MAIN,
-        scale=0.5,
-        preserve_order=True,
-        use_default_offset=True,
-    )
-    joint_pos_ankle_roll = base_mdp.JointPositionActionCfg(
-        asset_name="robot",
-        joint_names=JOINTS_ANKLE_ROLL,
-        scale=0.25,
+        joint_names=ALL_JOINTS,
+        scale={".*foot_roll.*": 0.25, ".*": 0.5},
         preserve_order=True,
         use_default_offset=True,
     )
