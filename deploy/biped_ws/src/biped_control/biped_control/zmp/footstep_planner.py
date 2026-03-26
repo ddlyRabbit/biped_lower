@@ -8,7 +8,7 @@ Generates:
 
 import numpy as np
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 
 @dataclass
@@ -170,3 +170,153 @@ class FootstepPlanner:
             dt=self.dt,
             n_samples=n_total,
         )
+
+
+def check_zmp_stability(
+    plan: FootstepPlan,
+    zmp_x: np.ndarray,
+    zmp_y: np.ndarray,
+    foot_length: float = 0.15,
+    foot_width: float = 0.08,
+    buffer: float = 0.10,
+) -> dict:
+    """Check if ZMP stays within the support polygon with a safety buffer.
+
+    Args:
+        plan: Footstep plan with foot positions and support phase.
+        zmp_x, zmp_y: Realized ZMP trajectory from preview controller.
+        foot_length: Foot sole length (meters), centered on foot frame.
+        foot_width: Foot sole width (meters), centered on foot frame.
+        buffer: Safety buffer as fraction of polygon (0.10 = 10% from edges).
+
+    Returns:
+        dict with:
+          stable: bool — True if ZMP stays within buffered polygon everywhere.
+          violations: list of (timestep, margin) where margin < 0.
+          min_margin: minimum margin across trajectory.
+          worst_phase: which phase (step index) has worst margin.
+    """
+    n = plan.n_samples
+    shrink = 1.0 - buffer  # shrink polygon by buffer fraction
+
+    violations = []
+    min_margin = float('inf')
+    worst_step = -1
+
+    for i in range(n):
+        sup = plan.support_foot[i]
+        lf = plan.left_foot[i]
+        rf = plan.right_foot[i]
+
+        if sup == 0:
+            # Double support: polygon is convex hull of both feet
+            # Simplified: rectangle from min/max of both foot bounds
+            x_lo = min(lf[0], rf[0]) - foot_length / 2
+            x_hi = max(lf[0], rf[0]) + foot_length / 2
+            y_lo = min(lf[1], rf[1]) - foot_width / 2
+            y_hi = max(lf[1], rf[1]) + foot_width / 2
+        elif sup == 1:
+            # Left foot support
+            x_lo = lf[0] - foot_length / 2
+            x_hi = lf[0] + foot_length / 2
+            y_lo = lf[1] - foot_width / 2
+            y_hi = lf[1] + foot_width / 2
+        else:
+            # Right foot support
+            x_lo = rf[0] - foot_length / 2
+            x_hi = rf[0] + foot_length / 2
+            y_lo = rf[1] - foot_width / 2
+            y_hi = rf[1] + foot_width / 2
+
+        # Shrink by buffer
+        cx = (x_lo + x_hi) / 2
+        cy = (y_lo + y_hi) / 2
+        hw = (x_hi - x_lo) / 2 * shrink
+        hh = (y_hi - y_lo) / 2 * shrink
+        x_lo_buf = cx - hw
+        x_hi_buf = cx + hw
+        y_lo_buf = cy - hh
+        y_hi_buf = cy + hh
+
+        # Margin: positive = inside, negative = outside
+        margin_x = min(zmp_x[i] - x_lo_buf, x_hi_buf - zmp_x[i])
+        margin_y = min(zmp_y[i] - y_lo_buf, y_hi_buf - zmp_y[i])
+        margin = min(margin_x, margin_y)
+
+        if margin < min_margin:
+            min_margin = margin
+            worst_step = i
+
+        if margin < 0:
+            violations.append((i, margin))
+
+    return {
+        'stable': len(violations) == 0,
+        'violations': violations,
+        'min_margin': min_margin,
+        'worst_step': worst_step,
+        'worst_time': worst_step * plan.dt,
+    }
+
+
+def find_ideal_config(
+    com_height: float = 0.40,
+    foot_width: float = 0.08,
+    foot_length: float = 0.15,
+    dt: float = 0.02,
+    buffer: float = 0.10,
+) -> dict:
+    """Find ideal first-step walking config for ZMP stability.
+
+    Searches step_length, step_width, and step_period for the most stable
+    configuration. Returns the config with the largest minimum margin.
+
+    The ideal config balances:
+    - Step period: longer = more time for CoM transfer = more stable
+    - Step width: wider = larger support polygon = more stable laterally
+    - Step length: shorter = less forward CoM shift needed = more stable
+    - CoM height: affects pendulum dynamics (T = 2π√(h/g))
+
+    Returns:
+        dict with best config parameters and stability margin.
+    """
+    from .zmp_walker import ZMPWalker
+
+    best_config = None
+    best_margin = -float('inf')
+
+    for step_length in [0.03, 0.05, 0.08, 0.10, 0.12, 0.15]:
+        for step_width in [0.20, 0.25, 0.30]:
+            for step_period in [0.6, 0.8, 1.0, 1.2]:
+                planner = FootstepPlanner(
+                    step_length=step_length,
+                    step_width=step_width,
+                    step_height=0.03,
+                    step_period=step_period,
+                    num_steps=4,
+                    dt=dt,
+                )
+                plan = planner.plan()
+
+                walker = ZMPWalker(com_height=com_height, dt=dt)
+                _, _, zmp_x, zmp_y = walker.generate(plan.zmp_ref_x, plan.zmp_ref_y)
+
+                result = check_zmp_stability(
+                    plan, zmp_x, zmp_y,
+                    foot_length=foot_length,
+                    foot_width=foot_width,
+                    buffer=buffer,
+                )
+
+                if result['min_margin'] > best_margin:
+                    best_margin = result['min_margin']
+                    best_config = {
+                        'step_length': step_length,
+                        'step_width': step_width,
+                        'step_period': step_period,
+                        'com_height': com_height,
+                        'min_margin': result['min_margin'],
+                        'stable': result['stable'],
+                    }
+
+    return best_config

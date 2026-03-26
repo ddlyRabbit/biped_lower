@@ -17,7 +17,7 @@ from sensor_msgs.msg import JointState
 from biped_msgs.msg import MITCommand, MITCommandArray
 
 from .zmp_walker import ZMPWalker
-from .footstep_planner import FootstepPlanner
+from .footstep_planner import FootstepPlanner, check_zmp_stability
 from .biped_ik import BipedIK
 
 
@@ -162,6 +162,24 @@ class ZMPTrajectoryNode(Node):
             preview_horizon=preview_horizon,
         )
         com_x, com_y, _, _ = walker.generate(plan.zmp_ref_x, plan.zmp_ref_y)
+
+        # 2b. Stability check — ZMP within support polygon (10% buffer)
+        stability = check_zmp_stability(
+            plan, com_x, com_y,
+            foot_length=0.15,
+            foot_width=0.08,
+            buffer=0.10,
+        )
+        if stability['stable']:
+            self.get_logger().info(
+                f'ZMP stability OK — min margin: {stability["min_margin"]:.4f}m'
+            )
+        else:
+            self.get_logger().warn(
+                f'ZMP UNSTABLE — {len(stability["violations"])} violations, '
+                f'min margin: {stability["min_margin"]:.4f}m at t={stability["worst_time"]:.2f}s. '
+                f'Consider reducing step_length or increasing step_period.'
+            )
 
         # 3. IK → joint angles
         self.ik.reset()

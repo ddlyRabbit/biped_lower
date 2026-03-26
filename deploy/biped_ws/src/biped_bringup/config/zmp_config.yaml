@@ -3,11 +3,11 @@
 # Edit values here, send WALK_ZMP again to apply
 
 # Gait parameters
-step_length: 0.10       # meters forward per step
-step_width: 0.25        # meters lateral (foot-to-foot)
-step_height: 0.05       # swing foot clearance (meters)
-step_period: 0.8        # seconds per step
-num_steps: 10           # number of steps
+step_length: 0.05       # meters forward per step
+step_width: 0.10        # meters lateral (foot-to-foot, must be ≤0.10 for ZMP stability)
+step_height: 0.03       # swing foot clearance (meters)
+step_period: 1.0        # seconds per step
+num_steps: 6            # number of steps
 double_support_ratio: 0.1  # fraction of step in double support
 
 # Robot geometry (from pinocchio FK)
