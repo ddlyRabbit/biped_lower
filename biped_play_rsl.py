@@ -205,10 +205,14 @@ def main():
         "L_hip_yaw", "L_hip_roll", "L_hip_pitch", "L_knee", "L_foot_pitch", "L_foot_roll",
     ]
 
+    # Ankle roll: R_foot_roll=5, L_foot_roll=11 in ALL_JOINTS order
+    ANKLE_ROLL_IDX = [5, 11]
+
     timestep = 0
     while simulation_app.is_running():
-        with torch.inference_mode():
-            actions = actor(obs)
+        with torch.no_grad():
+            actions = actor(obs).clone()
+        actions[:, ANKLE_ROLL_IDX] *= 0.5  # effective 0.25 (env scale 0.5 × 0.5)
         obs, _, _, _, _ = env.step(actions)
         all_actions.append(actions[0].cpu().numpy())
         timestep += 1
