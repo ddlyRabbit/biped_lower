@@ -261,7 +261,7 @@ class ActionsCfg:
 class RewardsCfg:
     track_lin_vel_xy = RewTerm(
         func="biped_mdp:track_lin_vel_xy_yaw_frame_exp",
-        weight=2.0,
+        weight=4.0,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     track_ang_vel_z = RewTerm(
