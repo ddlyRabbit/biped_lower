@@ -2,13 +2,13 @@
 # Loaded directly by zmp_trajectory_node (not ROS2 params)
 # Edit values here, send WALK_ZMP again to apply
 
-# Gait parameters
+# Gait parameters — ASIMO-style safe gait
 step_length: 0.05       # meters forward per step
-step_width: 0.10        # meters lateral (foot-to-foot, must be ≤0.10 for ZMP stability)
+step_width: 0.25        # meters lateral (foot-to-foot, matches standing pose)
 step_height: 0.03       # swing foot clearance (meters)
-step_period: 1.0        # seconds per step
+step_period: 3.0        # seconds per step (slow, deliberate)
 num_steps: 6            # number of steps
-double_support_ratio: 0.1  # fraction of step in double support
+double_support_ratio: 0.5  # 50% of step in double support (weight transfer)
 
 # Robot geometry (from pinocchio FK)
 com_height: 0.40        # CoM height above ground (meters)

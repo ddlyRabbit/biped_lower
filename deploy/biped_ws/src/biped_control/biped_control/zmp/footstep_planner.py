@@ -109,16 +109,32 @@ class FootstepPlanner:
             if left_is_swing:
                 swing_target = np.array([swing_target_x, half_width, 0.0])
                 support_pos = r_pos.copy()
+                prev_support_pos = l_pos.copy()
                 support[s:e] = 2  # right is support
-                # ZMP under support foot
-                zmp_x[s:e] = support_pos[0]
-                zmp_y[s:e] = support_pos[1]
             else:
                 swing_target = np.array([swing_target_x, -half_width, 0.0])
                 support_pos = l_pos.copy()
+                prev_support_pos = r_pos.copy()
                 support[s:e] = 1  # left is support
-                zmp_x[s:e] = support_pos[0]
-                zmp_y[s:e] = support_pos[1]
+
+            # ZMP trajectory: interpolate during double support, hold during single
+            ds_half = self.ds_samples // 2
+            for i in range(self.samples_per_step):
+                if i < ds_half:
+                    # Initial double support: ZMP ramps from previous foot to current support
+                    t_ds = i / max(ds_half, 1)
+                    zmp_x[s + i] = prev_support_pos[0] + t_ds * (support_pos[0] - prev_support_pos[0])
+                    zmp_y[s + i] = prev_support_pos[1] + t_ds * (support_pos[1] - prev_support_pos[1])
+                    support[s + i] = 0  # double support during ramp
+                elif i >= self.samples_per_step - ds_half:
+                    # Final double support: ZMP stays at support foot (next step will ramp)
+                    zmp_x[s + i] = support_pos[0]
+                    zmp_y[s + i] = support_pos[1]
+                    support[s + i] = 0  # double support
+                else:
+                    # Single support: ZMP at support foot
+                    zmp_x[s + i] = support_pos[0]
+                    zmp_y[s + i] = support_pos[1]
 
             # Generate swing trajectory
             if left_is_swing:
