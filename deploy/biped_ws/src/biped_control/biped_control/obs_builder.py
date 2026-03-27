@@ -46,6 +46,10 @@ DEFAULT_POSITIONS = {
 
 # Action scale (from training config, per-joint)
 ACTION_SCALE = 0.5
+ACTION_SCALE_OVERRIDE = {
+    "R_foot_roll": 0.25,
+    "L_foot_roll": 0.25,
+}
 
 # Action output order from ONNX (must match training ALL_JOINTS with preserve_order=True)
 ACTION_ORDER = [
@@ -140,5 +144,6 @@ class ObsBuilder:
         """
         targets = {}
         for i, name in enumerate(ACTION_ORDER):
-            targets[name] = DEFAULT_POSITIONS[name] + float(action[i]) * ACTION_SCALE
+            scale = ACTION_SCALE_OVERRIDE.get(name, ACTION_SCALE)
+            targets[name] = DEFAULT_POSITIONS[name] + float(action[i]) * scale
         return targets
