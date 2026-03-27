@@ -198,8 +198,10 @@ def main():
     actor.eval()
     print("[INFO] Actor loaded successfully")
 
-    # Action logging
+    # Action logging + joint recording
     all_actions = []
+    all_cmd_positions = []  # joint command targets (after action scale)
+    all_joint_positions = []  # actual joint positions from sim
     JOINT_NAMES = [
         "R_hip_yaw", "R_hip_roll", "R_hip_pitch", "R_knee", "R_foot_pitch", "R_foot_roll",
         "L_hip_yaw", "L_hip_roll", "L_hip_pitch", "L_knee", "L_foot_pitch", "L_foot_roll",
@@ -208,13 +210,35 @@ def main():
     # Ankle roll: R_foot_roll=5, L_foot_roll=11 in ALL_JOINTS order
     ANKLE_ROLL_IDX = [5, 11]
 
+    # Get robot asset for joint position readout
+    isaac_env = env.unwrapped
+    robot = isaac_env.scene["robot"]
+
+    # Get default positions and action scale for computing command targets
+    default_pos = robot.data.default_joint_pos[0].cpu().numpy()  # (num_joints,)
+    action_scale = 0.5  # base scale
+    action_scales = np.full(12, action_scale)
+    action_scales[ANKLE_ROLL_IDX] = 0.25  # after the 0.5× multiply below
+
     timestep = 0
     while simulation_app.is_running():
         with torch.no_grad():
             actions = actor(obs).clone()
         actions[:, ANKLE_ROLL_IDX] *= 0.5  # effective 0.25 (env scale 0.5 × 0.5)
         obs, _, _, _, _ = env.step(actions)
-        all_actions.append(actions[0].cpu().numpy())
+
+        act_np = actions[0].cpu().numpy()
+        all_actions.append(act_np)
+
+        # Command targets: default + action * scale (env applies scale internally,
+        # but we record what the env computes)
+        cmd_pos = robot.data.joint_pos_target[0].cpu().numpy()
+        all_cmd_positions.append(cmd_pos.copy())
+
+        # Actual joint positions
+        actual_pos = robot.data.joint_pos[0].cpu().numpy()
+        all_joint_positions.append(actual_pos.copy())
+
         timestep += 1
 
         if timestep % 50 == 0:
@@ -247,6 +271,30 @@ def main():
                     f.write(f"{name},{np.mean(np.abs(c)):.4f},{np.sqrt(np.mean(c**2)):.4f},"
                             f"{np.min(c):.4f},{np.max(c):.4f},{c.mean()*0.5:.4f}\n")
             print(f"[ACT] Saved to {csv_path}")
+
+    # Save joint commands and actual positions CSV
+    if all_cmd_positions and args_cli.video:
+        import numpy as np
+        cmd_arr = np.array(all_cmd_positions)   # (T, num_joints)
+        pos_arr = np.array(all_joint_positions)  # (T, num_joints)
+        joint_names = list(robot.joint_names)
+        num_joints = len(joint_names)
+
+        # Joint commands CSV
+        cmd_csv = os.path.join(args_cli.video_dir, "joint_commands.csv")
+        with open(cmd_csv, "w") as f:
+            f.write("step," + ",".join(f"cmd_{n}" for n in joint_names) + "\n")
+            for t in range(len(cmd_arr)):
+                f.write(f"{t}," + ",".join(f"{cmd_arr[t,j]:.6f}" for j in range(num_joints)) + "\n")
+        print(f"[CSV] Joint commands saved to {cmd_csv} ({len(cmd_arr)} steps × {num_joints} joints)")
+
+        # Actual joint positions CSV
+        pos_csv = os.path.join(args_cli.video_dir, "joint_positions.csv")
+        with open(pos_csv, "w") as f:
+            f.write("step," + ",".join(f"pos_{n}" for n in joint_names) + "\n")
+            for t in range(len(pos_arr)):
+                f.write(f"{t}," + ",".join(f"{pos_arr[t,j]:.6f}" for j in range(num_joints)) + "\n")
+        print(f"[CSV] Joint positions saved to {pos_csv} ({len(pos_arr)} steps × {num_joints} joints)")
 
     env.close()
     print("[INFO] Done.")
