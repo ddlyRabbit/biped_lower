@@ -8,7 +8,7 @@
 #   PPO:          [128,128,128], init_noise_std=1.0, entropy_coef=0.005
 #   OBSERVATIONS: base_lin_vel in policy, per-joint-group noise, obs_dim=48
 #   ACTIONS:      scale=0.5
-#   COMMANDS:     lin_vel_x=(-0.5, 1.0) forward, lin_vel_y=(-0.5, 0.5) lateral
+#   COMMANDS:     lin_vel_x=(-0.5, 1.5) forward, lin_vel_y=(-0.5, 0.5) lateral
 #   TERMINATIONS: base_contact (torso, threshold=1.0), time_out
 #   EVENTS:       All Berkeley events + scale_all_actuator_gains (extra)
 #   DECIMATION:   4 (50 Hz control)
@@ -66,7 +66,6 @@ ALL_JOINTS = [
     "left_hip_yaw_03", "left_hip_roll_03", "left_hip_pitch_04",
     "left_knee_04", "left_foot_pitch_02", "left_foot_roll_02",
 ]
-
 
 
 ###############################################################################
@@ -464,35 +463,35 @@ BIPED_CFG = ArticulationCfg(
         "hip_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_roll.*"],
             effort_limit=50.0, velocity_limit=10.0,
-            stiffness=150.0, damping=5.5, armature=0.01,
+            stiffness=120.0, damping=3.0, armature=0.0112,
             friction=0.375,
             min_delay=0, max_delay=1,
         ),
         "hip_yaw": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
             effort_limit=50.0, velocity_limit=10.0,
-            stiffness=150.0, damping=5.0, armature=0.01,
+            stiffness=60.0, damping=3.0, armature=0.0112,
             friction=0.375,
             min_delay=0, max_delay=1,
         ),
         "hip_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
             effort_limit=100.0, velocity_limit=10.0,
-            stiffness=200.0, damping=7.5, armature=0.01,
+            stiffness=180.0, damping=3.0, armature=0.0152,
             friction=0.5,
             min_delay=0, max_delay=1,
         ),
         "knee": DelayedPDActuatorCfg(
             joint_names_expr=[".*knee.*"],
             effort_limit=100.0, velocity_limit=10.0,
-            stiffness=200.0, damping=5.0, armature=0.01,
+            stiffness=180.0, damping=3.0, armature=0.024,
             friction=0.5,
             min_delay=0, max_delay=1,
         ),
         "foot_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=96.0, damping=2.0, armature=0.001,
+            stiffness=96.0, damping=2.0, armature=0.0112,
             friction=0.25,
             min_delay=0, max_delay=1,
         ),
@@ -561,7 +560,7 @@ class CommandsCfg:
         rel_standing_envs=0.02,
         rel_heading_envs=1.0,
         ranges=base_mdp.UniformVelocityCommandCfg.Ranges(
-            lin_vel_x=(-0.5, 1.0),      # forward=+X (biased positive)
+            lin_vel_x=(-0.5, 1.5),      # forward=+X (biased positive)
             lin_vel_y=(-0.5, 0.5),      # lateral (small)
             ang_vel_z=(-1.0, 1.0),
             heading=(-math.pi, math.pi),
@@ -706,7 +705,7 @@ class RewardsCfg:
     )
     action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.01)
     feet_air_time = RewTerm(
-        func="biped_env_cfg:feet_air_time_berkeley",
+        func="biped_env_cfg:feet_air_time",
         weight=10.0,
         params={
             "command_name": "base_velocity",
@@ -910,7 +909,7 @@ class EventsCfg:
     # --- Interval ---
     push_robot = EventTerm(
         func=base_mdp.push_by_setting_velocity,
-        params={"velocity_range": {"x": (0.0, 0.0), "y": (0.0, 0.0)}},  # curriculum ramps from 0 at iter 2000
+        params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
         mode="interval",
         interval_range_s=(10.0, 15.0),
     )
@@ -933,14 +932,14 @@ class CurriculumsCfg:
             "term_name": "push_robot",
             "max_velocity": [0.75, 0.75],     # max push 0.75 m/s
             "interval": 200 * 24,
-            "starting_step": 2000 * 24,     # start after 2000 iterations
+            "starting_step": 1000 * 24,     # start after 1000 iterations
         },
     )
     command_vel = CurrTerm(
         func=modify_command_velocity,
         params={
             "term_name": "track_lin_vel_xy_exp",
-            "max_velocity": [-0.5, 1.0],
+            "max_velocity": [-0.5, 3.0],
             "interval": 200 * 24,
             "starting_step": 5000 * 24,     # start after 5000 iterations
         },
