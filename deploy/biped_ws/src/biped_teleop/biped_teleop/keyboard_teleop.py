@@ -39,7 +39,9 @@ BANNER = """
 │   Z     : STAND → WALK_ZMP (real motors) │
 │   t     : STAND → WIGGLE_SEQ             │
 │   y     : STAND → WIGGLE_ALL             │
-│   b     : any → STAND (stop walk/wiggle) │
+│   p     : STAND → PLAY_TRAJ_SIM (viz)    │
+│   P     : STAND → PLAY_TRAJ (motors)     │
+│   b     : any → STAND (stop)             │
 │   ESC   : any → ESTOP (emergency)        │
 │                                          │
 │  ── Velocity (during WALK/SIM_WALK) ──   │
@@ -120,6 +122,8 @@ class KeyboardTeleop(Node):
             'Z': 'WALK_ZMP',        # STAND → WALK_ZMP (real motors)
             't': 'WIGGLE_SEQ',      # STAND → WIGGLE_SEQ
             'y': 'WIGGLE_ALL',      # STAND → WIGGLE_ALL
+            'p': 'PLAY_TRAJ_SIM',   # STAND → PLAY_TRAJ_SIM (viz only)
+            'P': 'PLAY_TRAJ',       # STAND → PLAY_TRAJ (real motors)
             'b': 'STOP',        # any → STAND
         }
 

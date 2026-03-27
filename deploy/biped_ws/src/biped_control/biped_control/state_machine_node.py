@@ -1,16 +1,18 @@
-"""State machine node — IDLE → STAND → WALK / SIM_WALK / WALK_ZMP / WALK_SIM_ZMP / WIGGLE_SEQ / WIGGLE_ALL → ESTOP.
+"""State machine node — IDLE → STAND → WALK / SIM_WALK / WALK_ZMP / WALK_SIM_ZMP / WIGGLE_SEQ / WIGGLE_ALL / PLAY_TRAJ / PLAY_TRAJ_SIM → ESTOP.
 
 Manages robot lifecycle transitions. Publishes current state.
 Reads safety status and gamepad buttons for transitions.
 
 States:
-    IDLE        — motors disabled, waiting for START command
-    STAND       — soft start, then policy with zero velocity
-    WALK        — policy with cmd_vel input
-    WIGGLE_SEQ  — sequential sine sweep, one joint at a time
-    SIM_WALK    — motors hold STAND, policy runs for viz only (/policy_viz)
-    WIGGLE_ALL  — all joints wiggle simultaneously
-    ESTOP       — zero torque, requires manual reset
+    IDLE            — motors disabled, waiting for START command
+    STAND           — soft start, then policy with zero velocity
+    WALK            — policy with cmd_vel input
+    WIGGLE_SEQ      — sequential sine sweep, one joint at a time
+    SIM_WALK        — motors hold STAND, policy runs for viz only (/policy_viz)
+    WIGGLE_ALL      — all joints wiggle simultaneously
+    PLAY_TRAJ       — replay CSV trajectory on real motors
+    PLAY_TRAJ_SIM   — replay CSV trajectory on viz only, motors hold STAND
+    ESTOP           — zero torque, requires manual reset
 """
 
 import math
@@ -26,6 +28,13 @@ from geometry_msgs.msg import Twist
 from sensor_msgs.msg import JointState
 from biped_msgs.msg import MITCommand, MITCommandArray, RobotState
 from biped_control.obs_builder import JOINT_ORDER, DEFAULT_POSITIONS, DEFAULT_GAINS
+import os
+
+# CSV trajectory joint order → deploy joint names
+CSV_JOINT_ORDER = [
+    "L_hip_pitch", "L_hip_roll", "L_hip_yaw", "L_knee", "L_foot_pitch", "L_foot_roll",
+    "R_hip_pitch", "R_hip_roll", "R_hip_yaw", "R_knee", "R_foot_pitch", "R_foot_roll",
+]
 
 # URDF joint limits (rad) — safety clamp for wiggle
 JOINT_LIMITS = {
@@ -67,6 +76,22 @@ class StateMachineNode(Node):
         self._wiggle_start = 0.0
         self._wiggle_joint_idx = 0
 
+        # Trajectory playback state
+        self.declare_parameter('trajectory_file', '')
+        self._traj_frames = None       # (N, 12) array, resampled to control rate
+        self._traj_index = 0
+        self._traj_sim_only = False
+        self._traj_ramp_frames = 0     # number of ramp-in frames prepended
+        self._traj_gain_ramp_secs = 3.0
+        self._traj_ramp_in_secs = 3.0
+
+        # Trajectory playback state
+        self.declare_parameter('trajectory_file', '')
+        self._traj_frames = None    # (N, 12) array of joint angles in JOINT_ORDER
+        self._traj_index = 0
+        self._traj_sim_only = False
+        self._traj_ramp_secs = 3.0  # ramp-in/gain ramp duration
+
         # State
         self._state = "IDLE"
         self._state_start_time = time.time()
@@ -87,6 +112,8 @@ class StateMachineNode(Node):
         self._pub_robot = self.create_publisher(RobotState, '/robot_state', 10)
         self._pub_cmd = self.create_publisher(MITCommandArray, '/joint_commands', 10)
         self._pub_vel = self.create_publisher(Twist, '/cmd_vel', 10)
+        self._pub_viz_js = self.create_publisher(JointState, '/policy_viz_joints', 10)
+        self._pub_viz_js = self.create_publisher(JointState, '/policy_viz_joints', 10)
 
         # Transition commands via topic
         self.create_subscription(String, '/state_command', self._command_cb, 10)
@@ -163,7 +190,11 @@ class StateMachineNode(Node):
             self._transition("WALK_ZMP")
         elif cmd == "WALK_SIM_ZMP" and self._state == "STAND":
             self._transition("WALK_SIM_ZMP")
-        elif cmd == "STOP" and self._state in ("WALK", "SIM_WALK", "WALK_ZMP", "WALK_SIM_ZMP", "WIGGLE_SEQ", "WIGGLE_ALL"):
+        elif cmd == "PLAY_TRAJ" and self._state == "STAND":
+            self._transition("PLAY_TRAJ")
+        elif cmd == "PLAY_TRAJ_SIM" and self._state == "STAND":
+            self._transition("PLAY_TRAJ_SIM")
+        elif cmd == "STOP" and self._state in ("WALK", "SIM_WALK", "WALK_ZMP", "WALK_SIM_ZMP", "WIGGLE_SEQ", "WIGGLE_ALL", "PLAY_TRAJ", "PLAY_TRAJ_SIM"):
             self._transition("STAND")
         elif cmd == "WIGGLE_SEQ" and self._state == "STAND":
             self._transition("WIGGLE_SEQ")
@@ -184,10 +215,18 @@ class StateMachineNode(Node):
             # Capture current positions for soft start interpolation
             self._stand_start_positions = dict(self._current_positions)
 
+        elif new_state in ("PLAY_TRAJ", "PLAY_TRAJ_SIM"):
+            self._traj_sim_only = (new_state == "PLAY_TRAJ_SIM")
+            self._load_trajectory()
+
         elif new_state in ("WIGGLE_SEQ", "WIGGLE_ALL"):
             self._wiggle_cfg = self._load_wiggle_config()
             self._wiggle_start = time.time()
             self._wiggle_joint_idx = 0
+
+        elif new_state in ("PLAY_TRAJ", "PLAY_TRAJ_SIM"):
+            self._traj_sim_only = (new_state == "PLAY_TRAJ_SIM")
+            self._load_and_prepare_trajectory()
 
         elif new_state == "ESTOP":
             # Send zero torque immediately
@@ -214,6 +253,15 @@ class StateMachineNode(Node):
             self._handle_wiggle_sequential()
         elif self._state == "WIGGLE_ALL":
             self._handle_wiggle_all()
+        elif self._state == "PLAY_TRAJ":
+            self._handle_play_traj()
+        elif self._state == "PLAY_TRAJ_SIM":
+            self._handle_stand_hold()
+            self._handle_play_traj_viz()
+        elif self._state == "PLAY_TRAJ":
+            self._handle_play_traj()
+        elif self._state == "PLAY_TRAJ_SIM":
+            self._handle_play_traj_sim()  # motors hold STAND + viz
         elif self._state == "ESTOP":
             self._send_zero_torque()
 
@@ -367,6 +415,130 @@ class StateMachineNode(Node):
             cmd_msg.commands.append(cmd)
 
         self._pub_cmd.publish(cmd_msg)
+
+    # ------------------------------------------------------------------
+    # Trajectory playback
+    # ------------------------------------------------------------------
+
+    def _load_and_prepare_trajectory(self):
+        """Load CSV trajectory, resample to control rate, prepend 3s ramp-in."""
+        path = str(self.get_parameter('trajectory_file').value)
+        if not path or not os.path.exists(path):
+            self.get_logger().error(f'Trajectory file not found: {path}')
+            self._transition("STAND")
+            return
+
+        raw = np.genfromtxt(path, delimiter=',')
+        # row 0 = timestamps, rows 1-12 = joint angles
+        t_csv = raw[0]
+        joints_csv = raw[1:]  # (12, N_csv)
+
+        dt_ctrl = 0.02  # 50Hz control loop
+        t_ctrl = np.arange(0, t_csv[-1], dt_ctrl)
+
+        # Resample each joint to control rate
+        joints_resampled = np.zeros((12, len(t_ctrl)))
+        for i in range(12):
+            joints_resampled[i] = np.interp(t_ctrl, t_csv, joints_csv[i])
+
+        # Map CSV order → JOINT_ORDER (alphabetical deploy order)
+        # CSV: L_hip_pitch, L_hip_roll, L_hip_yaw, L_knee, L_foot_pitch, L_foot_roll, R_...
+        csv_to_deploy = []
+        for deploy_name in JOINT_ORDER:
+            csv_idx = CSV_JOINT_ORDER.index(deploy_name)
+            csv_to_deploy.append(csv_idx)
+
+        # Reorder to JOINT_ORDER: (N_frames, 12)
+        traj = np.zeros((len(t_ctrl), 12))
+        for j, csv_idx in enumerate(csv_to_deploy):
+            traj[:, j] = joints_resampled[csv_idx]
+
+        # Prepend 3s ramp-in from current positions to first frame
+        ramp_frames = int(self._traj_ramp_in_secs / dt_ctrl)
+        ramp_in = np.zeros((ramp_frames, 12))
+        first_frame = traj[0]
+        for j, name in enumerate(JOINT_ORDER):
+            start_pos = self._current_positions.get(name, DEFAULT_POSITIONS[name])
+            for i in range(ramp_frames):
+                alpha = (i + 1) / ramp_frames
+                alpha = 0.5 * (1 - math.cos(math.pi * alpha))
+                ramp_in[i, j] = start_pos + alpha * (first_frame[j] - start_pos)
+
+        self._traj_frames = np.vstack([ramp_in, traj])
+        self._traj_ramp_frames = ramp_frames
+        self._traj_index = 0
+
+        self.get_logger().info(
+            f'Trajectory loaded: {len(traj)} frames + {ramp_frames} ramp-in '
+            f'= {len(self._traj_frames)} total ({len(self._traj_frames) * dt_ctrl:.1f}s)'
+        )
+
+    def _handle_play_traj(self):
+        """Play trajectory frame on real motors with 3s gain ramp."""
+        if self._traj_frames is None:
+            return
+        if self._traj_index >= len(self._traj_frames):
+            self.get_logger().info('Trajectory playback complete')
+            self._transition("STAND")
+            return
+
+        frame = self._traj_frames[self._traj_index]
+
+        # Gain ramp: 10% → 100% over 3s
+        elapsed = time.time() - self._state_start_time
+        gain_ramp = min(1.0, 0.1 + 0.9 * (elapsed / self._traj_gain_ramp_secs))
+
+        cmd_msg = MITCommandArray()
+        cmd_msg.header.stamp = self.get_clock().now().to_msg()
+        gs = float(self.get_parameter("gain_scale").value)
+
+        for j, name in enumerate(JOINT_ORDER):
+            kp_base, kd_base = DEFAULT_GAINS[name]
+            cmd = MITCommand()
+            cmd.joint_name = name
+            cmd.position = float(frame[j])
+            cmd.velocity = 0.0
+            cmd.kp = kp_base * gs * gain_ramp
+            cmd.kd = kd_base * gs * gain_ramp
+            cmd.torque_ff = 0.0
+            cmd_msg.commands.append(cmd)
+
+        self._pub_cmd.publish(cmd_msg)
+
+        if self._traj_index % 50 == 0:
+            self.get_logger().info(
+                f'Traj {self._traj_index}/{len(self._traj_frames)}'
+            )
+        self._traj_index += 1
+
+    def _handle_play_traj_sim(self):
+        """Play trajectory on viz only, motors hold STAND."""
+        # Motors hold STAND position
+        self._handle_stand_hold()
+
+        # Publish viz
+        if self._traj_frames is None:
+            return
+        if self._traj_index >= len(self._traj_frames):
+            self.get_logger().info('Trajectory SIM playback complete')
+            self._transition("STAND")
+            return
+
+        frame = self._traj_frames[self._traj_index]
+
+        js = JointState()
+        js.header.stamp = self.get_clock().now().to_msg()
+        js.name = list(JOINT_ORDER)
+        js.position = [float(frame[j]) for j in range(12)]
+        js.velocity = [0.0] * 12
+        js.effort = [0.0] * 12
+        self._pub_viz_js.publish(js)
+
+        if self._traj_index % 50 == 0:
+            self.get_logger().info(
+                f'Traj SIM {self._traj_index}/{len(self._traj_frames)}'
+            )
+        self._traj_index += 1
 
     def _send_zero_torque(self):
         """Send zero Kp/Kd/torque to all joints (e-stop)."""
