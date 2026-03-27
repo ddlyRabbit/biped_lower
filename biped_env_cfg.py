@@ -705,13 +705,12 @@ class RewardsCfg:
     )
     action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.01)
     feet_air_time = RewTerm(
-        func="biped_env_cfg:feet_air_time_berkeley",
+        func="biped_env_cfg:feet_air_time",
         weight=10.0,
         params={
             "command_name": "base_velocity",
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
-            "threshold_min": 0.2,
-            "threshold_max": 0.5,
+            "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
+            "height_threshold": 0.058,
         },
     )
     feet_slide = RewTerm(
