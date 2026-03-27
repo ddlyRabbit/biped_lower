@@ -492,14 +492,14 @@ BIPED_CFG = ArticulationCfg(
         "foot_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=30.0, damping=2.0, armature=0.01,
+            stiffness=96.0, damping=2.0, armature=0.001,
             friction=0.25,
             min_delay=0, max_delay=1,
         ),
         "foot_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=30.0, damping=2.0, armature=0.01,
+            stiffness=48.0, damping=2.0, armature=0.001,
             friction=0.25,
             min_delay=0, max_delay=1,
         ),
