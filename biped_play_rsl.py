@@ -208,8 +208,8 @@ def main():
         "L_hip_yaw", "L_hip_roll", "L_hip_pitch", "L_knee", "L_foot_pitch", "L_foot_roll",
     ]
 
-    # Ankle roll: R_foot_roll=5, L_foot_roll=11 in ALL_JOINTS order
-    ANKLE_ROLL_IDX = [5, 11]
+    # Ankle roll indices (not rescaled in unitree — uniform scale=0.25)
+    ANKLE_ROLL_IDX = []
 
     # Get robot asset for joint position readout
     isaac_env = env.unwrapped
@@ -219,13 +219,13 @@ def main():
     default_pos = robot.data.default_joint_pos[0].cpu().numpy()  # (num_joints,)
     action_scale = 0.5  # base scale
     action_scales = np.full(12, action_scale)
-    action_scales[ANKLE_ROLL_IDX] = 0.25  # after the 0.5× multiply below
+    # action_scales[ANKLE_ROLL_IDX] = 0.25  # not needed for unitree (uniform 0.25)
 
     timestep = 0
     while simulation_app.is_running():
         with torch.no_grad():
             actions = actor(obs).clone()
-        actions[:, ANKLE_ROLL_IDX] *= 0.5  # effective 0.25 (env scale 0.5 × 0.5)
+        # No ankle roll rescale needed for unitree (uniform scale=0.25)
         obs, _, _, _, _ = env.step(actions)
 
         act_np = actions[0].cpu().numpy()
