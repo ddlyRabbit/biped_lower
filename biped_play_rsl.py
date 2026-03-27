@@ -251,7 +251,6 @@ def main():
 
     # Print action statistics from actual rollout
     if all_actions:
-        import numpy as np
         a = np.array(all_actions)
         print(f"\n[ACT] Action statistics over {len(a)} steps (actual rollout):")
         print(f"{'Joint':<15} {'abs':>6} {'rms':>6} {'min':>6} {'max':>6} {'off(rad)':>8}")
@@ -275,7 +274,6 @@ def main():
 
     # Save joint commands and actual positions CSV
     if all_cmd_positions and args_cli.video:
-        import numpy as np
         cmd_arr = np.array(all_cmd_positions)   # (T, num_joints)
         pos_arr = np.array(all_joint_positions)  # (T, num_joints)
         joint_names = list(robot.joint_names)
