@@ -40,6 +40,7 @@ def apply_urdf_selection(env_cfg, urdf_choice):
         env_cfg.scene.robot.spawn.asset_path = URDF_HEAVY
         print(f"[INFO] Using heavy URDF: {URDF_HEAVY}")
 
+import numpy as np
 import torch
 import torch.nn as nn
 
