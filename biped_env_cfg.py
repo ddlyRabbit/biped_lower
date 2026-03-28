@@ -738,7 +738,7 @@ class RewardsCfg:
     )
     joint_deviation_hip = RewTerm(
         func=base_mdp.joint_deviation_l1,
-        weight=-0.1,
+        weight=-0.5,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot", joint_names=[".*hip_roll.*", ".*hip_yaw.*"],
@@ -939,7 +939,7 @@ class CurriculumsCfg:
         func=modify_command_velocity,
         params={
             "term_name": "track_lin_vel_xy_exp",
-            "max_velocity": [-0.5, 3.0],
+            "max_velocity": [-0.5, 1.2],
             "interval": 200 * 24,
             "starting_step": 5000 * 24,     # start after 5000 iterations
         },
