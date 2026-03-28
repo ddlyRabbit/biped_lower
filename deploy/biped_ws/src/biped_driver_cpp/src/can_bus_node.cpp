@@ -10,6 +10,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -69,8 +70,19 @@ public:
     }
 
     void write_command(const std::string& name, const MotorCommand& cmd) {
-        std::lock_guard<std::mutex> lk(mtx_);
-        commands_[name] = cmd;
+        {
+            std::lock_guard<std::mutex> lk(mtx_);
+            commands_[name] = cmd;
+        }
+        cmd_cv_.notify_all();
+    }
+
+    /// Block until a command arrives or timeout_ms elapses.
+    /// Returns true if woken by command, false on timeout.
+    bool wait_for_command(int timeout_ms = 25) {
+        std::unique_lock<std::mutex> lk(cmd_cv_mtx_);
+        return cmd_cv_.wait_for(lk, std::chrono::milliseconds(timeout_ms))
+               == std::cv_status::no_timeout;
     }
 
     std::unordered_map<std::string, MotorCommand> read_commands() {
@@ -99,6 +111,8 @@ public:
 
 private:
     std::mutex mtx_;
+    std::condition_variable cmd_cv_;
+    std::mutex cmd_cv_mtx_;
     std::unordered_map<std::string, MotorCommand> commands_;
     std::unordered_map<std::string, FeedbackEntry> feedback_;
     double loop_dt_ = 0.0;
@@ -150,10 +164,13 @@ private:
     }
 
     void run() {
-        RCLCPP_INFO(logger_, "[%s] Worker started: %zu normal + %zu ankle pairs",
+        RCLCPP_INFO(logger_, "[%s] Worker started: %zu normal + %zu ankle pairs (event-driven, 25ms timeout)",
                      bus_name_.c_str(), normal_motors_.size(), ankle_pairs_.size());
 
         while (running_) {
+            // Wait for command or 25ms timeout — avoids busy spinning
+            buffer_->wait_for_command(25);
+
             auto t0 = std::chrono::steady_clock::now();
             auto commands = buffer_->read_commands();
 
