@@ -231,18 +231,19 @@
   </worldbody>
 
   <actuator>
-    <motor name="right_hip_pitch_04" joint="right_hip_pitch_04" ctrllimited="true" ctrlrange="-100 100" gear="1" />
-    <motor name="right_hip_roll_03" joint="right_hip_roll_03" ctrllimited="true" ctrlrange="-50 50" gear="1" />
-    <motor name="right_hip_yaw_03" joint="right_hip_yaw_03" ctrllimited="true" ctrlrange="-50 50" gear="1" />
-    <motor name="right_knee_04" joint="right_knee_04" ctrllimited="true" ctrlrange="-100 100" gear="1" />
-    <motor name="right_foot_pitch_02" joint="right_foot_pitch_02" ctrllimited="true" ctrlrange="-30 30" gear="1" />
-    <motor name="right_foot_roll_02" joint="right_foot_roll_02" ctrllimited="true" ctrlrange="-30 30" gear="1" />
-    <motor name="left_hip_pitch_04" joint="left_hip_pitch_04" ctrllimited="true" ctrlrange="-100 100" gear="1" />
-    <motor name="left_hip_roll_03" joint="left_hip_roll_03" ctrllimited="true" ctrlrange="-50 50" gear="1" />
-    <motor name="left_hip_yaw_03" joint="left_hip_yaw_03" ctrllimited="true" ctrlrange="-50 50" gear="1" />
-    <motor name="left_knee_04" joint="left_knee_04" ctrllimited="true" ctrlrange="-100 100" gear="1" />
-    <motor name="left_foot_pitch_02" joint="left_foot_pitch_02" ctrllimited="true" ctrlrange="-30 30" gear="1" />
-    <motor name="left_foot_roll_02" joint="left_foot_roll_02" ctrllimited="true" ctrlrange="-30 30" gear="1" />
+    <!-- Hip: Kp=180, Kd=3.0. Knee: Kp=180, Kd=3.0. Foot: Kp=120, Kd=3.0 -->
+    <position name="right_hip_pitch_04" joint="right_hip_pitch_04" kp="180" kv="3.0" ctrlrange="-2.22 1.05" forcerange="-100 100" />
+    <position name="right_hip_roll_03" joint="right_hip_roll_03" kp="180" kv="3.0" ctrlrange="-2.27 0.21" forcerange="-50 50" />
+    <position name="right_hip_yaw_03" joint="right_hip_yaw_03" kp="180" kv="3.0" ctrlrange="-1.57 1.57" forcerange="-50 50" />
+    <position name="right_knee_04" joint="right_knee_04" kp="180" kv="3.0" ctrlrange="0 2.71" forcerange="-100 100" />
+    <position name="right_foot_pitch_02" joint="right_foot_pitch_02" kp="120" kv="3.0" ctrlrange="-0.87 0.52" forcerange="-30 30" />
+    <position name="right_foot_roll_02" joint="right_foot_roll_02" kp="120" kv="3.0" ctrlrange="-0.26 0.26" forcerange="-30 30" />
+    <position name="left_hip_pitch_04" joint="left_hip_pitch_04" kp="180" kv="3.0" ctrlrange="-1.05 2.22" forcerange="-100 100" />
+    <position name="left_hip_roll_03" joint="left_hip_roll_03" kp="180" kv="3.0" ctrlrange="-0.21 2.27" forcerange="-50 50" />
+    <position name="left_hip_yaw_03" joint="left_hip_yaw_03" kp="180" kv="3.0" ctrlrange="-1.57 1.57" forcerange="-50 50" />
+    <position name="left_knee_04" joint="left_knee_04" kp="180" kv="3.0" ctrlrange="0 2.71" forcerange="-100 100" />
+    <position name="left_foot_pitch_02" joint="left_foot_pitch_02" kp="120" kv="3.0" ctrlrange="-0.87 0.52" forcerange="-30 30" />
+    <position name="left_foot_roll_02" joint="left_foot_roll_02" kp="120" kv="3.0" ctrlrange="-0.26 0.26" forcerange="-30 30" />
   </actuator>
 
   <sensor>
