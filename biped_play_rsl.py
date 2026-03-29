@@ -20,6 +20,9 @@ parser.add_argument("--global_camera", action="store_true", help="Fixed global c
 parser.add_argument("--video_dir", type=str, default="/results/videos", help="Video output directory")
 parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"], help="URDF variant")
 parser.add_argument("--tanh", action="store_true", help="Actor has tanh output layer")
+parser.add_argument("--cmd_vel_x", type=float, default=None, help="Override forward velocity command (m/s)")
+parser.add_argument("--cmd_vel_y", type=float, default=None, help="Override lateral velocity command (m/s)")
+parser.add_argument("--cmd_vel_yaw", type=float, default=None, help="Override yaw velocity command (rad/s)")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -221,8 +224,21 @@ def main():
     action_scales = np.full(12, action_scale)
     action_scales[ANKLE_ROLL_IDX] = 0.25  # after the 0.5× multiply below
 
+    # Override velocity commands if specified
+    cmd_override = None
+    if args_cli.cmd_vel_x is not None or args_cli.cmd_vel_y is not None or args_cli.cmd_vel_yaw is not None:
+        vx = args_cli.cmd_vel_x if args_cli.cmd_vel_x is not None else 0.0
+        vy = args_cli.cmd_vel_y if args_cli.cmd_vel_y is not None else 0.0
+        vyaw = args_cli.cmd_vel_yaw if args_cli.cmd_vel_yaw is not None else 0.0
+        cmd_override = torch.tensor([[vx, vy, vyaw]], device="cuda:0").expand(isaac_env.num_envs, -1)
+        print(f"[INFO] Command override: vx={vx}, vy={vy}, vyaw={vyaw}")
+
     timestep = 0
     while simulation_app.is_running():
+        # Override commands before policy inference
+        if cmd_override is not None:
+            isaac_env.command_manager.get_term("base_velocity").vel_command_b[:] = cmd_override
+
         with torch.no_grad():
             actions = actor(obs).clone()
         actions[:, ANKLE_ROLL_IDX] *= 0.5  # effective 0.25 (env scale 0.5 × 0.5)
