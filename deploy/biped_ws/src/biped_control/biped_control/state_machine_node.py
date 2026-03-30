@@ -85,13 +85,6 @@ class StateMachineNode(Node):
         self._traj_gain_ramp_secs = 3.0
         self._traj_ramp_in_secs = 3.0
 
-        # Trajectory playback state
-        self.declare_parameter('trajectory_file', '')
-        self._traj_frames = None    # (N, 12) array of joint angles in JOINT_ORDER
-        self._traj_index = 0
-        self._traj_sim_only = False
-        self._traj_ramp_secs = 3.0  # ramp-in/gain ramp duration
-
         # State
         self._state = "IDLE"
         self._state_start_time = time.time()
