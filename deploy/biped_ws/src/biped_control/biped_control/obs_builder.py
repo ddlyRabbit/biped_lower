@@ -38,12 +38,12 @@ ACTION_SCALE = 0.25
 
 # Deploy PD gains — matched to training (same Kp/Kd as sim)
 DEFAULT_GAINS = {
-    "L_hip_pitch": (200.0, 7.5), "R_hip_pitch": (200.0, 7.5),
-    "L_hip_roll":  (150.0, 5.5), "R_hip_roll":  (150.0, 5.5),
-    "L_hip_yaw":   (150.0, 5.0), "R_hip_yaw":   (150.0, 5.0),
-    "L_knee":      (200.0, 5.0), "R_knee":      (200.0, 5.0),
-    "L_foot_pitch": (30.0, 2.0), "R_foot_pitch": (30.0, 2.0),
-    "L_foot_roll":  (30.0, 2.0), "R_foot_roll":  (30.0, 2.0),
+    "L_hip_pitch": (180.0, 3.0), "R_hip_pitch": (180.0, 3.0),
+    "L_hip_roll":  (180.0, 3.0), "R_hip_roll":  (180.0, 3.0),
+    "L_hip_yaw":   (180.0, 3.0), "R_hip_yaw":   (180.0, 3.0),
+    "L_knee":      (180.0, 3.0), "R_knee":      (180.0, 3.0),
+    "L_foot_pitch": (120.0, 3.0), "R_foot_pitch": (120.0, 3.0),
+    "L_foot_roll":  (120.0, 3.0), "R_foot_roll":  (120.0, 3.0),
 }
 
 FRAME_DIM = 45
