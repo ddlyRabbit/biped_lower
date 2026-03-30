@@ -70,10 +70,11 @@ public:
     }
 
     void write_command(const std::string& name, const MotorCommand& cmd) {
-        {
-            std::lock_guard<std::mutex> lk(mtx_);
-            commands_[name] = cmd;
-        }
+        std::lock_guard<std::mutex> lk(mtx_);
+        commands_[name] = cmd;
+    }
+
+    void notify_new_commands() {
         cmd_cv_.notify_all();
     }
 
@@ -457,6 +458,11 @@ private:
                     }
                 }
             }
+        }
+
+        // Notify worker loops that a new command array has been written
+        for (auto& [_, buf] : buffers_) {
+            buf->notify_new_commands();
         }
     }
 
