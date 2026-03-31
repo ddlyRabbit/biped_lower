@@ -85,6 +85,8 @@ class StateMachineNode(Node):
         self._traj_gain_ramp_secs = 3.0
         self._traj_ramp_in_secs = 3.0
 
+
+
         # State
         self._state = "IDLE"
         self._state_start_time = time.time()
