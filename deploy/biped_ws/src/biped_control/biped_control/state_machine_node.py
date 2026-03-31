@@ -210,10 +210,6 @@ class StateMachineNode(Node):
             # Capture current positions for soft start interpolation
             self._stand_start_positions = dict(self._current_positions)
 
-        elif new_state in ("PLAY_TRAJ", "PLAY_TRAJ_SIM"):
-            self._traj_sim_only = (new_state == "PLAY_TRAJ_SIM")
-            self._load_trajectory()
-
         elif new_state in ("WIGGLE_SEQ", "WIGGLE_ALL"):
             self._wiggle_cfg = self._load_wiggle_config()
             self._wiggle_start = time.time()
@@ -252,11 +248,7 @@ class StateMachineNode(Node):
             self._handle_play_traj()
         elif self._state == "PLAY_TRAJ_SIM":
             self._handle_stand_hold()
-            self._handle_play_traj_viz()
-        elif self._state == "PLAY_TRAJ":
-            self._handle_play_traj()
-        elif self._state == "PLAY_TRAJ_SIM":
-            self._handle_play_traj_sim()  # motors hold STAND + viz
+            self._handle_play_traj_sim()
         elif self._state == "ESTOP":
             self._send_zero_torque()
 
