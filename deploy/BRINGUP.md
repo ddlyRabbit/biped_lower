@@ -277,15 +277,25 @@ Use `gain_scale` launch argument to scale all PD gains uniformly:
 | 0.7 | Ground standing test |
 | 1.0 | Full sim gains |
 
-Default PD gains (V72):
-| Joint | Kp | Kd |
-|-------|----|----|
-| hip_pitch | 15 | 3.0 |
-| hip_roll | 10 | 3.0 |
-| hip_yaw | 10 | 3.0 |
-| knee | 15 | 3.0 |
-| foot_pitch | 8 | 0.2 |
-| foot_roll | 8 | 0.2 |
+### Where to change PD Gains in code
+
+The base PD gains (which `gain_scale` multiplies against) are hardcoded in the observation builder file because they must match the training simulation exactly. 
+
+To change the base gains, edit `DEFAULT_GAINS` in:
+`biped_ws/src/biped_control/biped_control/obs_builder.py`
+
+```python
+DEFAULT_GAINS = {
+    "L_hip_pitch": (180.0, 6.5), "R_hip_pitch": (180.0, 6.5),
+    "L_hip_roll":  (180.0, 6.5), "R_hip_roll":  (180.0, 6.5),
+    "L_hip_yaw":   (180.0, 3.0), "R_hip_yaw":   (180.0, 3.0),
+    "L_knee":      (180.0, 3.0), "R_knee":      (180.0, 3.0),
+    "L_foot_pitch": (120.0, 3.0), "R_foot_pitch": (120.0, 3.0),
+    "L_foot_roll":  (120.0, 3.0), "R_foot_roll":  (120.0, 3.0),
+}
+```
+
+*Note: The old V72 default gains (Kp=10/15) have been replaced with the higher-stiffness V57+ implicit actuator gains (Kp=120/180). Make sure to start with a very low `gain_scale` (e.g. 0.1 or 0.2) when testing these new high gains on hardware for the first time!*
 
 Safety ESTOP triggers on base tilt: pitch > 45° or roll > 30° (adjustable via `max_pitch_deg` / `max_roll_deg` launch args). These are torso orientation limits, not joint limits.
 
