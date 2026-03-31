@@ -162,7 +162,11 @@ def main():
     if args_cli.tanh:
         actor_layers.append(nn.Tanh())
         print("[INFO] Tanh output layer added to actor")
-    actor = nn.Sequential(*actor_layers).to("cuda:0")
+    actor = nn.Sequential(
+        nn.Linear(num_obs, 128), nn.ELU(),
+        nn.Linear(128, 128), nn.ELU(),
+        nn.Linear(128, 128), nn.ELU(),
+        nn.Linear(128, num_actions),).to("cuda:0")
 
     # Load weights — different key prefix for student vs teacher
     model_sd = ckpt["model_state_dict"]
@@ -177,8 +181,8 @@ def main():
                 actor_sd[clean_k] = v
         if not actor_sd:
             for k, v in model_sd.items():
-                if k.startswith("actor."):
-                    clean_k = k.replace("actor.", "")
+                if k.startswith("actor.0."):
+                    clean_k = k.replace("actor.0.", "")
                     if clean_k.startswith("0.") and args_cli.tanh:
                         clean_k = clean_k[2:]
                     actor_sd[clean_k] = v
@@ -192,8 +196,8 @@ def main():
         # PPO checkpoint: actor.* keys
         actor_sd = {}
         for k, v in model_sd.items():
-            if k.startswith("actor."):
-                clean_k = k.replace("actor.", "")
+            if k.startswith("actor.0."):
+                clean_k = k.replace("actor.0.", "")
                 # Tanh wrapper adds "0." prefix to inner MLP keys (actor.0.X → 0.X)
                 if clean_k.startswith("0.") and args_cli.tanh:
                     clean_k = clean_k[2:]  # strip "0." → flat sequential keys

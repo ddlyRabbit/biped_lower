@@ -37,7 +37,7 @@ from typing import Literal, TYPE_CHECKING
 from collections.abc import Sequence
 
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import DelayedPDActuatorCfg
+from isaaclab.actuators import ImplicitActuatorCfg
 from isaaclab.assets import Articulation, ArticulationCfg, AssetBaseCfg
 from isaaclab.sim.converters.urdf_converter_cfg import UrdfConverterCfg
 from isaaclab.managers import EventTermCfg as EventTerm
@@ -460,47 +460,41 @@ BIPED_CFG = ArticulationCfg(
     ),
     soft_joint_pos_limit_factor=0.9,
     actuators={
-        "hip_roll": DelayedPDActuatorCfg(
+        "hip_roll": ImplicitActuatorCfg(
             joint_names_expr=[".*hip_roll.*"],
-            effort_limit=50.0, velocity_limit=10.0,
-            stiffness=180.0, damping=3.0, armature=0.0152,
+            effort_limit_sim=50.0, velocity_limit_sim=10.0,
+            stiffness=180.0, damping=6.5, armature=0.0152,
             friction=0.375,
-            min_delay=0, max_delay=1,
         ),
-        "hip_yaw": DelayedPDActuatorCfg(
+        "hip_yaw": ImplicitActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
-            effort_limit=50.0, velocity_limit=10.0,
+            effort_limit_sim=50.0, velocity_limit_sim=10.0,
             stiffness=180.0, damping=3.0, armature=0.0152,
             friction=0.375,
-            min_delay=0, max_delay=1,
         ),
-        "hip_pitch": DelayedPDActuatorCfg(
+        "hip_pitch": ImplicitActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
-            effort_limit=100.0, velocity_limit=10.0,
-            stiffness=180.0, damping=3.0, armature=0.0152,
+            effort_limit_sim=100.0, velocity_limit_sim=10.0,
+            stiffness=180.0, damping=6.5, armature=0.0152,
             friction=0.5,
-            min_delay=0, max_delay=1,
         ),
-        "knee": DelayedPDActuatorCfg(
+        "knee": ImplicitActuatorCfg(
             joint_names_expr=[".*knee.*"],
-            effort_limit=100.0, velocity_limit=10.0,
+            effort_limit_sim=100.0, velocity_limit_sim=10.0,
             stiffness=180.0, damping=3.0, armature=0.024,
             friction=0.5,
-            min_delay=0, max_delay=1,
         ),
-        "foot_pitch": DelayedPDActuatorCfg(
+        "foot_pitch": ImplicitActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
-            effort_limit=30.0, velocity_limit=10.0,
+            effort_limit_sim=30.0, velocity_limit_sim=10.0,
             stiffness=120.0, damping=3.0, armature=0.0112,
             friction=0.25,
-            min_delay=0, max_delay=1,
         ),
-        "foot_roll": DelayedPDActuatorCfg(
+        "foot_roll": ImplicitActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
-            effort_limit=30.0, velocity_limit=10.0,
+            effort_limit_sim=30.0, velocity_limit_sim=10.0,
             stiffness=120.0, damping=3.0, armature=0.001,
             friction=0.25,
-            min_delay=0, max_delay=1,
         ),
     },
 )
@@ -698,10 +692,10 @@ class RewardsCfg:
     )
     # -- penalties
     lin_vel_z_l2 = RewTerm(func=base_mdp.lin_vel_z_l2, weight=-2.0)
-    ang_vel_xy_l2 = RewTerm(func=base_mdp.ang_vel_xy_l2, weight=-0.05)
+    ang_vel_xy_l2 = RewTerm(func=base_mdp.ang_vel_xy_l2, weight=-0.01)
     joint_torques_l2 = RewTerm(
         func=base_mdp.joint_torques_l2,
-        weight=-1.0e-5,
+        weight=-1e-05,
     )
     action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.01)
     feet_air_time = RewTerm(
@@ -710,7 +704,7 @@ class RewardsCfg:
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
-            "threshold_min": 0.25,
+            "threshold_min": 0.2,
             "threshold_max": 0.5,
         },
     )
