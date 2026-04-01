@@ -1,0 +1,254 @@
+{
+  "configById": {
+    "3D!10s1wu8": {
+      "cameraState": {
+        "perspective": true,
+        "distance": 1.1312325470038314,
+        "phi": 47.717926456275194,
+        "thetaOffset": 123.88489208632197,
+        "targetOffset": [
+          -0.08682587630614545,
+          -0.010308956648887934,
+          8.192873829253846e-17
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "scene": {
+        "transforms": {
+          "editable": false,
+          "showLabel": false
+        },
+        "meshUpAxis": "z_up",
+        "syncCamera": false
+      },
+      "transforms": {},
+      "topics": {
+        "/robot_description": {
+          "visible": false
+        }
+      },
+      "layers": {
+        "grid": {
+          "visible": true,
+          "drawBehind": false,
+          "frameLocked": true,
+          "label": "Grid",
+          "instanceId": "ddd35233-26e5-4745-a025-f048f1098159",
+          "layerId": "foxglove.Grid",
+          "size": 10,
+          "divisions": 10,
+          "lineWidth": 1,
+          "color": "#248eff",
+          "position": [
+            0,
+            0,
+            -0.4
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ]
+        },
+        "39782ebe-5919-41e6-b2cf-ca8c2632d24f": {
+          "displayMode": "auto",
+          "fallbackColor": "#ffffff",
+          "showAxis": false,
+          "axisScale": 1,
+          "showOutlines": true,
+          "opacity": 1,
+          "visible": true,
+          "frameLocked": true,
+          "instanceId": "39782ebe-5919-41e6-b2cf-ca8c2632d24f",
+          "label": "URDF",
+          "layerId": "foxglove.Urdf",
+          "sourceType": "param",
+          "url": "",
+          "filePath": "",
+          "parameter": "/robot_state_publisher.robot_description",
+          "topic": "",
+          "framePrefix": "",
+          "order": 1,
+          "links": {
+            "R_hip_yaw_link": {
+              "visible": true
+            },
+            "L_foot_pitch_link": {
+              "visible": true
+            },
+            "L_knee_link": {
+              "visible": true
+            }
+          }
+        }
+      },
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "imageMode": {},
+      "followTf": "odom"
+    },
+    "3D!25vzllw": {
+      "cameraState": {
+        "perspective": true,
+        "distance": 1.3194139635566424,
+        "phi": 59.807778776995754,
+        "thetaOffset": 91.41973920864936,
+        "targetOffset": [
+          -0.2525482766410869,
+          0.3518658041905393,
+          -1.3580471440167464e-17
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "followTf": "policy/base_link",
+      "scene": {
+        "meshUpAxis": "z_up",
+        "transforms": {
+          "visible": true,
+          "showLabel": false
+        }
+      },
+      "transforms": {
+        "frame:policy/L_hip_pitch_link": {
+          "visible": true
+        }
+      },
+      "topics": {
+        "/robot_description": {
+          "visible": false
+        }
+      },
+      "layers": {
+        "grid": {
+          "visible": true,
+          "drawBehind": false,
+          "frameLocked": true,
+          "label": "Grid",
+          "instanceId": "79e5d53e-7894-42a8-92e9-0203e69074e9",
+          "layerId": "foxglove.Grid",
+          "size": 3.5,
+          "divisions": 10,
+          "lineWidth": 1,
+          "color": "#248eff",
+          "position": [
+            0,
+            0,
+            -0.134
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ]
+        },
+        "18145320-2796-45bd-bb83-bba234eefabc": {
+          "displayMode": "auto",
+          "fallbackColor": "#ffffff",
+          "showAxis": false,
+          "axisScale": 1,
+          "showOutlines": true,
+          "opacity": 1,
+          "visible": true,
+          "frameLocked": true,
+          "instanceId": "18145320-2796-45bd-bb83-bba234eefabc",
+          "label": "policy output",
+          "layerId": "foxglove.Urdf",
+          "sourceType": "param",
+          "url": "/robot_state_publisher.robot_description",
+          "filePath": "",
+          "parameter": "/policy_state_publisher.robot_description",
+          "topic": "",
+          "framePrefix": "policy/",
+          "order": 1,
+          "links": {
+            "policy/base_link": {
+              "visible": true
+            }
+          }
+        }
+      },
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "imageMode": {}
+    },
+    "RawMessages!28fnhvb": {
+      "diffEnabled": false,
+      "diffMethod": "custom",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "topicPath": "/imu/gravity",
+      "fontSize": 12
+    },
+    "RawMessages!4ciy313": {
+      "diffEnabled": false,
+      "diffMethod": "custom",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "topicPath": "/joint_commands",
+      "fontSize": 12,
+      "expansion": "all"
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "layout": {
+    "first": {
+      "first": "3D!10s1wu8",
+      "second": "3D!25vzllw",
+      "direction": "column"
+    },
+    "second": {
+      "first": "RawMessages!28fnhvb",
+      "second": "RawMessages!4ciy313",
+      "direction": "column",
+      "splitPercentage": 49.825555286883834
+    },
+    "direction": "row",
+    "splitPercentage": 57.2463768115942
+  }
+}

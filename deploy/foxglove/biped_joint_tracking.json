@@ -1,0 +1,371 @@
+{
+  "configById": {
+    "Plot!3z5akqx": {
+      "paths": [
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_commands.commands[8].position",
+          "enabled": false,
+          "color": "#4e98e2",
+          "id": "70573c17-8f52-4266-b281-19e94bd4fd4e",
+          "label": "R_Hip_Pitch_Command"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_states.position[11]",
+          "enabled": false,
+          "color": "#f5774d",
+          "id": "e1fe541d-0474-47bf-be55-f67e15dcd4a7",
+          "label": "R_Hip_Pitch_Actual"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_states.position[10]",
+          "enabled": false,
+          "color": "#f7df71",
+          "id": "a694edeb-e755-4386-8f79-6612533d22e8",
+          "label": "R_Hip_Roll_Actual"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_commands.commands[9].position",
+          "enabled": false,
+          "color": "#5cd6a9",
+          "id": "5e08e185-6acd-4dd4-9e49-4787cc00f2a5",
+          "label": "R_Hip_Roll_Command"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_states.position[9]",
+          "enabled": false,
+          "color": "#61cbff",
+          "id": "d92f9a9b-02c9-46e6-b3c6-b34140e534c9",
+          "label": "R_Hip_Yaw_Actual"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_commands.commands[10].position",
+          "enabled": false,
+          "color": "#a395e2",
+          "id": "15993cb0-2c64-419a-af8d-303f0694056c",
+          "label": "R_Hip_Yaw_Command"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_states.position[8]",
+          "enabled": false,
+          "color": "#cad660",
+          "id": "c18e8a9f-c770-43e4-bf5c-ef386d8356f2",
+          "label": "R_Knee_Actual"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_commands.commands[11].position",
+          "enabled": false,
+          "color": "#4e98e2",
+          "id": "3e10dcc4-1c6c-48e5-9fd9-fbd593c0fc7f",
+          "label": "R_Knee_Command"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_states.position[6]",
+          "enabled": false,
+          "color": "#f5774d",
+          "id": "19838696-31b8-4851-9349-43a2c8b76d80",
+          "label": "R_Foot_Pitch_Actual"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_commands.commands[6].position",
+          "enabled": false,
+          "color": "#f7df71",
+          "id": "d8f1ee99-d37e-4a9e-8a63-4b0752840dd0",
+          "label": "R_Foot_Pitch_Command"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_states.position[7]",
+          "enabled": false,
+          "color": "#5cd6a9",
+          "id": "a25d6913-314e-4bef-80f4-0aea835c8f5d",
+          "label": "R_Foot_Roll_Actual"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_commands.commands[7].position",
+          "enabled": false,
+          "color": "#61cbff",
+          "id": "2664e4bf-2d27-4410-9d08-1676a8232aa7",
+          "label": "R_Foot_Pitch_Command"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_states.position[5]",
+          "enabled": false,
+          "color": "#a395e2",
+          "id": "50a5c920-6841-4675-a74e-4b090e3d6c1a",
+          "label": "L_Hip_Pitch_Actual",
+          "lineSize": 0.9436,
+          "showLine": true
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_commands.commands[2].position",
+          "enabled": false,
+          "color": "#cad660",
+          "id": "dc8274dc-91b4-4f5a-beb2-7b3721fd96ef",
+          "label": "L_Hip_Pitch_Command"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_states.position[2]",
+          "enabled": false,
+          "color": "#4e98e2",
+          "id": "b5819f47-5969-404f-b41b-a84462f690be",
+          "label": "L_Hip_Roll_Actual"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_commands.commands[3].position",
+          "enabled": false,
+          "color": "#f5774d",
+          "id": "fd086ce3-346a-4c3f-a6ab-90e89951ec16",
+          "label": "L_Hip_Roll_Command"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_states.position[1]",
+          "enabled": false,
+          "color": "#f7df71",
+          "id": "a7a93a39-e00b-465a-a27c-30275ef36ee4",
+          "label": "L_Hip_Yaw_Actual"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_commands.commands[4].position",
+          "enabled": false,
+          "color": "#5cd6a9",
+          "id": "7f6b1dc3-3c19-47e5-8633-291a80110ee1",
+          "label": "L_Hip_Yaw_Command"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_states.position[3]",
+          "enabled": true,
+          "color": "#61cbff",
+          "id": "6cb0cd8d-0247-48f5-9016-fe53c0ca1941",
+          "label": "L_Foot_Pitch_Actual"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_commands.commands[0].position",
+          "enabled": true,
+          "color": "#a395e2",
+          "id": "40d40488-e05b-45fb-bd86-070abeb30796",
+          "label": "L_Foot_Pitch_Command"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_states.position[4]",
+          "enabled": true,
+          "color": "#cad660",
+          "id": "62a980b1-ed82-41a9-8d2b-68e00052c3c4",
+          "label": "L_Foot_Roll_Actual"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_commands.commands[1].position",
+          "enabled": true,
+          "color": "#4e98e2",
+          "id": "74bd503c-30ce-418a-85e4-3877d06689e4",
+          "label": "L_Foot_Roll_Command"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_states.position[0]",
+          "enabled": false,
+          "color": "#f5774d",
+          "id": "8ad5e080-80f9-4e8a-8c54-ee31b121ad1b",
+          "label": "L_Knee_Actual"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/joint_commands.commands[5].position",
+          "enabled": false,
+          "color": "#f7df71",
+          "id": "66f819a0-b805-4e92-ad57-a949ecfbac4c",
+          "label": "L_Knee_Command"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": false,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240
+    },
+    "3D!10s1wu8": {
+      "cameraState": {
+        "perspective": true,
+        "distance": 2.0934790944630275,
+        "phi": 64.06679280199559,
+        "thetaOffset": -59.20783609833759,
+        "targetOffset": [
+          0.3637514900732566,
+          -0.16179666556378045,
+          5.826350674094752e-17
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "scene": {
+        "transforms": {
+          "editable": false,
+          "showLabel": false
+        },
+        "meshUpAxis": "z_up",
+        "syncCamera": false
+      },
+      "transforms": {},
+      "topics": {
+        "/robot_description": {
+          "visible": false
+        }
+      },
+      "layers": {
+        "grid": {
+          "visible": true,
+          "drawBehind": false,
+          "frameLocked": true,
+          "label": "Grid",
+          "instanceId": "ddd35233-26e5-4745-a025-f048f1098159",
+          "layerId": "foxglove.Grid",
+          "size": 10,
+          "divisions": 10,
+          "lineWidth": 1,
+          "color": "#248eff",
+          "position": [
+            0,
+            0,
+            -0.4
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ]
+        },
+        "39782ebe-5919-41e6-b2cf-ca8c2632d24f": {
+          "displayMode": "auto",
+          "fallbackColor": "#ffffff",
+          "showAxis": false,
+          "axisScale": 1,
+          "showOutlines": true,
+          "opacity": 1,
+          "visible": true,
+          "frameLocked": true,
+          "instanceId": "39782ebe-5919-41e6-b2cf-ca8c2632d24f",
+          "label": "URDF",
+          "layerId": "foxglove.Urdf",
+          "sourceType": "param",
+          "url": "",
+          "filePath": "",
+          "parameter": "/robot_state_publisher.robot_description",
+          "topic": "",
+          "framePrefix": "",
+          "order": 1,
+          "links": {
+            "R_hip_yaw_link": {
+              "visible": true
+            },
+            "L_foot_pitch_link": {
+              "visible": true
+            },
+            "L_knee_link": {
+              "visible": true
+            }
+          }
+        }
+      },
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "imageMode": {},
+      "followTf": "odom"
+    },
+    "RawMessages!28fnhvb": {
+      "diffEnabled": false,
+      "diffMethod": "custom",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "topicPath": "/joint_states",
+      "fontSize": 12
+    },
+    "RawMessages!4ciy313": {
+      "diffEnabled": false,
+      "diffMethod": "custom",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "topicPath": "/joint_commands",
+      "fontSize": 12,
+      "expansion": {
+        "header": "e",
+        "stamp~header": "e",
+        "commands": "e",
+        "0~commands": "e",
+        "1~commands": "e",
+        "2~commands": "e",
+        "3~commands": "e",
+        "4~commands": "e",
+        "5~commands": "e",
+        "6~commands": "e",
+        "7~commands": "e",
+        "8~commands": "e",
+        "9~commands": "e",
+        "10~commands": "e",
+        "11~commands": "e"
+      }
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "layout": {
+    "direction": "row",
+    "first": "Plot!3z5akqx",
+    "second": {
+      "first": "3D!10s1wu8",
+      "second": {
+        "first": "RawMessages!28fnhvb",
+        "second": "RawMessages!4ciy313",
+        "direction": "column",
+        "splitPercentage": 49.825555286883834
+      },
+      "direction": "row",
+      "splitPercentage": 57.2463768115942
+    }
+  }
+}
