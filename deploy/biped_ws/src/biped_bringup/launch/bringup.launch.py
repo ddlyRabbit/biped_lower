@@ -147,6 +147,7 @@ def generate_launch_description():
             parameters=[{
                 'gain_scale': LaunchConfiguration('gain_scale'),
                 'wiggle_config': os.path.join(os.path.expanduser('~'), 'biped_lower', 'deploy', 'biped_ws', 'src', 'biped_bringup', 'config', 'wiggle.yaml'),
+                'trajectory_file': os.path.join(os.path.expanduser('~'), 'biped_lower', 'deploy', 'biped_ws', 'src', 'biped_bringup', 'config', 'trajectory.csv'),
             }],
         ),
 
@@ -161,7 +162,8 @@ def generate_launch_description():
             }],
         ),
 
-        # Rosbag recording (MCAP format — open directly in Foxglove)
+        # ZMP trajectory generator
+        Node(
         ExecuteProcess(
             condition=IfCondition(LaunchConfiguration('record')),
             cmd=['ros2', 'bag', 'record',

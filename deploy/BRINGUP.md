@@ -2,19 +2,84 @@
 
 ## Prerequisites
 
-- RPi 5 with Ubuntu 24.04 + ROS2 Jazzy
+- RPi 5 with Ubuntu 24.04
 - Waveshare RS485 CAN HAT (B) — MCP2515 on SPI0
 - IMU: BNO085 (I2C) or IM10A (USB serial /dev/ttyUSB0)
 - All 12 motors on dual CAN bus (can0=right, can1=left), IDs 1–12
 - Student policy exported as ONNX (`student_flat.onnx`)
+
+## Fresh Pi Setup
+
+### 1. System packages
+
+```bash
+sudo apt update && sudo apt install -y \
+  net-tools can-utils i2c-tools git \
+  python3-pip libeigen3-dev
+```
+
+### 2. ROS2 Jazzy
+
+```bash
+sudo apt install -y software-properties-common curl
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+  -o /usr/share/keyrings/ros-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+  http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | \
+  sudo tee /etc/apt/sources.list.d/ros2.list
+sudo apt update
+sudo apt install -y ros-jazzy-ros-base python3-colcon-common-extensions
+
+# Add to bashrc
+echo 'source /opt/ros/jazzy/setup.bash' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### 3. Foxglove Bridge (live visualization)
+
+```bash
+sudo apt install -y ros-jazzy-foxglove-bridge
+```
+
+Launch alongside bringup:
+```bash
+ros2 launch foxglove_bridge foxglove_bridge_launch.xml
+```
+Then open Foxglove Studio → Connect → WebSocket → `ws://<pi-ip>:8765`
+
+### 4. Python packages
+
+On 1GB Pi, add swap first:
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+```
+
+Install:
+```bash
+pip3 install --break-system-packages -r ~/biped_lower/deploy/requirements.txt
+```
+
+### 5. Build workspace
+
+```bash
+source /opt/ros/jazzy/setup.bash
+cd ~/biped_lower/deploy/biped_ws
+colcon build --symlink-install
+source install/setup.bash
+
+# Add to bashrc
+echo 'source ~/biped_lower/deploy/biped_ws/install/setup.bash' >> ~/.bashrc
+```
 
 ## CAN HAT Setup (one-time)
 
 Add to `/boot/firmware/config.txt`:
 ```
 dtparam=spi=on
-dtoverlay=mcp2515-can0,oscillator=12000000,interrupt=25
-dtoverlay=mcp2515-can1,oscillator=12000000,interrupt=24
+dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=25
+dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=23
+dtoverlay=spi-bcm2835-overlay
 ```
 Reboot. Verify: `ls /sys/class/net/ | grep can` → should show `can0` and `can1`.
 
@@ -212,15 +277,25 @@ Use `gain_scale` launch argument to scale all PD gains uniformly:
 | 0.7 | Ground standing test |
 | 1.0 | Full sim gains |
 
-Default PD gains (V72):
-| Joint | Kp | Kd |
-|-------|----|----|
-| hip_pitch | 15 | 3.0 |
-| hip_roll | 10 | 3.0 |
-| hip_yaw | 10 | 3.0 |
-| knee | 15 | 3.0 |
-| foot_pitch | 8 | 0.2 |
-| foot_roll | 8 | 0.2 |
+### Where to change PD Gains in code
+
+The base PD gains (which `gain_scale` multiplies against) are hardcoded in the observation builder file because they must match the training simulation exactly. 
+
+To change the base gains, edit `DEFAULT_GAINS` in:
+`biped_ws/src/biped_control/biped_control/obs_builder.py`
+
+```python
+DEFAULT_GAINS = {
+    "L_hip_pitch": (180.0, 6.5), "R_hip_pitch": (180.0, 6.5),
+    "L_hip_roll":  (180.0, 6.5), "R_hip_roll":  (180.0, 6.5),
+    "L_hip_yaw":   (180.0, 3.0), "R_hip_yaw":   (180.0, 3.0),
+    "L_knee":      (180.0, 3.0), "R_knee":      (180.0, 3.0),
+    "L_foot_pitch": (120.0, 3.0), "R_foot_pitch": (120.0, 3.0),
+    "L_foot_roll":  (120.0, 3.0), "R_foot_roll":  (120.0, 3.0),
+}
+```
+
+*Note: The old V72 default gains (Kp=10/15) have been replaced with the higher-stiffness V57+ implicit actuator gains (Kp=120/180). Make sure to start with a very low `gain_scale` (e.g. 0.1 or 0.2) when testing these new high gains on hardware for the first time!*
 
 Safety ESTOP triggers on base tilt: pitch > 45° or roll > 30° (adjustable via `max_pitch_deg` / `max_roll_deg` launch args). These are torso orientation limits, not joint limits.
 

@@ -62,20 +62,51 @@ class IM10ANode(Node):
         self._last_gravity = (0.0, 0.0, -9.81)
         self._read_count = 0
 
+        # Reconnect state
+        self._port = port
+        self._baud = baud
+        self._reconnect_interval = 2.0  # seconds between reconnect attempts
+        self._last_reconnect_attempt = 0.0
+
         # Timer
         self._timer = self.create_timer(1.0 / self._rate, self._timer_callback)
 
+    def _try_reconnect(self):
+        """Attempt to reopen serial port after I/O error."""
+        import time
+        now = time.time()
+        if now - self._last_reconnect_attempt < self._reconnect_interval:
+            return
+        self._last_reconnect_attempt = now
+        try:
+            self._driver = IM10ADriver(port=self._port, baudrate=self._baud)
+            self._driver.open()
+            self.get_logger().info(f'IMU reconnected — {self._port} @ {self._baud}')
+        except Exception as e:
+            self.get_logger().warn(f'IMU reconnect failed: {e}')
+            self._driver = None
+
     def _timer_callback(self):
         if self._driver is None:
+            self._try_reconnect()
             return
 
         # Read all available frames (drain buffer)
         data = None
-        while True:
-            d = self._driver.read()
-            if d is None:
-                break
-            data = d  # keep latest
+        try:
+            while True:
+                d = self._driver.read()
+                if d is None:
+                    break
+                data = d  # keep latest
+        except OSError as e:
+            self.get_logger().error(f'IMU serial error: {e} — will reconnect')
+            try:
+                self._driver.close()
+            except Exception:
+                pass
+            self._driver = None
+            return
 
         if data is not None:
             # quaternion: driver returns (w, x, y, z), ROS wants (x, y, z, w)
