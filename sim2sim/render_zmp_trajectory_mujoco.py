@@ -61,7 +61,7 @@ def record_trajectory(csv_path, output_video="/tmp/zmp_playback.mp4", duration=2
     model.opt.timestep = dt
 
     # Set initial standing pose
-    data.qpos[2] = 0.55  # z height
+    data.qpos[2] = 0.65  # z height
     data.qpos[3:7] = [1, 0, 0, 0]  # upright quaternion
 
     # Set initial joint positions from first frame
