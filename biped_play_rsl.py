@@ -162,11 +162,7 @@ def main():
     if args_cli.tanh:
         actor_layers.append(nn.Tanh())
         print("[INFO] Tanh output layer added to actor")
-    actor = nn.Sequential(
-        nn.Linear(num_obs, 128), nn.ELU(),
-        nn.Linear(128, 128), nn.ELU(),
-        nn.Linear(128, 128), nn.ELU(),
-        nn.Linear(128, num_actions),).to("cuda:0")
+    actor = nn.Sequential(*actor_layers).to("cuda:0")
 
     # Load weights — different key prefix for student vs teacher
     model_sd = ckpt["model_state_dict"]
