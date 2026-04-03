@@ -26,6 +26,9 @@ ISAAC_JOINT_ORDER = [
     "L_foot_roll", "R_foot_roll",
 ]
 
+# Alias for backward compatibility (policy_node.py, state_machine_node.py)
+JOINT_ORDER = ISAAC_JOINT_ORDER
+
 # Observation group joint order (from biped_env_cfg.py obs config)
 # hip_pos uses regex [".*hip_roll.*", ".*hip_yaw.*", ".*hip_pitch.*"]
 # Isaac resolves to: L_roll, R_roll, L_yaw, R_yaw, L_pitch, R_pitch
