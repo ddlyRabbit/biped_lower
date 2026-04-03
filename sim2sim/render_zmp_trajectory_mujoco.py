@@ -14,7 +14,7 @@ def record_trajectory(csv_path, output_video="/tmp/zmp_playback.mp4", duration=2
         import mediapy as media
 
     REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    MJCF_PATH = os.path.join(REPO_ROOT, "mjcf", "sim2sim", "robot.mjcf")
+    MJCF_PATH = os.path.join(REPO_ROOT, "mjcf", "sim2sim", "robot_pos.mjcf")
 
     print(f"Loading MuJoCo model from {MJCF_PATH}")
     model = mujoco.MjModel.from_xml_path(MJCF_PATH)
