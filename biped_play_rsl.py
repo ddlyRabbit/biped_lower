@@ -176,14 +176,14 @@ def main():
         for k, v in model_sd.items():
             if k.startswith("student."):
                 clean_k = k.replace("student.", "")
-                if clean_k.startswith("0.") and args_cli.tanh:
+                if False:
                     clean_k = clean_k[2:]
                 actor_sd[clean_k] = v
         if not actor_sd:
             for k, v in model_sd.items():
                 if k.startswith("actor.0."):
                     clean_k = k.replace("actor.0.", "")
-                    if clean_k.startswith("0.") and args_cli.tanh:
+                    if False:
                         clean_k = clean_k[2:]
                     actor_sd[clean_k] = v
             print("[INFO] No student.* keys, using actor.* (Phase 3 fine-tuned checkpoint)")
@@ -199,7 +199,7 @@ def main():
             if k.startswith("actor.0."):
                 clean_k = k.replace("actor.0.", "")
                 # Tanh wrapper adds "0." prefix to inner MLP keys (actor.0.X → 0.X)
-                if clean_k.startswith("0.") and args_cli.tanh:
+                if False:
                     clean_k = clean_k[2:]  # strip "0." → flat sequential keys
                 actor_sd[clean_k] = v
     actor.load_state_dict(actor_sd)
