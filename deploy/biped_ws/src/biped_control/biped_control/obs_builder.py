@@ -46,7 +46,7 @@ DEFAULT_POSITIONS = {
 
 # Action scale (from training config, per-joint)
 ACTION_SCALE = 0.5
-ACTION_SCALE_OVERRIDES = {
+ACTION_SCALE_OVERRIDE = {
     "R_foot_roll": 0.25,
     "L_foot_roll": 0.25,
 }
@@ -60,14 +60,14 @@ ACTION_ORDER = [
 ]
 
 # Default PD gains (from training config, halved Berkeley values)
-# Deploy PD gains — matched to training (same Kp/Kd as sim)
+# Deploy PD gains — Kp from training (V74), Kd 5× for hardware damping
 DEFAULT_GAINS = {
-    "L_hip_pitch": (200.0, 7.5), "R_hip_pitch": (200.0, 7.5),
-    "L_hip_roll":  (150.0, 5.5), "R_hip_roll":  (150.0, 5.5),
-    "L_hip_yaw":   (150.0, 5.0), "R_hip_yaw":   (150.0, 5.0),
-    "L_knee":      (200.0, 5.0), "R_knee":      (200.0, 5.0),
-    "L_foot_pitch": (30.0, 2.0), "R_foot_pitch": (30.0, 2.0),
-    "L_foot_roll":  (30.0, 2.0), "R_foot_roll":  (30.0, 2.0),
+    "L_hip_pitch": (180.0, 3.0), "R_hip_pitch": (180.0, 3.0),
+    "L_hip_roll":  (180.0, 3.0), "R_hip_roll":  (180.0, 3.0),
+    "L_hip_yaw":   (180.0, 3.0), "R_hip_yaw":   (180.0, 3.0),
+    "L_knee":      (180.0, 3.0), "R_knee":      (180.0, 3.0),
+    "L_foot_pitch": (30.0, 1.0), "R_foot_pitch": (30.0, 1.0),
+    "L_foot_roll":  (30.0, 1.0), "R_foot_roll":  (30.0, 1.0),
 }
 
 
@@ -144,6 +144,6 @@ class ObsBuilder:
         """
         targets = {}
         for i, name in enumerate(ACTION_ORDER):
-            scale = ACTION_SCALE_OVERRIDES.get(name, ACTION_SCALE)
+            scale = ACTION_SCALE_OVERRIDE.get(name, ACTION_SCALE)
             targets[name] = DEFAULT_POSITIONS[name] + float(action[i]) * scale
         return targets

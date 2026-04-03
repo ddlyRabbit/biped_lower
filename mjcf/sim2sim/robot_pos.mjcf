@@ -1,0 +1,289 @@
+<mujoco model="biped">
+  <option iterations="50" timestep="0.0005" solver="PGS" gravity="0 0 -9.81"><flag filterparent="enable" /></option>
+
+  <compiler angle="radian" meshdir="meshes" eulerseq="zyx" autolimits="true" />
+
+  <default>
+    <joint limited="true" armature="0.01" frictionloss="0.01" damping="0.01" />
+    <geom condim="4" contype="1" conaffinity="15" solref="0.001 2" />
+    <motor ctrllimited="true" />
+    <equality solref="0.001 2" />
+    <default class="visualgeom">
+      <geom material="visualgeom" condim="1" contype="0" conaffinity="0" />
+    </default>
+  </default>
+
+  <asset>
+    <mesh name="rs04" file="rs04.stl" />
+    <mesh name="assy_formfg___kd_b_102b_torso_btm" file="assy_formfg___kd_b_102b_torso_btm.stl" />
+    <mesh name="kd_d_101l_6061" file="kd_d_101l_6061.stl" />
+    <mesh name="kd_d_101r_6061" file="kd_d_101r_6061.stl" />
+    <mesh name="assy_formfg___kc_d_107r_r_cover" file="assy_formfg___kc_d_107r_r_cover.stl" />
+    <mesh name="kd_d_104r_sus304" file="kd_d_104r_sus304.stl" />
+    <mesh name="kd_d_104l_sus304" file="kd_d_104l_sus304.stl" />
+    <mesh name="assy_formfg___kc_d_107l_l_cover" file="assy_formfg___kc_d_107l_l_cover.stl" />
+    <mesh name="kd_d_105_sus304" file="kd_d_105_sus304.stl" />
+    <mesh name="kd_d_103r_6061" file="kd_d_103r_6061.stl" />
+    <mesh name="kd_d_102r_6061" file="kd_d_102r_6061.stl" />
+    <mesh name="kd_d_201r_6061" file="kd_d_201r_6061.stl" />
+    <mesh name="kd_d_203_sus304" file="kd_d_203_sus304.stl" />
+    <mesh name="rs03" file="rs03.stl" />
+    <mesh name="kd_d_202r_6061" file="kd_d_202r_6061.stl" />
+    <mesh name="ball_bearing_37x25x7" file="ball_bearing_37x25x7.stl" />
+    <mesh name="kd_d_302r_6061" file="kd_d_302r_6061.stl" />
+    <mesh name="kd_d_301r_6061" file="kd_d_301r_6061.stl" />
+    <mesh name="kd_d_403_6061" file="kd_d_403_6061.stl" />
+    <mesh name="kd_d_401r_6061" file="kd_d_401r_6061.stl" />
+    <mesh name="r_end_stop_ankle_6061" file="r_end_stop_ankle_6061.stl" />
+    <mesh name="kd_d_502_6061" file="kd_d_502_6061.stl" />
+    <mesh name="rs02" file="rs02.stl" />
+    <mesh name="kd_d_402r_6061" file="kd_d_402r_6061.stl" />
+    <mesh name="arb_uj111_cross_bearing" file="arb_uj111_cross_bearing.stl" />
+    <mesh name="foot_6061" file="foot_6061.stl" />
+    <mesh name="kd_d_102l_6061" file="kd_d_102l_6061.stl" />
+    <mesh name="kd_d_103l_6061" file="kd_d_103l_6061.stl" />
+    <mesh name="kd_d_201l_6061" file="kd_d_201l_6061.stl" />
+    <mesh name="kd_d_202l_6061" file="kd_d_202l_6061.stl" />
+    <mesh name="kd_d_302l_6061" file="kd_d_302l_6061.stl" />
+    <mesh name="kd_d_301l_6061" file="kd_d_301l_6061.stl" />
+    <mesh name="kd_d_402l_6061" file="kd_d_402l_6061.stl" />
+    <mesh name="kd_d_401l_6061" file="kd_d_401l_6061.stl" />
+    <mesh name="l_end_stop_ankle_6061" file="l_end_stop_ankle_6061.stl" />
+    <texture name="texplane" type="2d" builtin="checker" rgb1=".0 .0 .0" rgb2=".8 .8 .8" width="100" height="100" />
+    <material name="matplane" reflectance="0." texture="texplane" texrepeat="1 1" texuniform="true" />
+    <material name="visualgeom" rgba="0.5 0.9 0.2 1" />
+  </asset>
+
+  <worldbody>
+    <light directional="true" diffuse="0.4 0.4 0.4" specular="0.1 0.1 0.1" pos="0 0 5.0" dir="0 0 -1" castshadow="false" />
+    <light directional="true" diffuse="0.6 0.6 0.6" specular="0.2 0.2 0.2" pos="0 0 4" dir="0 0 -1" />
+    <geom name="ground" type="plane" pos="0 0 0" size="100 100 0.001" quat="1 0 0 0" material="matplane" condim="3" conaffinity="15" />
+    <camera name="fixed" pos="0 -3.0 1.4074332229119006" xyaxes="1 0 0 0 0 1" />
+    <camera name="track" mode="trackcom" pos="0 -3.0 1.4074332229119006" xyaxes="1 0 0 0 0 1" />
+    <body name="root" pos="0 0 0.9074332229119006" quat="1 0 0 0">
+      <freejoint name="root" />
+      <site name="imu" size="0.01" pos="0 0 0" />
+      <geom pos="0.0166412 0.161281 0.36514" quat="0.499998 -0.5 -0.500002 0.5" type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs04" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+      <geom type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs04" pos="0.0166412 0.161281 0.36514" quat="0.499998 -0.5 -0.500002 0.5" contype="0" conaffinity="0" />
+      <geom pos="-0.000358761 0.000280909 -0.0188599" quat="0.499998 -0.5 -0.500002 0.5" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="assy_formfg___kd_b_102b_torso_btm" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+      <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="assy_formfg___kd_b_102b_torso_btm" pos="-0.000358761 0.000280909 -0.0188599" quat="0.499998 -0.5 -0.500002 0.5" contype="0" conaffinity="0" />
+      <geom pos="-0.0173588 -0.160719 0.36514" quat="0.499998 -0.5 0.500002 -0.5" type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs04" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+      <geom type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs04" pos="-0.0173588 -0.160719 0.36514" quat="0.499998 -0.5 0.500002 -0.5" contype="0" conaffinity="0" />
+      <geom pos="-0.000358761 0.000280909 -0.0188599" quat="0.499998 -0.5 -0.500002 0.5" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_101l_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+      <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_101l_6061" pos="-0.000358761 0.000280909 -0.0188599" quat="0.499998 -0.5 -0.500002 0.5" contype="0" conaffinity="0" />
+      <geom pos="-0.000358761 0.000280909 -0.0188599" quat="0.499998 -0.5 -0.500002 0.5" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_101r_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+      <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_101r_6061" pos="-0.000358761 0.000280909 -0.0188599" quat="0.499998 -0.5 -0.500002 0.5" contype="0" conaffinity="0" />
+      <geom pos="-0.000358761 0.000280909 -0.0188599" quat="0.499998 -0.5 -0.500002 0.5" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="assy_formfg___kc_d_107r_r_cover" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+      <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="assy_formfg___kc_d_107r_r_cover" pos="-0.000358761 0.000280909 -0.0188599" quat="0.499998 -0.5 -0.500002 0.5" contype="0" conaffinity="0" />
+      <geom pos="0.0636412 0.000280909 -0.0828599" quat="0.707105 0 0 0.707108" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_104r_sus304" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+      <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_104r_sus304" pos="0.0636412 0.000280909 -0.0828599" quat="0.707105 0 0 0.707108" contype="0" conaffinity="0" />
+      <geom pos="0.0636412 0.000280909 -0.0828599" quat="0.707105 0 0 -0.707108" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_104l_sus304" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+      <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_104l_sus304" pos="0.0636412 0.000280909 -0.0828599" quat="0.707105 0 0 -0.707108" contype="0" conaffinity="0" />
+      <geom pos="-0.000358761 0.000280909 -0.0188599" quat="0.499998 -0.5 -0.500002 0.5" type="mesh" rgba="0.717647 0.717647 0.717647 1" mesh="assy_formfg___kc_d_107l_l_cover" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+      <geom type="mesh" rgba="0.717647 0.717647 0.717647 1" mesh="assy_formfg___kc_d_107l_l_cover" pos="-0.000358761 0.000280909 -0.0188599" quat="0.499998 -0.5 -0.500002 0.5" contype="0" conaffinity="0" />
+      <geom size="0.063 0.073 0.025" pos="-0.0004 0.0003 0.0436" type="box" rgba="0.2 0.2 0.2 1" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+      <geom type="box" rgba="0.2 0.2 0.2 1" size="0.063 0.073 0.025" pos="-0.0004 0.0003 0.0436" contype="0" conaffinity="0" />
+      <body name="kd_d_102r_6061" pos="-0.000358761 -0.0547191 -0.0828599" quat="9.38184e-07 9.38187e-07 0.707108 0.707105">
+        <inertial pos="-0.00547037 -0.00477853 -0.0395434" quat="-0.369678 0.5914 -0.0597721 0.714151" mass="0.200236" diaginertia="0.000529481 0.000420994 0.000315848" />
+        <joint name="right_hip_pitch_04" pos="0 0 0" axis="0 0 1" range="-2.21657 1.0472" actuatorfrcrange="-100 100" />
+        <geom pos="0 0.064 0.054" quat="9.38184e-07 0.707105 -9.38187e-07 0.707108" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_105_sus304" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_105_sus304" pos="0 0.064 0.054" quat="9.38184e-07 0.707105 -9.38187e-07 0.707108" contype="0" conaffinity="0" />
+        <geom pos="0 0.064 0.055" quat="9.38184e-07 -0.707105 -9.38187e-07 -0.707108" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_103r_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_103r_6061" pos="0 0.064 0.055" quat="9.38184e-07 -0.707105 -9.38187e-07 -0.707108" contype="0" conaffinity="0" />
+        <geom pos="0 0.064 0.055" quat="0.499998 -0.5 -0.5 -0.500002" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_102r_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_102r_6061" pos="0 0.064 0.055" quat="0.499998 -0.5 -0.5 -0.500002" contype="0" conaffinity="0" />
+        <body name="kd_d_201r_6061" pos="-0.02925 -0.03 -0.071" quat="0.707105 0 -0.707108 0">
+          <inertial pos="-8.56747e-05 -0.0573245 -0.026883" quat="0.513916 0.493567 -0.486094 0.505959" mass="2.0407" diaginertia="0.00873323 0.0084974 0.00219394" />
+          <joint name="right_hip_roll_03" pos="0 0 0" axis="0 0 1" range="-2.26893 0.20944" actuatorfrcrange="-50 50" />
+          <geom pos="0.126 0.094 -0.02925" quat="1.32679e-06 1 0 0" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_201r_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+          <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_201r_6061" pos="0.126 0.094 -0.02925" quat="1.32679e-06 1 0 0" contype="0" conaffinity="0" />
+          <geom pos="0.126 0.094 -0.02125" quat="1.32679e-06 0 0 1" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_203_sus304" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+          <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_203_sus304" pos="0.126 0.094 -0.02125" quat="1.32679e-06 0 0 1" contype="0" conaffinity="0" />
+          <geom pos="0.126 -0.11275 0.06875" quat="0.707105 -0.707108 0 0" type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs03" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+          <geom type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs03" pos="0.126 -0.11275 0.06875" quat="0.707105 -0.707108 0 0" contype="0" conaffinity="0" />
+          <geom pos="0.126 0.094 -0.02925" quat="1.32679e-06 1 0 0" type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs03" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+          <geom type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs03" pos="0.126 0.094 -0.02925" quat="1.32679e-06 1 0 0" contype="0" conaffinity="0" />
+          <geom pos="0.126 0.094 -0.02925" quat="1.32679e-06 1 0 0" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_202r_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+          <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_202r_6061" pos="0.126 0.094 -0.02925" quat="1.32679e-06 1 0 0" contype="0" conaffinity="0" />
+          <geom pos="0 0 -0.0716" quat="0.499998 -0.5 -0.5 -0.500002" type="mesh" rgba="0.717647 0.709804 0.701961 1" mesh="ball_bearing_37x25x7" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+          <geom type="mesh" rgba="0.717647 0.709804 0.701961 1" mesh="ball_bearing_37x25x7" pos="0 0 -0.0716" quat="0.499998 -0.5 -0.5 -0.500002" contype="0" conaffinity="0" />
+          <body name="kd_d_301r_6061" pos="0 -0.142 -0.02525" quat="0.707105 -0.707108 0 0">
+            <inertial pos="-0.00360181 0.0171586 -0.192847" quat="0.996064 0.0767856 0.0435689 0.00791268" mass="1.82618" diaginertia="0.00817679 0.00711716 0.00238525" />
+            <joint name="right_hip_yaw_03" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-50 50" />
+            <geom pos="0.126 0.004 0.236" quat="0.707105 -0.707108 0 0" type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs04" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+            <geom type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs04" pos="0.126 0.004 0.236" quat="0.707105 -0.707108 0 0" contype="0" conaffinity="0" />
+            <geom pos="0.126 0.004 0.236" quat="0.707105 -0.707108 0 0" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_302r_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+            <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_302r_6061" pos="0.126 0.004 0.236" quat="0.707105 -0.707108 0 0" contype="0" conaffinity="0" />
+            <geom pos="0.126 0.004 0.236" quat="0.707105 -0.707108 0 0" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_301r_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+            <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_301r_6061" pos="0.126 0.004 0.236" quat="0.707105 -0.707108 0 0" contype="0" conaffinity="0" />
+            <geom pos="-0.04445 0.021 -0.212" quat="0.951056 -0.309017 0 0" type="mesh" rgba="0.717647 0.709804 0.701961 1" mesh="ball_bearing_37x25x7" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+            <geom type="mesh" rgba="0.717647 0.709804 0.701961 1" mesh="ball_bearing_37x25x7" pos="-0.04445 0.021 -0.212" quat="0.951056 -0.309017 0 0" contype="0" conaffinity="0" />
+            <geom pos="0.126 -0.331447 0.0650811" quat="4.10005e-07 -1.26186e-06 0.951056 -0.309019" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_403_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+            <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_403_6061" pos="0.126 -0.331447 0.0650811" quat="4.10005e-07 -1.26186e-06 0.951056 -0.309019" contype="0" conaffinity="0" />
+            <body name="kd_d_401r_6061" pos="0.022 0.021 -0.212" quat="0.707105 0 0.707108 0">
+              <inertial pos="0.133024 -0.0351161 -0.0206737" quat="0.500295 0.52648 0.494127 0.477873" mass="1.25681" diaginertia="0.00804917 0.00795419 0.00154388" />
+              <joint name="right_knee_04" pos="0 0 0" axis="0 0 1" range="0 2.70526" actuatorfrcrange="-100 100" />
+              <geom pos="-0.448 -0.017 0.104" quat="0.499998 -0.5 -0.5 -0.500002" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_401r_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_401r_6061" pos="-0.448 -0.017 0.104" quat="0.499998 -0.5 -0.5 -0.500002" contype="0" conaffinity="0" />
+              <geom pos="0.105552 -0.062872 -0.022" quat="0.707105 0 -0.707108 0" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="r_end_stop_ankle_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="r_end_stop_ankle_6061" pos="0.105552 -0.062872 -0.022" quat="0.707105 0 -0.707108 0" contype="0" conaffinity="0" />
+              <geom pos="0.194052 -0.062872 -0.022" quat="0.707105 0 0.707108 0" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="r_end_stop_ankle_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="r_end_stop_ankle_6061" pos="0.194052 -0.062872 -0.022" quat="0.707105 0 0.707108 0" contype="0" conaffinity="0" />
+              <geom pos="-0.447447 -0.176632 -0.019" quat="0.707105 0 0 -0.707108" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_502_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_502_6061" pos="-0.447447 -0.176632 -0.019" quat="0.707105 0 0 -0.707108" contype="0" conaffinity="0" />
+              <geom pos="0.747053 -0.176632 -0.025" quat="9.38184e-07 0.707105 -0.707108 -9.38187e-07" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_502_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_502_6061" pos="0.747053 -0.176632 -0.025" quat="9.38184e-07 0.707105 -0.707108 -9.38187e-07" contype="0" conaffinity="0" />
+              <geom pos="0.191052 -0.176632 -0.575" quat="0.499998 0.5 -0.500002 -0.5" type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs02" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs02" pos="0.191052 -0.176632 -0.575" quat="0.499998 0.5 -0.500002 -0.5" contype="0" conaffinity="0" />
+              <geom pos="-0.448 -0.017 0.104" quat="0.499998 -0.5 -0.5 -0.500002" type="mesh" rgba="0.882353 0.882353 0.882353 1" mesh="kd_d_402r_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.882353 0.882353 0.882353 1" mesh="kd_d_402r_6061" pos="-0.448 -0.017 0.104" quat="0.499998 -0.5 -0.5 -0.500002" contype="0" conaffinity="0" />
+              <geom pos="0.102553 -0.176632 -0.575" quat="0.499998 0.5 -0.500002 -0.5" type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs02" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs02" pos="0.102553 -0.176632 -0.575" quat="0.499998 0.5 -0.500002 -0.5" contype="0" conaffinity="0" />
+              <body name="arb_uj111_cross_bearing" pos="0.288552 -0.0326806 0.008">
+                <inertial pos="8.901e-09 -1.5576e-08 -0.03" mass="0.317576" diaginertia="0.000131465 7.61572e-05 7.61572e-05" />
+                <joint name="right_foot_pitch_02" pos="0 0 0" axis="0 0 1" range="-0.872665 0.523599" actuatorfrcrange="-30 30" />
+                <geom pos="0 0 -0.03" quat="0.499998 -0.5 -0.5 -0.500002" type="mesh" rgba="0.72549 0.733333 0.717647 1" mesh="arb_uj111_cross_bearing" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+                <geom type="mesh" rgba="0.72549 0.733333 0.717647 1" mesh="arb_uj111_cross_bearing" pos="0 0 -0.03" quat="0.499998 -0.5 -0.5 -0.500002" contype="0" conaffinity="0" />
+                <body name="foot_6061" pos="0 0.03 -0.03" quat="0.499998 -0.5 -0.5 -0.500002">
+                  <inertial pos="-9.04e-10 0.0327815 -0.069626" quat="0.706942 0.0152498 -0.0152498 0.706942" mass="0.163562" diaginertia="0.000619757 0.000552461 0.000106736" />
+                  <joint name="right_foot_roll_02" pos="0 0 0" axis="0 0 1" range="-0.261799 0.261799" actuatorfrcrange="-30 30" />
+                  <geom pos="-0.0425 0.043 0.02" quat="0.499998 0.5 0.5 -0.500002" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="foot_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+                  <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="foot_6061" pos="-0.0425 0.043 0.02" quat="0.499998 0.5 0.5 -0.500002" contype="0" conaffinity="0" />
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="kd_d_102l_6061" pos="-0.000358761 0.0552809 -0.0828599" quat="0.707105 0.707108 0 0">
+        <inertial pos="0.00547051 -0.00478043 -0.0395434" quat="-0.0597604 0.714135 -0.369697 0.591408" mass="0.200236" diaginertia="0.000529465 0.00042101 0.000315835" />
+        <joint name="left_hip_pitch_04" pos="0 0 0" axis="0 0 1" range="-1.0472 2.21657" actuatorfrcrange="-100 100" />
+        <geom pos="0 0.064 0.055" quat="0.499998 -0.5 -0.5 -0.500002" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_102l_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_102l_6061" pos="0 0.064 0.055" quat="0.499998 -0.5 -0.5 -0.500002" contype="0" conaffinity="0" />
+        <geom pos="0 -0.0607264 0.054" quat="0.707105 0 -0.707108 0" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_105_sus304" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_105_sus304" pos="0 -0.0607264 0.054" quat="0.707105 0 -0.707108 0" contype="0" conaffinity="0" />
+        <geom pos="0 0.064 0.055" quat="0.707105 0 -0.707108 0" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_103l_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_103l_6061" pos="0 0.064 0.055" quat="0.707105 0 -0.707108 0" contype="0" conaffinity="0" />
+        <body name="rs03" pos="0.02925 -0.03 -0.071" quat="9.38184e-07 0.707105 -9.38187e-07 0.707108">
+          <inertial pos="-8.55569e-05 0.0573058 -0.0268647" quat="0.488365 0.509011 -0.511042 0.491167" mass="2.04069" diaginertia="0.00873759 0.00850182 0.00219388" />
+          <joint name="left_hip_roll_03" pos="0 0 0" axis="0 0 1" range="-0.20944 2.26893" actuatorfrcrange="-50 50" />
+          <geom pos="0 0 -0.0646" quat="0.499998 0.5 0.5 -0.500002" type="mesh" rgba="0.717647 0.709804 0.701961 1" mesh="ball_bearing_37x25x7" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+          <geom type="mesh" rgba="0.717647 0.709804 0.701961 1" mesh="ball_bearing_37x25x7" pos="0 0 -0.0646" quat="0.499998 0.5 0.5 -0.500002" contype="0" conaffinity="0" />
+          <geom pos="0.126 0.094 -0.02925" quat="1.32679e-06 -1 0 0" type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs03" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+          <geom type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs03" pos="0.126 0.094 -0.02925" quat="1.32679e-06 -1 0 0" contype="0" conaffinity="0" />
+          <geom pos="0.126 -0.094 -0.02925" quat="1.32679e-06 1 0 0" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_201l_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+          <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_201l_6061" pos="0.126 -0.094 -0.02925" quat="1.32679e-06 1 0 0" contype="0" conaffinity="0" />
+          <geom pos="0.126 -0.094 -0.02925" quat="1.32679e-06 1 0 0" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_202l_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+          <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_202l_6061" pos="0.126 -0.094 -0.02925" quat="1.32679e-06 1 0 0" contype="0" conaffinity="0" />
+          <geom pos="0.126 -0.094 -0.02925" quat="1.76038e-12 -1.32679e-06 -1 1.32679e-06" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_203_sus304" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+          <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_203_sus304" pos="0.126 -0.094 -0.02925" quat="1.76038e-12 -1.32679e-06 -1 1.32679e-06" contype="0" conaffinity="0" />
+          <geom pos="0.126 0.11275 -0.11925" quat="0.707105 0.707108 0 0" type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs03" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+          <geom type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs03" pos="0.126 0.11275 -0.11925" quat="0.707105 0.707108 0 0" contype="0" conaffinity="0" />
+          <body name="kd_d_301l_6061" pos="0 0.142 -0.02525" quat="0.707105 0.707108 0 0">
+            <inertial pos="-0.00360151 -0.0171579 -0.192541" quat="0.995966 -0.0778343 0.0440613 -0.00723675" mass="1.82623" diaginertia="0.00815696 0.00709939 0.00238186" />
+            <joint name="left_hip_yaw_03" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-50 50" />
+            <geom pos="0.126 -0.004 0.236" quat="0.707105 0.707108 0 0" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_302l_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+            <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_302l_6061" pos="0.126 -0.004 0.236" quat="0.707105 0.707108 0 0" contype="0" conaffinity="0" />
+            <geom pos="-0.03745 -0.021 -0.212" quat="1.26186e-06 4.10002e-07 0.309017 0.951056" type="mesh" rgba="0.717647 0.709804 0.701961 1" mesh="ball_bearing_37x25x7" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+            <geom type="mesh" rgba="0.717647 0.709804 0.701961 1" mesh="ball_bearing_37x25x7" pos="-0.03745 -0.021 -0.212" quat="1.26186e-06 4.10002e-07 0.309017 0.951056" contype="0" conaffinity="0" />
+            <geom pos="0.126 -0.004 -0.66" quat="0.707105 0.707108 0 0" type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs04" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+            <geom type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs04" pos="0.126 -0.004 -0.66" quat="0.707105 0.707108 0 0" contype="0" conaffinity="0" />
+            <geom pos="0.126 -0.004 0.236" quat="0.707105 0.707108 0 0" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_301l_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+            <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_301l_6061" pos="0.126 -0.004 0.236" quat="0.707105 0.707108 0 0" contype="0" conaffinity="0" />
+            <geom pos="0.126 0.331447 -0.489081" quat="1.26186e-06 4.10002e-07 0.309017 0.951056" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_403_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+            <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_403_6061" pos="0.126 0.331447 -0.489081" quat="1.26186e-06 4.10002e-07 0.309017 0.951056" contype="0" conaffinity="0" />
+            <body name="kd_d_401l_6061" pos="0.02 -0.021 -0.212" quat="0.707105 0 -0.707108 0">
+              <inertial pos="-0.133026 0.0351161 0.0192075" quat="0.520117 0.505052 0.516004 0.456224" mass="1.25679" diaginertia="0.00805631 0.00795883 0.00154527" />
+              <joint name="left_knee_04" pos="0 0 0" axis="0 0 1" range="0 2.70526" actuatorfrcrange="-100 100" />
+              <geom pos="-0.102553 0.176632 -0.533" quat="0.499998 0.5 0.500002 0.5" type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs02" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs02" pos="-0.102553 0.176632 -0.533" quat="0.499998 0.5 0.500002 0.5" contype="0" conaffinity="0" />
+              <geom pos="0.448 0.017 -0.106" quat="0.499998 0.5 -0.5 0.500002" type="mesh" rgba="0.882353 0.882353 0.882353 1" mesh="kd_d_402l_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.882353 0.882353 0.882353 1" mesh="kd_d_402l_6061" pos="0.448 0.017 -0.106" quat="0.499998 0.5 -0.5 0.500002" contype="0" conaffinity="0" />
+              <geom pos="0.448 0.017 -0.106" quat="0.499998 0.5 0.5 -0.500002" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_401l_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_401l_6061" pos="0.448 0.017 -0.106" quat="0.499998 0.5 0.5 -0.500002" contype="0" conaffinity="0" />
+              <geom pos="-0.194052 0.062872 0.02" quat="0.707105 0 -0.707108 0" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="l_end_stop_ankle_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="l_end_stop_ankle_6061" pos="-0.194052 0.062872 0.02" quat="0.707105 0 -0.707108 0" contype="0" conaffinity="0" />
+              <geom pos="-0.658552 0.176632 0.017" quat="9.38184e-07 0.707105 0.707108 9.38187e-07" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_502_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_502_6061" pos="-0.658552 0.176632 0.017" quat="9.38184e-07 0.707105 0.707108 9.38187e-07" contype="0" conaffinity="0" />
+              <geom pos="-0.191052 0.176632 -0.533" quat="0.499998 0.5 0.500002 0.5" type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs02" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs02" pos="-0.191052 0.176632 -0.533" quat="0.499998 0.5 0.500002 0.5" contype="0" conaffinity="0" />
+              <geom pos="0.358947 0.176632 0.023" quat="0.707105 0 0 0.707108" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_502_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_502_6061" pos="0.358947 0.176632 0.023" quat="0.707105 0 0 0.707108" contype="0" conaffinity="0" />
+              <geom pos="-0.105552 0.062872 0.02" quat="0.707105 0 0.707108 0" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="l_end_stop_ankle_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="l_end_stop_ankle_6061" pos="-0.105552 0.062872 0.02" quat="0.707105 0 0.707108 0" contype="0" conaffinity="0" />
+              <body name="arb_uj111_cross_bearing_2" pos="-0.288552 0.0325676 0.05" quat="1.32679e-06 0 0 1">
+                <inertial pos="8.901e-09 -1.5576e-08 -0.03" mass="0.317576" diaginertia="0.000131465 7.61572e-05 7.61572e-05" />
+                <joint name="left_foot_pitch_02" pos="0 0 0" axis="0 0 1" range="-0.872665 0.523599" actuatorfrcrange="-30 30" />
+                <geom pos="0 0 -0.03" quat="0.499998 -0.5 -0.5 -0.500002" type="mesh" rgba="0.72549 0.733333 0.717647 1" mesh="arb_uj111_cross_bearing" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+                <geom type="mesh" rgba="0.72549 0.733333 0.717647 1" mesh="arb_uj111_cross_bearing" pos="0 0 -0.03" quat="0.499998 -0.5 -0.5 -0.500002" contype="0" conaffinity="0" />
+                <body name="foot_6061_2" pos="0 0.03 -0.03" quat="0.499998 -0.5 -0.5 -0.500002">
+                  <inertial pos="-9.04e-10 0.0327815 -0.069626" quat="0.706942 0.0152498 -0.0152498 0.706942" mass="0.163562" diaginertia="0.000619757 0.000552461 0.000106736" />
+                  <joint name="left_foot_roll_02" pos="0 0 0" axis="0 0 1" range="-0.261799 0.261799" actuatorfrcrange="-30 30" />
+                  <geom pos="-0.0425 0.043 0.02" quat="0.499998 0.5 0.5 -0.500002" type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="foot_6061" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+                  <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="foot_6061" pos="-0.0425 0.043 0.02" quat="0.499998 0.5 0.5 -0.500002" contype="0" conaffinity="0" />
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <!-- Hip: Kp=180, Kd=3.0. Knee: Kp=180, Kd=3.0. Foot: Kp=120, Kd=3.0 -->
+    <position name="right_hip_pitch_04" joint="right_hip_pitch_04" kp="180" kv="6.5" ctrlrange="-2.22 1.05" forcerange="-100 100" />
+    <position name="right_hip_roll_03" joint="right_hip_roll_03" kp="180" kv="6.5" ctrlrange="-2.27 0.21" forcerange="-50 50" />
+    <position name="right_hip_yaw_03" joint="right_hip_yaw_03" kp="180" kv="3.0" ctrlrange="-1.57 1.57" forcerange="-50 50" />
+    <position name="right_knee_04" joint="right_knee_04" kp="180" kv="6.5" ctrlrange="0 2.71" forcerange="-100 100" />
+    <position name="right_foot_pitch_02" joint="right_foot_pitch_02" kp="30" kv="0.3" ctrlrange="-0.87 0.52" forcerange="-30 30" />
+    <position name="right_foot_roll_02" joint="right_foot_roll_02" kp="30" kv="0.3" ctrlrange="-0.26 0.26" forcerange="-30 30" />
+    <position name="left_hip_pitch_04" joint="left_hip_pitch_04" kp="180" kv="6.5" ctrlrange="-1.05 2.22" forcerange="-100 100" />
+    <position name="left_hip_roll_03" joint="left_hip_roll_03" kp="180" kv="6.5" ctrlrange="-0.21 2.27" forcerange="-50 50" />
+    <position name="left_hip_yaw_03" joint="left_hip_yaw_03" kp="180" kv="3.0" ctrlrange="-1.57 1.57" forcerange="-50 50" />
+    <position name="left_knee_04" joint="left_knee_04" kp="180" kv="6.5" ctrlrange="0 2.71" forcerange="-100 100" />
+    <position name="left_foot_pitch_02" joint="left_foot_pitch_02" kp="30" kv="0.3" ctrlrange="-0.87 0.52" forcerange="-30 30" />
+    <position name="left_foot_roll_02" joint="left_foot_roll_02" kp="30" kv="0.3" ctrlrange="-0.26 0.26" forcerange="-30 30" />
+  </actuator>
+
+  <sensor>
+    <actuatorpos name="right_hip_pitch_04_p" actuator="right_hip_pitch_04" />
+    <actuatorvel name="right_hip_pitch_04_v" actuator="right_hip_pitch_04" />
+    <actuatorfrc name="right_hip_pitch_04_f" actuator="right_hip_pitch_04" noise="0.001" />
+    <actuatorpos name="right_hip_roll_03_p" actuator="right_hip_roll_03" />
+    <actuatorvel name="right_hip_roll_03_v" actuator="right_hip_roll_03" />
+    <actuatorfrc name="right_hip_roll_03_f" actuator="right_hip_roll_03" noise="0.001" />
+    <actuatorpos name="right_hip_yaw_03_p" actuator="right_hip_yaw_03" />
+    <actuatorvel name="right_hip_yaw_03_v" actuator="right_hip_yaw_03" />
+    <actuatorfrc name="right_hip_yaw_03_f" actuator="right_hip_yaw_03" noise="0.001" />
+    <actuatorpos name="right_knee_04_p" actuator="right_knee_04" />
+    <actuatorvel name="right_knee_04_v" actuator="right_knee_04" />
+    <actuatorfrc name="right_knee_04_f" actuator="right_knee_04" noise="0.001" />
+    <actuatorpos name="right_foot_pitch_02_p" actuator="right_foot_pitch_02" />
+    <actuatorvel name="right_foot_pitch_02_v" actuator="right_foot_pitch_02" />
+    <actuatorfrc name="right_foot_pitch_02_f" actuator="right_foot_pitch_02" noise="0.001" />
+    <actuatorpos name="right_foot_roll_02_p" actuator="right_foot_roll_02" />
+    <actuatorvel name="right_foot_roll_02_v" actuator="right_foot_roll_02" />
+    <actuatorfrc name="right_foot_roll_02_f" actuator="right_foot_roll_02" noise="0.001" />
+    <actuatorpos name="left_hip_pitch_04_p" actuator="left_hip_pitch_04" />
+    <actuatorvel name="left_hip_pitch_04_v" actuator="left_hip_pitch_04" />
+    <actuatorfrc name="left_hip_pitch_04_f" actuator="left_hip_pitch_04" noise="0.001" />
+    <actuatorpos name="left_hip_roll_03_p" actuator="left_hip_roll_03" />
+    <actuatorvel name="left_hip_roll_03_v" actuator="left_hip_roll_03" />
+    <actuatorfrc name="left_hip_roll_03_f" actuator="left_hip_roll_03" noise="0.001" />
+    <actuatorpos name="left_hip_yaw_03_p" actuator="left_hip_yaw_03" />
+    <actuatorvel name="left_hip_yaw_03_v" actuator="left_hip_yaw_03" />
+    <actuatorfrc name="left_hip_yaw_03_f" actuator="left_hip_yaw_03" noise="0.001" />
+    <actuatorpos name="left_knee_04_p" actuator="left_knee_04" />
+    <actuatorvel name="left_knee_04_v" actuator="left_knee_04" />
+    <actuatorfrc name="left_knee_04_f" actuator="left_knee_04" noise="0.001" />
+    <actuatorpos name="left_foot_pitch_02_p" actuator="left_foot_pitch_02" />
+    <actuatorvel name="left_foot_pitch_02_v" actuator="left_foot_pitch_02" />
+    <actuatorfrc name="left_foot_pitch_02_f" actuator="left_foot_pitch_02" noise="0.001" />
+    <actuatorpos name="left_foot_roll_02_p" actuator="left_foot_roll_02" />
+    <actuatorvel name="left_foot_roll_02_v" actuator="left_foot_roll_02" />
+    <actuatorfrc name="left_foot_roll_02_f" actuator="left_foot_roll_02" noise="0.001" />
+    <framequat name="orientation" objtype="site" noise="0.001" objname="imu" />
+    <gyro name="angular-velocity" site="imu" noise="0.005" cutoff="34.9" />
+  </sensor>
+<contact><exclude body1="kd_d_401r_6061" body2="arb_uj111_cross_bearing" /><exclude body1="kd_d_401r_6061" body2="foot_6061" /><exclude body1="arb_uj111_cross_bearing" body2="foot_6061" /><exclude body1="kd_d_401l_6061" body2="arb_uj111_cross_bearing_2" /><exclude body1="kd_d_401l_6061" body2="foot_6061_2" /><exclude body1="arb_uj111_cross_bearing_2" body2="foot_6061_2" /><exclude body1="kd_d_301r_6061" body2="kd_d_401r_6061" /><exclude body1="kd_d_301l_6061" body2="kd_d_401l_6061" /></contact></mujoco>

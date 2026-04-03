@@ -72,7 +72,7 @@ TRAIN_CFG = {
     "num_steps_per_env": 24,
     "max_iterations": 15000,
     "save_interval": 200,
-    "experiment_name": "biped_flat_v52",
+    "experiment_name": "biped_flat_v57_implicit",
     "empirical_normalization": False,
     "obs_groups": {
         "policy": ["policy"],

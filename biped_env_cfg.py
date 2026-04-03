@@ -8,7 +8,7 @@
 #   PPO:          [128,128,128], init_noise_std=1.0, entropy_coef=0.005
 #   OBSERVATIONS: base_lin_vel in policy, per-joint-group noise, obs_dim=48
 #   ACTIONS:      scale=0.5
-#   COMMANDS:     lin_vel_x=(-0.5, 1.0) forward, lin_vel_y=(-0.3, 0.3) lateral
+#   COMMANDS:     lin_vel_x=(-0.5, 1.5) forward, lin_vel_y=(-0.5, 0.5) lateral
 #   TERMINATIONS: base_contact (torso, threshold=1.0), time_out
 #   EVENTS:       All Berkeley events + scale_all_actuator_gains (extra)
 #   DECIMATION:   4 (50 Hz control)
@@ -37,7 +37,7 @@ from typing import Literal, TYPE_CHECKING
 from collections.abc import Sequence
 
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import DelayedPDActuatorCfg
+from isaaclab.actuators import ImplicitActuatorCfg
 from isaaclab.assets import Articulation, ArticulationCfg, AssetBaseCfg
 from isaaclab.sim.converters.urdf_converter_cfg import UrdfConverterCfg
 from isaaclab.managers import EventTermCfg as EventTerm
@@ -460,47 +460,41 @@ BIPED_CFG = ArticulationCfg(
     ),
     soft_joint_pos_limit_factor=0.9,
     actuators={
-        "hip_roll": DelayedPDActuatorCfg(
+        "hip_roll": ImplicitActuatorCfg(
             joint_names_expr=[".*hip_roll.*"],
-            effort_limit=50.0, velocity_limit=10.0,
-            stiffness=150.0, damping=5.5, armature=0.01,
+            effort_limit_sim=50.0, velocity_limit_sim=10.0,
+            stiffness=180.0, damping=6.5, armature=0.0152,
             friction=0.375,
-            min_delay=0, max_delay=1,
         ),
-        "hip_yaw": DelayedPDActuatorCfg(
+        "hip_yaw": ImplicitActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
-            effort_limit=50.0, velocity_limit=10.0,
-            stiffness=150.0, damping=5.0, armature=0.01,
+            effort_limit_sim=50.0, velocity_limit_sim=10.0,
+            stiffness=180.0, damping=3.0, armature=0.0152,
             friction=0.375,
-            min_delay=0, max_delay=1,
         ),
-        "hip_pitch": DelayedPDActuatorCfg(
+        "hip_pitch": ImplicitActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
-            effort_limit=100.0, velocity_limit=10.0,
-            stiffness=200.0, damping=7.5, armature=0.01,
+            effort_limit_sim=100.0, velocity_limit_sim=10.0,
+            stiffness=180.0, damping=6.5, armature=0.0152,
             friction=0.5,
-            min_delay=0, max_delay=1,
         ),
-        "knee": DelayedPDActuatorCfg(
+        "knee": ImplicitActuatorCfg(
             joint_names_expr=[".*knee.*"],
-            effort_limit=100.0, velocity_limit=10.0,
-            stiffness=200.0, damping=5.0, armature=0.01,
+            effort_limit_sim=100.0, velocity_limit_sim=10.0,
+            stiffness=180.0, damping=3.0, armature=0.024,
             friction=0.5,
-            min_delay=0, max_delay=1,
         ),
-        "foot_pitch": DelayedPDActuatorCfg(
+        "foot_pitch": ImplicitActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
-            effort_limit=30.0, velocity_limit=10.0,
-            stiffness=30.0, damping=2.0, armature=0.01,
+            effort_limit_sim=30.0, velocity_limit_sim=10.0,
+            stiffness=30.0, damping=1.0, armature=0.0112,
             friction=0.25,
-            min_delay=0, max_delay=1,
         ),
-        "foot_roll": DelayedPDActuatorCfg(
+        "foot_roll": ImplicitActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
-            effort_limit=30.0, velocity_limit=10.0,
-            stiffness=30.0, damping=2.0, armature=0.01,
+            effort_limit_sim=30.0, velocity_limit_sim=10.0,
+            stiffness=30.0, damping=1.0, armature=0.001,
             friction=0.25,
-            min_delay=0, max_delay=1,
         ),
     },
 )
@@ -560,9 +554,9 @@ class CommandsCfg:
         rel_standing_envs=0.02,
         rel_heading_envs=1.0,
         ranges=base_mdp.UniformVelocityCommandCfg.Ranges(
-            lin_vel_x=(-0.5, 1.0),      # forward=+X (biased positive)
-            lin_vel_y=(-0.3, 0.3),      # lateral (small)
-            ang_vel_z=(-0.2, 0.2),
+            lin_vel_x=(-0.5, 1.5),      # forward=+X (biased positive)
+            lin_vel_y=(-0.5, 0.5),      # lateral (small)
+            ang_vel_z=(-1.0, 1.0),
             heading=(-math.pi, math.pi),
         ),
     )
@@ -665,11 +659,8 @@ class ActionsCfg:
         asset_name="robot",
         joint_names=ALL_JOINTS,
         scale={
-            "right_foot_roll_02": 0.25, "left_foot_roll_02": 0.25,
-            "right_hip_yaw_03": 0.5, "right_hip_roll_03": 0.5, "right_hip_pitch_04": 0.5,
-            "right_knee_04": 0.5, "right_foot_pitch_02": 0.5,
-            "left_hip_yaw_03": 0.5, "left_hip_roll_03": 0.5, "left_hip_pitch_04": 0.5,
-            "left_knee_04": 0.5, "left_foot_pitch_02": 0.5,
+            ".*hip_yaw.*": 0.5, ".*hip_roll.*": 0.5, ".*hip_pitch.*": 0.5,
+            ".*knee.*": 0.5, ".*foot_pitch.*": 0.5, ".*foot_roll.*": 0.25,
         },
         preserve_order=True,
         use_default_offset=True,
@@ -701,10 +692,10 @@ class RewardsCfg:
     )
     # -- penalties
     lin_vel_z_l2 = RewTerm(func=base_mdp.lin_vel_z_l2, weight=-2.0)
-    ang_vel_xy_l2 = RewTerm(func=base_mdp.ang_vel_xy_l2, weight=-0.05)
+    ang_vel_xy_l2 = RewTerm(func=base_mdp.ang_vel_xy_l2, weight=-0.01)
     joint_torques_l2 = RewTerm(
         func=base_mdp.joint_torques_l2,
-        weight=-1.0e-5,
+        weight=-1e-05,
     )
     action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.01)
     feet_air_time = RewTerm(
@@ -741,7 +732,7 @@ class RewardsCfg:
     )
     joint_deviation_hip = RewTerm(
         func=base_mdp.joint_deviation_l1,
-        weight=-0.1,
+        weight=-0.5,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot", joint_names=[".*hip_roll.*", ".*hip_yaw.*"],
@@ -804,8 +795,8 @@ class EventsCfg:
         func=base_mdp.randomize_rigid_body_material,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "static_friction_range": (0.3, 1.0),
-            "dynamic_friction_range": (0.3, 1.0),
+            "static_friction_range": (0.5, 1.25),
+            "dynamic_friction_range": (0.5, 1.25),
             "restitution_range": (0.0, 0.1),
             "num_buckets": 64,
         },
@@ -942,7 +933,7 @@ class CurriculumsCfg:
         func=modify_command_velocity,
         params={
             "term_name": "track_lin_vel_xy_exp",
-            "max_velocity": [-0.5, 1.0],
+            "max_velocity": [-0.5, 1.2],
             "interval": 200 * 24,
             "starting_step": 5000 * 24,     # start after 5000 iterations
         },

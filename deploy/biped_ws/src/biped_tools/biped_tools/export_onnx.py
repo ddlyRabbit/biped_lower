@@ -1,11 +1,11 @@
-"""Export student policy from rsl_rl checkpoint to ONNX.
+"""Export student policy from rsl_rl checkpoint to ONNX — G1-style.
 
-The student policy MLP: 45d input → [128,128,128] ELU → 12d output.
-Weights are stored as actor.0.weight, actor.2.weight, etc. in the checkpoint.
+Model: [512, 256, 128], linear output.
+Default obs_dim=225 (45d × 5 history frames), act_dim=12.
 
 Usage:
-    python3 export_onnx.py --checkpoint model_4200.pt --output student_flat.onnx
-    python3 export_onnx.py --checkpoint model_4200.pt --output student_flat.onnx --obs_dim 232  # rough
+    python3 export_onnx.py --checkpoint model_5000.pt --output student_flat.onnx
+    python3 export_onnx.py --checkpoint model_5000.pt --output student_flat.onnx --obs_dim 225
 """
 
 import argparse
@@ -16,9 +16,11 @@ import torch.nn as nn
 class ActorMLP(nn.Module):
     """Reconstruct the rsl_rl actor MLP from checkpoint weights."""
 
-    def __init__(self, obs_dim: int = 45, act_dim: int = 12,
-                 hidden_dims: list = [128, 128, 128], tanh: bool = False):
+    def __init__(self, obs_dim: int = 225, act_dim: int = 12,
+                 hidden_dims: list = None):
         super().__init__()
+        if hidden_dims is None:
+            hidden_dims = [512, 256, 128]
         layers = []
         in_dim = obs_dim
         for h in hidden_dims:
@@ -26,16 +28,14 @@ class ActorMLP(nn.Module):
             layers.append(nn.ELU())
             in_dim = h
         layers.append(nn.Linear(in_dim, act_dim))
-        if tanh:
-            layers.append(nn.Tanh())
         self.net = nn.Sequential(*layers)
 
     def forward(self, obs: torch.Tensor) -> torch.Tensor:
         return self.net(obs)
 
 
-def load_actor_from_checkpoint(checkpoint_path: str, obs_dim: int = 45,
-                                act_dim: int = 12, tanh: bool = False) -> ActorMLP:
+def load_actor_from_checkpoint(checkpoint_path: str, obs_dim: int = 225,
+                                act_dim: int = 12) -> ActorMLP:
     """Load actor weights from rsl_rl checkpoint.
 
     rsl_rl saves weights as:
@@ -67,23 +67,14 @@ def load_actor_from_checkpoint(checkpoint_path: str, obs_dim: int = 45,
         raise ValueError(f"Cannot find actor/student keys in checkpoint. Keys: {list(ckpt.keys())[:10]}")
 
     # Infer hidden dims from weight shapes
-    # Strip "0." prefix from tanh-wrapped keys for dimension detection
     actor_keys = sorted([k for k in ckpt.keys() if k.startswith(prefix) and 'weight' in k])
-    # Normalize keys for shape detection (strip 0. prefix)
-    clean_keys = []
-    for k in actor_keys:
-        suffix = k[len(prefix):]
-        if suffix.startswith("0."):
-            suffix = suffix[2:]
-        clean_keys.append(suffix)
-    actor_keys_for_dims = actor_keys  # use original for value lookup
     hidden_dims = []
-    for k in actor_keys_for_dims[:-1]:  # all but last linear
+    for k in actor_keys[:-1]:  # all but last linear
         hidden_dims.append(ckpt[k].shape[0])
 
     # Verify dimensions
-    first_weight = ckpt[actor_keys_for_dims[0]]
-    last_weight = ckpt[actor_keys_for_dims[-1]]
+    first_weight = ckpt[actor_keys[0]]
+    last_weight = ckpt[actor_keys[-1]]
     detected_obs = first_weight.shape[1]
     detected_act = last_weight.shape[0]
 
@@ -92,23 +83,17 @@ def load_actor_from_checkpoint(checkpoint_path: str, obs_dim: int = 45,
     print(f"Detected: obs_dim={detected_obs}, act_dim={detected_act}, hidden={hidden_dims}")
 
     if detected_obs != obs_dim:
-        print(f"WARNING: detected obs_dim={detected_obs} != requested {obs_dim}")
+        print(f"WARNING: detected obs_dim={detected_obs} != requested {obs_dim}, using detected")
         obs_dim = detected_obs
 
     # Build model and load weights
-    model = ActorMLP(obs_dim, detected_act, hidden_dims, tanh=tanh)
-    if tanh:
-        print(f"  Tanh output layer included in model")
+    model = ActorMLP(obs_dim, detected_act, hidden_dims)
 
-    # Map checkpoint keys to model keys (actor.X → net.X)
-    # Tanh wrapper adds "0." prefix: actor.0.X → strip to actor.X before mapping
+    # Map checkpoint keys to model keys
     state_dict = {}
     for k, v in ckpt.items():
         if k.startswith(prefix):
             suffix = k[len(prefix):]
-            # Strip tanh Sequential wrapper prefix (0.X → X)
-            if suffix.startswith("0."):
-                suffix = suffix[2:]
             new_key = 'net.' + suffix
             state_dict[new_key] = v
 
@@ -153,11 +138,10 @@ def main():
     parser = argparse.ArgumentParser(description='Export student policy to ONNX')
     parser.add_argument('--checkpoint', type=str, required=True, help='Path to .pt checkpoint')
     parser.add_argument('--output', type=str, default='student_flat.onnx', help='Output ONNX path')
-    parser.add_argument('--obs_dim', type=int, default=45, help='Observation dimension (45=flat, 232=rough)')
-    parser.add_argument('--tanh', action='store_true', help='Include tanh output layer in ONNX model')
+    parser.add_argument('--obs_dim', type=int, default=225, help='Observation dimension (225=flat with 5-frame history)')
     args = parser.parse_args()
 
-    model, obs_dim, act_dim = load_actor_from_checkpoint(args.checkpoint, args.obs_dim, tanh=args.tanh)
+    model, obs_dim, act_dim = load_actor_from_checkpoint(args.checkpoint, args.obs_dim)
     export_onnx(model, obs_dim, args.output)
 
 

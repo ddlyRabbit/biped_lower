@@ -90,8 +90,7 @@ def main():
         nn.Linear(num_obs, 128), nn.ELU(),
         nn.Linear(128, 128), nn.ELU(),
         nn.Linear(128, 128), nn.ELU(),
-        nn.Linear(128, num_actions),
-    ).to("cuda:0")
+        nn.Linear(128, num_actions),).to("cuda:0")
 
     model_sd = ckpt["model_state_dict"]
     if hasattr(args_cli, "student") and args_cli.student:
@@ -99,7 +98,7 @@ def main():
         if not actor_sd:
             raise ValueError("No student.* keys in checkpoint")
     else:
-        actor_sd = {k.replace("actor.", ""): v for k, v in model_sd.items() if k.startswith("actor.")}
+        actor_sd = {k.replace("actor.0.", ""): v for k, v in model_sd.items() if k.startswith("actor.0.")}
     actor.load_state_dict(actor_sd)
     actor.eval()
     print("[DBG] Actor loaded, starting loop", flush=True)

@@ -27,7 +27,7 @@ from sensor_msgs.msg import Imu, JointState
 from geometry_msgs.msg import Twist, Vector3Stamped
 from std_msgs.msg import String
 from biped_msgs.msg import MITCommand, MITCommandArray
-from biped_control.obs_builder import ObsBuilder, ISAAC_JOINT_ORDER, DEFAULT_POSITIONS, DEFAULT_GAINS, ACTION_ORDER
+from biped_control.obs_builder import ObsBuilder, JOINT_ORDER, DEFAULT_POSITIONS, DEFAULT_GAINS
 
 
 # Soft start timing
@@ -105,7 +105,7 @@ class PolicyNode(Node):
         try:
             with open(path) as f:
                 data = yaml.safe_load(f) or {}
-            for name in ISAAC_JOINT_ORDER:
+            for name in JOINT_ORDER:
                 if name in data:
                     kp = data[name].get('kp', self._gains[name][0])
                     kd = data[name].get('kd', self._gains[name][1])
@@ -195,7 +195,7 @@ class PolicyNode(Node):
         targets = ObsBuilder.action_to_positions(actions)
 
         if self._debug_timer % (int(self._rate) * 10) == 1:
-            tgt_str = ' '.join(f'{n}={targets[n]:+.3f}' for n in ACTION_ORDER)
+            tgt_str = ' '.join(f'{n}={targets[n]:+.3f}' for n in JOINT_ORDER)
             self.get_logger().info(f'[TGT] {tgt_str}')
 
 
@@ -209,7 +209,7 @@ class PolicyNode(Node):
             walk_elapsed = time.time() - self._walk_start_time
             walk_ramp = min(1.0, 0.1 + 0.9 * (walk_elapsed / WALK_GAIN_RAMP_SECS))
 
-        for name in ISAAC_JOINT_ORDER:
+        for name in JOINT_ORDER:
             cmd = MITCommand()
             cmd.joint_name = name
             cmd.position = targets[name]

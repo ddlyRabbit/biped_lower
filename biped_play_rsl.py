@@ -20,6 +20,9 @@ parser.add_argument("--global_camera", action="store_true", help="Fixed global c
 parser.add_argument("--video_dir", type=str, default="/results/videos", help="Video output directory")
 parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"], help="URDF variant")
 parser.add_argument("--tanh", action="store_true", help="Actor has tanh output layer")
+parser.add_argument("--cmd_vel_x", type=float, default=None, help="Override forward velocity command (m/s)")
+parser.add_argument("--cmd_vel_y", type=float, default=None, help="Override lateral velocity command (m/s)")
+parser.add_argument("--cmd_vel_yaw", type=float, default=None, help="Override yaw velocity command (rad/s)")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -40,6 +43,7 @@ def apply_urdf_selection(env_cfg, urdf_choice):
         env_cfg.scene.robot.spawn.asset_path = URDF_HEAVY
         print(f"[INFO] Using heavy URDF: {URDF_HEAVY}")
 
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -158,7 +162,11 @@ def main():
     if args_cli.tanh:
         actor_layers.append(nn.Tanh())
         print("[INFO] Tanh output layer added to actor")
-    actor = nn.Sequential(*actor_layers).to("cuda:0")
+    actor = nn.Sequential(
+        nn.Linear(num_obs, 128), nn.ELU(),
+        nn.Linear(128, 128), nn.ELU(),
+        nn.Linear(128, 128), nn.ELU(),
+        nn.Linear(128, num_actions),).to("cuda:0")
 
     # Load weights — different key prefix for student vs teacher
     model_sd = ckpt["model_state_dict"]
@@ -173,8 +181,8 @@ def main():
                 actor_sd[clean_k] = v
         if not actor_sd:
             for k, v in model_sd.items():
-                if k.startswith("actor."):
-                    clean_k = k.replace("actor.", "")
+                if k.startswith("actor.0."):
+                    clean_k = k.replace("actor.0.", "")
                     if clean_k.startswith("0.") and args_cli.tanh:
                         clean_k = clean_k[2:]
                     actor_sd[clean_k] = v
@@ -188,8 +196,8 @@ def main():
         # PPO checkpoint: actor.* keys
         actor_sd = {}
         for k, v in model_sd.items():
-            if k.startswith("actor."):
-                clean_k = k.replace("actor.", "")
+            if k.startswith("actor.0."):
+                clean_k = k.replace("actor.0.", "")
                 # Tanh wrapper adds "0." prefix to inner MLP keys (actor.0.X → 0.X)
                 if clean_k.startswith("0.") and args_cli.tanh:
                     clean_k = clean_k[2:]  # strip "0." → flat sequential keys
@@ -198,19 +206,60 @@ def main():
     actor.eval()
     print("[INFO] Actor loaded successfully")
 
-    # Action logging
+    # Action logging + joint recording
     all_actions = []
+    all_cmd_positions = []  # joint command targets (after action scale)
+    all_joint_positions = []  # actual joint positions from sim
     JOINT_NAMES = [
         "R_hip_yaw", "R_hip_roll", "R_hip_pitch", "R_knee", "R_foot_pitch", "R_foot_roll",
         "L_hip_yaw", "L_hip_roll", "L_hip_pitch", "L_knee", "L_foot_pitch", "L_foot_roll",
     ]
 
+    # Ankle roll: R_foot_roll=5, L_foot_roll=11 in ALL_JOINTS order
+    ANKLE_ROLL_IDX = [5, 11]
+
+    # Get robot asset for joint position readout
+    isaac_env = env.unwrapped
+    robot = isaac_env.scene["robot"]
+
+    # Get default positions and action scale for computing command targets
+    default_pos = robot.data.default_joint_pos[0].cpu().numpy()  # (num_joints,)
+    action_scale = 0.5  # base scale
+    action_scales = np.full(12, action_scale)
+    action_scales[ANKLE_ROLL_IDX] = 0.25  # after the 0.5× multiply below
+
+    # Override velocity commands if specified
+    cmd_override = None
+    if args_cli.cmd_vel_x is not None or args_cli.cmd_vel_y is not None or args_cli.cmd_vel_yaw is not None:
+        vx = args_cli.cmd_vel_x if args_cli.cmd_vel_x is not None else 0.0
+        vy = args_cli.cmd_vel_y if args_cli.cmd_vel_y is not None else 0.0
+        vyaw = args_cli.cmd_vel_yaw if args_cli.cmd_vel_yaw is not None else 0.0
+        cmd_override = torch.tensor([[vx, vy, vyaw]], device="cuda:0").expand(isaac_env.num_envs, -1)
+        print(f"[INFO] Command override: vx={vx}, vy={vy}, vyaw={vyaw}")
+
     timestep = 0
     while simulation_app.is_running():
-        with torch.inference_mode():
-            actions = actor(obs)
+        # Override commands before policy inference
+        if cmd_override is not None:
+            isaac_env.command_manager.get_term("base_velocity").vel_command_b[:] = cmd_override
+
+        with torch.no_grad():
+            actions = actor(obs).clone()
+        actions[:, ANKLE_ROLL_IDX] *= 0.5  # effective 0.25 (env scale 0.5 × 0.5)
         obs, _, _, _, _ = env.step(actions)
-        all_actions.append(actions[0].cpu().numpy())
+
+        act_np = actions[0].cpu().numpy()
+        all_actions.append(act_np)
+
+        # Command targets: default + action * scale (env applies scale internally,
+        # but we record what the env computes)
+        cmd_pos = robot.data.joint_pos_target[0].cpu().numpy()
+        all_cmd_positions.append(cmd_pos.copy())
+
+        # Actual joint positions
+        actual_pos = robot.data.joint_pos[0].cpu().numpy()
+        all_joint_positions.append(actual_pos.copy())
+
         timestep += 1
 
         if timestep % 50 == 0:
@@ -222,7 +271,6 @@ def main():
 
     # Print action statistics from actual rollout
     if all_actions:
-        import numpy as np
         a = np.array(all_actions)
         print(f"\n[ACT] Action statistics over {len(a)} steps (actual rollout):")
         print(f"{'Joint':<15} {'abs':>6} {'rms':>6} {'min':>6} {'max':>6} {'off(rad)':>8}")
@@ -243,6 +291,29 @@ def main():
                     f.write(f"{name},{np.mean(np.abs(c)):.4f},{np.sqrt(np.mean(c**2)):.4f},"
                             f"{np.min(c):.4f},{np.max(c):.4f},{c.mean()*0.5:.4f}\n")
             print(f"[ACT] Saved to {csv_path}")
+
+    # Save joint commands and actual positions CSV
+    if all_cmd_positions and args_cli.video:
+        cmd_arr = np.array(all_cmd_positions)   # (T, num_joints)
+        pos_arr = np.array(all_joint_positions)  # (T, num_joints)
+        joint_names = list(robot.joint_names)
+        num_joints = len(joint_names)
+
+        # Joint commands CSV
+        cmd_csv = os.path.join(args_cli.video_dir, "joint_commands.csv")
+        with open(cmd_csv, "w") as f:
+            f.write("step," + ",".join(f"cmd_{n}" for n in joint_names) + "\n")
+            for t in range(len(cmd_arr)):
+                f.write(f"{t}," + ",".join(f"{cmd_arr[t,j]:.6f}" for j in range(num_joints)) + "\n")
+        print(f"[CSV] Joint commands saved to {cmd_csv} ({len(cmd_arr)} steps × {num_joints} joints)")
+
+        # Actual joint positions CSV
+        pos_csv = os.path.join(args_cli.video_dir, "joint_positions.csv")
+        with open(pos_csv, "w") as f:
+            f.write("step," + ",".join(f"pos_{n}" for n in joint_names) + "\n")
+            for t in range(len(pos_arr)):
+                f.write(f"{t}," + ",".join(f"{pos_arr[t,j]:.6f}" for j in range(num_joints)) + "\n")
+        print(f"[CSV] Joint positions saved to {pos_csv} ({len(pos_arr)} steps × {num_joints} joints)")
 
     env.close()
     print("[INFO] Done.")
