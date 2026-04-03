@@ -245,7 +245,7 @@ def main():
 
         with torch.no_grad():
             actions = actor(obs).clone()
-        actions[:, ANKLE_ROLL_IDX] *= 0.5  # effective 0.25 (env scale 0.5 × 0.5)
+        # actions[:, ANKLE_ROLL_IDX] *= 0.5  # effective 0.25 (env scale 0.5 × 0.5)
         obs, _, _, _, _ = env.step(actions)
 
         act_np = actions[0].cpu().numpy()
