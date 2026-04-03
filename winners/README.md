@@ -123,3 +123,25 @@ docker run --gpus all \
   --checkpoint /results/winners/v72_teacher_5999.pt \
   --num_envs 8 --urdf light --video --global_camera --headless
 ```
+
+## V76 Teacher - Soft Ankles (Apr 3, 2026)
+
+| File | Description |
+|------|-------------|
+| `v76_teacher_soft_ankles_17800.pt` | 17.8k iterations, soft ankle gains |
+
+**Config:**
+- **Ankles (Foot Pitch/Roll):** Soft compliance — Kp=30.0, Kd=1.0 (vs Kp=120)
+- **Hips/Knees:** Stiff tracking — Kp=180.0, Kd=6.5
+- **Actions:** Bounded with Tanh (`--tanh`), uniform scale=0.5
+- **Observations:** V74-style 45d (current-only)
+- **URDF:** Light (15.6kg)
+- **Training:** Resumed from an early stiff checkpoint at 9.8k, adapted successfully by 17.8k.
+
+**Metrics (17800):**
+- **Reward:** 21.91
+- **Track Vel (XY):** 0.8732 (87%)
+- **Falls:** 1.0% (Incredible stability)
+- **Feet Air Time:** +0.0130 (Positive clear stepping gait)
+
+**Notes:** Soft ankle gains dramatically improved compliance and absorbed ground shock without violent torque spikes.
