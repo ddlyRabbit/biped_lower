@@ -100,8 +100,7 @@ class BipedIK:
                 dq[idx] = dq_leg[i]
             q = pin.integrate(self.model, q, dq * self.dt)
             for idx in leg_indices:
-                lo = self.model.lowerPositionLimit[idx]
-                hi = self.model.upperPositionLimit[idx]
+                lo, hi = self.model.lowerPositionLimit[idx], self.model.upperPositionLimit[idx]
                 q[idx] = np.clip(q[idx], lo, hi)
         return q
 
@@ -180,7 +179,6 @@ class FootstepPlanner:
         l_pos = np.array([0.0, half_width, 0.0])
         r_pos = np.array([0.0, -half_width, 0.0])
 
-        # Phase 0: Idle
         s = 0
         e = self.samples_per_step
         zmp_x[s:e] = 0.0
@@ -189,7 +187,6 @@ class FootstepPlanner:
         right_foot[s:e] = r_pos
         support[s:e] = 0
 
-        # Walking steps
         for step_idx in range(1, self.num_steps + 1):
             s = step_idx * self.samples_per_step
             e = s + self.samples_per_step
@@ -255,7 +252,6 @@ class FootstepPlanner:
                         right_foot[s + i] = [xy[0], xy[1], z]
                 r_pos = swing_target.copy()
 
-        # Final idle
         s = (self.num_steps + 1) * self.samples_per_step
         e = n_total
         for i in range(self.samples_per_step):
@@ -273,9 +269,13 @@ class FootstepPlanner:
         support[s:e] = 0
 
         return FootstepPlan(
-            zmp_ref_x=zmp_x, zmp_ref_y=zmp_y,
-            left_foot=left_foot, right_foot=right_foot,
-            support_foot=support, dt=self.dt, n_samples=n_total
+            zmp_ref_x=zmp_x,
+            zmp_ref_y=zmp_y,
+            left_foot=left_foot,
+            right_foot=right_foot,
+            support_foot=support,
+            dt=self.dt,
+            n_samples=n_total,
         )
 
 class ZMPWalker:
@@ -310,12 +310,13 @@ class ZMPWalker:
         R = self.r * np.eye(1)
 
         P = solve_discrete_are(self.A_aug, self.B_aug, Q, R)
+
         tmp = np.linalg.inv(R + self.B_aug.T @ P @ self.B_aug) @ self.B_aug.T
         self.K_aug = tmp @ P @ self.A_aug
 
         Fs = []
-        AcT = (self.A_aug - self.B_aug @ self.K_aug).T
         pre = tmp
+        AcT = (self.A_aug - self.B_aug @ self.K_aug).T
         for _ in range(self.N):
             Fs.append((pre @ P[:, 0:1]).item())
             pre = pre @ AcT
@@ -328,6 +329,7 @@ class ZMPWalker:
     def solve(self, zmp_ref: np.ndarray, x0=0.0, dx0=0.0, ddx0=0.0):
         X = np.array([x0, dx0, ddx0], dtype=np.float64).reshape(3, 1)
         n = len(zmp_ref)
+
         padded = np.append(zmp_ref, [zmp_ref[-1]] * (self.N - 1))
 
         com_pos = np.zeros(n)
@@ -355,19 +357,19 @@ class ZMPWalker:
 
         return com_pos, zmp_actual
 
-    def generate(self, zmp_ref_x, zmp_ref_y):
+    def generate(self, zmp_ref_x: np.ndarray, zmp_ref_y: np.ndarray):
         com_x, zmp_x = self.solve(zmp_ref_x)
         com_y, zmp_y = self.solve(zmp_ref_y)
         return com_x, com_y, zmp_x, zmp_y
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='../biped_ws/src/biped_bringup/config/zmp_config.yaml')
-    parser.add_argument('--output', type=str, default='../biped_ws/src/biped_bringup/config/trajectory.csv')
+    parser.add_argument('--config', type=str, default='deploy/biped_ws/src/biped_bringup/config/zmp_config.yaml')
+    parser.add_argument('--output', type=str, default='deploy/biped_ws/src/biped_bringup/config/trajectory.csv')
     args = parser.parse_args()
 
-    cfg_path = os.path.abspath(os.path.join(os.path.dirname(__file__), args.config))
-    out_path = os.path.abspath(os.path.join(os.path.dirname(__file__), args.output))
+    cfg_path = os.path.abspath(args.config)
+    out_path = os.path.abspath(args.output)
     
     with open(cfg_path, 'r') as f:
         cfg = yaml.safe_load(f)
@@ -388,12 +390,21 @@ def main():
     print(f"  Period: {step_period}s, DS Ratio: {ds_ratio}, dt: {dt}s")
 
     planner = FootstepPlanner(
-        step_length=step_length, step_width=step_width, step_height=step_height,
-        step_period=step_period, num_steps=num_steps, double_support_ratio=ds_ratio, dt=dt
+        step_length=step_length,
+        step_width=step_width,
+        step_height=step_height,
+        step_period=step_period,
+        num_steps=num_steps,
+        double_support_ratio=ds_ratio,
+        dt=dt,
     )
     plan = planner.plan()
 
-    walker = ZMPWalker(com_height=com_height, dt=dt, preview_horizon=preview_horizon)
+    walker = ZMPWalker(
+        com_height=com_height,
+        dt=dt,
+        preview_horizon=preview_horizon,
+    )
     com_x, com_y, zmp_x, zmp_y = walker.generate(plan.zmp_ref_x, plan.zmp_ref_y)
 
     ik = BipedIK(urdf_path=urdf_path, dt=dt)
@@ -409,11 +420,8 @@ def main():
         trajectory.append(joints)
         com_offset = ik.compute_com(joints)
 
-
-    # Ramp down
     ramp_ik_frames = int(1.0 / dt)
     ramp_joint_frames = int(1.0 / dt)
-
     end_com_x = com_x[-1]
     end_com_y = com_y[-1]
     end_l_foot = plan.left_foot[-1].copy()
@@ -453,7 +461,6 @@ def main():
             frame[name] = last_ik_joints[name] + alpha * (default_joints[name] - last_ik_joints[name])
         trajectory.append(frame)
 
-    # Format to CSV
     csv_joint_order = [
         "L_hip_pitch", "L_hip_roll", "L_hip_yaw", "L_knee", "L_foot_pitch", "L_foot_roll",
         "R_hip_pitch", "R_hip_roll", "R_hip_yaw", "R_knee", "R_foot_pitch", "R_foot_roll",
@@ -475,4 +482,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
