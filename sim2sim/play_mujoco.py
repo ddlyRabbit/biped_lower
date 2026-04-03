@@ -1,3 +1,5 @@
+import mujoco.viewer
+import mediapy as media
 #!/usr/bin/env python3
 """Sim2sim: Run ONNX student policy in MuJoCo.
 
@@ -174,6 +176,7 @@ def main():
     parser.add_argument("--checkpoint", type=str, default=os.path.join(REPO_ROOT, "deploy", "student_flat.onnx"))
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--duration", type=float, default=10.0)
+    parser.add_argument("--video", type=str, default=None, help="Save video to path")
     parser.add_argument("--cmd_vx", type=float, default=0.5, help="Forward velocity command")
     parser.add_argument("--cmd_vy", type=float, default=0.0)
     parser.add_argument("--cmd_wz", type=float, default=0.0)
@@ -189,6 +192,8 @@ def main():
     model = mujoco.MjModel.from_xml_path(MJCF_PATH)
     data = mujoco.MjData(model)
 
+    PHYSICS_DT = model.opt.timestep
+    SUBSTEPS = int(round(POLICY_DT / PHYSICS_DT))
     qp_idx = np.array([model.jnt_qposadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)] for n in MJ_JOINTS])
     qv_idx = np.array([model.jnt_dofadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)] for n in MJ_JOINTS])
 
@@ -210,7 +215,21 @@ def main():
     print(f"Commands: vx={cmd_vel[0]:.2f} vy={cmd_vel[1]:.2f} wz={cmd_vel[2]:.2f}")
     print(f"Physics: {1/PHYSICS_DT:.0f}Hz ({SUBSTEPS} substeps), Policy: {1/POLICY_DT:.0f}Hz")
 
-    if not args.headless:
+    renderer = None
+    frames = []
+    if args.video:
+        pass
+        renderer = mujoco.Renderer(model, 480, 640)
+        camera = mujoco.MjvCamera()
+        camera.type = mujoco.mjtCamera.mjCAMERA_TRACKING
+        camera.trackbodyid = 0
+        camera.distance = 1.5
+        camera.azimuth = 90
+        camera.elevation = -10
+        camera.lookat[:] = [0, 0, 0.4]
+    
+    if not args.headless and not args.video:
+        pass
         viewer = mujoco.viewer.launch_passive(model, data)
     else:
         viewer = None
@@ -246,6 +265,10 @@ def main():
                 data.ctrl[:] = torques
                 mujoco.mj_step(model, data)
 
+            if renderer is not None:
+                renderer.update_scene(data, camera)
+                frames.append(renderer.render().copy())
+
             if viewer is not None:
                 viewer.sync()
                 if not viewer.is_running():
@@ -264,6 +287,11 @@ def main():
     finally:
         if viewer is not None:
             viewer.close()
+        if renderer is not None and frames:
+            pass
+            fps = int(1.0 / POLICY_DT)
+            print(f"Saving {len(frames)} frames to {args.video} at {fps} FPS...")
+            media.write_video(args.video, frames, fps=fps)
 
 
 if __name__ == "__main__":
