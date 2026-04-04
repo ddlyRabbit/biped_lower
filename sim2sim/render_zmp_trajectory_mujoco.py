@@ -58,7 +58,10 @@ def record_trajectory(csv_path, output_video="/tmp/zmp_playback.mp4", duration=2
     print(f"Mapped {len(mj_act_idx)} actuators")
 
     mujoco.mj_resetData(model, data)
-    model.opt.timestep = dt
+    # Keep the model's original 2000Hz timestep
+    PHYSICS_DT = model.opt.timestep
+    SUBSTEPS = int(round(dt / PHYSICS_DT))
+
 
     # Set initial standing pose
     data.qpos[2] = 0.78  # z height
@@ -102,8 +105,9 @@ def record_trajectory(csv_path, output_video="/tmp/zmp_playback.mp4", duration=2
         for short_name, act_idx in mj_act_idx.items():
             data.ctrl[act_idx] = trajectory[short_name][step]
 
-        # Step physics (robot walks freely)
-        mujoco.mj_step(model, data)
+        # Step physics at 2000Hz
+        for _ in range(SUBSTEPS):
+            mujoco.mj_step(model, data)
 
         if step % subsample == 0:
             renderer.update_scene(data, camera)
