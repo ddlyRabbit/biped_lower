@@ -178,10 +178,11 @@ def build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action):
 
 
 def main():
+    playing = True
     parser = argparse.ArgumentParser(description="Play ONNX policy in MuJoCo")
     parser.add_argument("--checkpoint", type=str, default=os.path.join(REPO_ROOT, "deploy", "student_flat.onnx"))
     parser.add_argument("--headless", action="store_true")
-    parser.add_argument("--duration", type=float, default=10.0)
+    parser.add_argument("--duration", type=float, default=float("inf"))
     parser.add_argument("--video", type=str, default=None, help="Save video to path")
     parser.add_argument("--cmd_vx", type=float, default=0.5, help="Forward velocity command")
     parser.add_argument("--cmd_vy", type=float, default=0.0)
@@ -219,6 +220,7 @@ def main():
     last_action = np.zeros(12, dtype=np.float32)
 
     def key_callback(keycode):
+        nonlocal playing
         if keycode == 265:  # Up arrow
             cmd_vel[0] += 0.1
         elif keycode == 264:  # Down arrow
@@ -227,12 +229,14 @@ def main():
             cmd_vel[1] += 0.1
         elif keycode == 262:  # Right arrow
             cmd_vel[1] -= 0.1
-        elif keycode == 81:  # Q
+        elif keycode == 65:  # A (yaw left)
             cmd_vel[2] += 0.2
-        elif keycode == 69:  # E
+        elif keycode == 68:  # D (yaw right)
             cmd_vel[2] -= 0.2
         elif keycode == 32:  # Space
             cmd_vel[:] = 0.0
+        elif keycode in (81, 256):  # Q or ESC
+            playing = False
         
         # Clamp commands to training ranges
         cmd_vel[0] = np.clip(cmd_vel[0], -0.5, 1.5)
@@ -271,9 +275,9 @@ def main():
         header = ['time'] + [f'cmd_{j}' for j in ISAAC_JOINTS] + [f'pos_{j}' for j in ISAAC_JOINTS] + [f'act_{j}' for j in ACTION_ORDER]
         csv_writer.writerow(header)
 
-    n_steps = int(args.duration / POLICY_DT)
+    step = 0
     try:
-        for step in range(n_steps):
+        while playing and (args.duration == float('inf') or step < int(args.duration / POLICY_DT)):
             t0 = time.perf_counter()
 
             # Build observation
@@ -320,9 +324,10 @@ def main():
             if viewer is not None:
                 viewer.sync()
                 if not viewer.is_running():
-                    break
+                    playing = False
 
             dt = time.perf_counter() - t0
+            step += 1
             if POLICY_DT - dt > 0:
                 time.sleep(POLICY_DT - dt)
 
