@@ -39,6 +39,12 @@ ISAAC_JOINTS = [
     "L_foot_pitch", "R_foot_pitch", "L_foot_roll", "R_foot_roll",
 ]
 
+# ─── Action output order from ONNX (must match training ALL_JOINTS) ─────────
+ACTION_ORDER = [
+    "R_hip_yaw", "R_hip_roll", "R_hip_pitch", "R_knee", "R_foot_pitch", "R_foot_roll",
+    "L_hip_yaw", "L_hip_roll", "L_hip_pitch", "L_knee", "L_foot_pitch", "L_foot_roll",
+]
+
 # ─── MuJoCo → Isaac index mapping ────────────────────────────────────────────
 # MJ[i] corresponds to which Isaac joint?
 MJ_TO_ISAAC_NAME = {
@@ -59,7 +65,7 @@ MJ_TO_ISAAC_NAME = {
 # Isaac index for each MuJoCo actuator
 MJ_TO_ISAAC_IDX = [ISAAC_JOINTS.index(MJ_TO_ISAAC_NAME[mj]) for mj in MJ_JOINTS]
 # Isaac index → MuJoCo actuator index (for converting policy output to ctrl)
-ISAAC_TO_MJ_IDX = [MJ_JOINTS.index(next(k for k, v in MJ_TO_ISAAC_NAME.items() if v == ij)) for ij in ISAAC_JOINTS]
+ISAAC_TO_MJ_IDX = np.array([MJ_JOINTS.index(n.replace('R_', 'right_').replace('L_', 'left_') + ('_04' if 'knee' in n or ('hip' in n and 'pitch' in n) else '_03' if 'hip' in n else '_02')) for n in ISAAC_JOINTS])
 
 # ─── Observation joint ordering ───────────────────────────────────────────────
 # obs[9:21] = joint positions in groups: hip(6), knee(2), foot_pitch(2), foot_roll(2)
@@ -234,6 +240,15 @@ def main():
     else:
         viewer = None
 
+    csv_writer = None
+    if args.video:
+        import csv
+        csv_path = args.video.replace('.mp4', '.csv')
+        log_file = open(csv_path, 'w', newline='')
+        csv_writer = csv.writer(log_file)
+        header = ['time'] + [f'cmd_{j}' for j in ISAAC_JOINTS] + [f'pos_{j}' for j in ISAAC_JOINTS] + [f'act_{j}' for j in ACTION_ORDER]
+        csv_writer.writerow(header)
+
     n_steps = int(args.duration / POLICY_DT)
     try:
         for step in range(n_steps):
@@ -248,8 +263,15 @@ def main():
             last_action = actions_isaac.copy()
 
             # Convert to joint targets (Isaac order)
+            # The network outputs actions in ACTION_ORDER, we need to map them back to ISAAC_JOINTS order
+            # so the subsequent MuJoCo mapping targets_mj = targets_isaac[MJ_TO_ISAAC_IDX] works correctly.
+            
+            # 1. First extract the action value for each joint by name from the network output
+            action_by_name = {name: actions_isaac[i] for i, name in enumerate(ACTION_ORDER)}
+            
+            # 2. Then build the targets_isaac array in the ISAAC_JOINTS order
             targets_isaac = np.array([
-                DEFAULT_POS_ISAAC[name] + actions_isaac[i] * ACTION_SCALE[i]
+                DEFAULT_POS_ISAAC[name] + action_by_name[name] * ACTION_SCALE[i]
                 for i, name in enumerate(ISAAC_JOINTS)
             ], dtype=np.float32)
 
@@ -264,6 +286,10 @@ def main():
                 torques = np.clip(torques, -EFFORT_MJ, EFFORT_MJ)
                 data.ctrl[:] = torques
                 mujoco.mj_step(model, data)
+
+            if csv_writer is not None:
+                row = [step * POLICY_DT] + targets_isaac.tolist() + data.qpos[qp_idx][ISAAC_TO_MJ_IDX].tolist() + actions_isaac.tolist()
+                csv_writer.writerow(row)
 
             if renderer is not None:
                 renderer.update_scene(data, camera)
