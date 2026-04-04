@@ -10,8 +10,9 @@ No axis corrections needed — raw BNO085 data matches URDF/Isaac convention.
 Requires: adafruit-circuitpython-bno08x
   pip install adafruit-circuitpython-bno08x adafruit-blinka
 
-Hardware: BNO085 on I2C bus 1, address 0x4B, RST on GPIO 4.
-  RPi 5 GPIO 2 (SDA) / GPIO 3 (SCL), 400kHz.
+Hardware: BNO085 on I2C.
+  Jetson Orin Nano: I2C bus 7, Pin 3 (SDA) / Pin 5 (SCL), RST on Pin 7.
+  RPi 5: I2C bus 1, Pin 3 (SDA) / Pin 5 (SCL), RST on Pin 7 (GPIO4).
 """
 
 import warnings
@@ -44,12 +45,12 @@ class BNO085Node(Node):
         super().__init__('imu_node')
 
         # Parameters
-        self.declare_parameter('i2c_bus', 1)
+        self.declare_parameter('i2c_bus', 7)  # Jetson Orin Nano: bus 7 (pins 3,5), RPi5: bus 1
         self.declare_parameter('i2c_address', 0x4B)
         self.declare_parameter('rate_hz', 50.0)
         self.declare_parameter('frame_id', 'imu_link')
         self.declare_parameter('use_game_quaternion', False)  # True = no mag correction
-        self.declare_parameter('reset_pin', 4)  # GPIO pin for BNO085 RST (-1 = not connected)
+        self.declare_parameter('reset_pin', 7)  # BOARD pin 7 for BNO085 RST (-1 = not connected)
 
         self._bus = int(self.get_parameter('i2c_bus').value)
         self._addr = int(self.get_parameter('i2c_address').value)
