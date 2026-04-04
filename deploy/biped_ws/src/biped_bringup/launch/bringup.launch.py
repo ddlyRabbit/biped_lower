@@ -162,8 +162,7 @@ def generate_launch_description():
             }],
         ),
 
-        # ZMP trajectory generator
-        Node(
+        # Rosbag recording (MCAP format — open directly in Foxglove)
         ExecuteProcess(
             condition=IfCondition(LaunchConfiguration('record')),
             cmd=['ros2', 'bag', 'record',
