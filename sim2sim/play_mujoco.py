@@ -182,7 +182,7 @@ def main():
     parser = argparse.ArgumentParser(description="Play ONNX policy in MuJoCo")
     parser.add_argument("--checkpoint", type=str, default=os.path.join(REPO_ROOT, "deploy", "student_flat.onnx"))
     parser.add_argument("--headless", action="store_true")
-    parser.add_argument("--duration", type=float, default=float("inf"))
+    parser.add_argument("--duration", type=float, default=None, help="Playback duration in seconds (default: 10s for video, inf for interactive)")
     parser.add_argument("--video", type=str, default=None, help="Save video to path")
     parser.add_argument("--cmd_vx", type=float, default=0.5, help="Forward velocity command")
     parser.add_argument("--cmd_vy", type=float, default=0.0)
@@ -265,6 +265,9 @@ def main():
         viewer = mujoco.viewer.launch_passive(model, data, key_callback=key_callback)
     else:
         viewer = None
+
+    if args.duration is None:
+        args.duration = 10.0 if args.video else float('inf')
 
     csv_writer = None
     if args.video:
