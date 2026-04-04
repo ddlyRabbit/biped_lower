@@ -371,3 +371,65 @@ source setup_biped.bash
 | Foxglove won't connect | Check Pi IP, ensure port 8765 not blocked |
 | TX buffer full errors | Normal at startup (MCP2515 has 3 slots), retries handle it |
 | Ankle motors track poorly | Re-calibrate ankles, check linkage rod lengths match CAD |
+
+---
+
+## Jetson Orin Nano Deploy
+
+### Hardware
+- **Board:** NVIDIA Jetson Orin Nano (tegra, aarch64)
+- **CAN:** Native CAN controller (single `can0` bus, all 12 motors)
+- **OS:** Ubuntu 22.04 LTS
+- **ROS2:** Humble
+
+### Setup
+
+```bash
+# 1. ROS2 Humble
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+  -o /usr/share/keyrings/ros-archive-keyring.gpg
+echo "deb [arch=arm64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+  http://packages.ros.org/ros2/ubuntu jammy main" | sudo tee /etc/apt/sources.list.d/ros2.list
+sudo apt update && sudo apt install -y \
+  ros-humble-ros-base ros-humble-rmw-cyclonedds-cpp \
+  python3-colcon-common-extensions python3-rosdep \
+  ros-humble-rosbag2-storage-mcap \
+  can-utils python3-pip
+
+# 2. Python dependencies
+pip3 install onnxruntime numpy pyyaml
+
+# 3. CAN setup (run after each boot)
+bash ~/biped_lower/deploy/scripts/setup_can_jetson.sh
+
+# 4. Build ROS2 workspace
+source /opt/ros/humble/setup.bash
+cd ~/biped_lower/deploy/biped_ws
+colcon build --symlink-install
+source install/setup.bash
+```
+
+### Launch (Jetson)
+
+```bash
+source /opt/ros/humble/setup.bash
+source ~/biped_lower/deploy/biped_ws/install/setup.bash
+
+ros2 launch biped_bringup bringup.launch.py \
+  can_driver:=can_bus_node_cpp \
+  robot_config:=robot_jetson.yaml \
+  calibration_file:=calibration.yaml \
+  onnx_model:=~/biped_lower/deploy/v76_student_5600_tanh.onnx \
+  gain_scale:=0.3
+```
+
+### Key Differences from RPi 5
+
+| | RPi 5 | Jetson Orin Nano |
+|---|---|---|
+| CAN | Dual MCP2515 SPI HAT (can0+can1) | Native CAN controller (can0 only) |
+| Motor layout | Right=can0, Left=can1 | All 12 on can0 |
+| ROS2 | Jazzy (24.04) | Humble (22.04) |
+| Python | 3.12 | 3.10 |
+| IMU | BNO085 I2C | TBD |
+| Config | robot.yaml | robot_jetson.yaml |
