@@ -17,7 +17,8 @@ sudo apt update && sudo apt install -y \
   net-tools can-utils i2c-tools git \
   python3-pip libeigen3-dev
 
-# BNO085 IMU dependencies (I2C, adafruit driver)
+# BNO085 IMU dependencies (I2C, adafruit driver + lgpio for hardware reset)
+sudo apt install -y python3-lgpio
 pip3 install --break-system-packages adafruit-circuitpython-bno08x adafruit-blinka
 ```
 
