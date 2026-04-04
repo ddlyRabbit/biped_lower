@@ -16,6 +16,9 @@
 sudo apt update && sudo apt install -y \
   net-tools can-utils i2c-tools git \
   python3-pip libeigen3-dev
+
+# BNO085 IMU dependencies (I2C, adafruit driver)
+pip3 install --break-system-packages adafruit-circuitpython-bno08x adafruit-blinka
 ```
 
 ### 2. ROS2 Jazzy
