@@ -98,8 +98,8 @@ TRAIN_CFG = {
     "policy": {
         "class_name": "ActorCritic",
         "init_noise_std": 0.5,   # overwritten by distilled std (~0.1)
-        "actor_hidden_dims": [128, 128, 128],
-        "critic_hidden_dims": [128, 128, 128],
+        "actor_hidden_dims": [512, 256, 128],
+        "critic_hidden_dims": [512, 256, 128],
         "activation": "elu",
     },
     "algorithm": {

@@ -89,8 +89,8 @@ DISTILL_CFG = {
     },
     "policy": {
         "class_name": "StudentTeacher",
-        "student_hidden_dims": [128, 128, 128],
-        "teacher_hidden_dims": [128, 128, 128],
+        "student_hidden_dims": [512, 256, 128],
+        "teacher_hidden_dims": [512, 256, 128],
         "activation": "elu",
         "init_noise_std": 0.1,
         "student_obs_normalization": False,

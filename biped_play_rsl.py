@@ -152,11 +152,11 @@ def main():
     num_actions = env.action_space.shape[-1]
     print(f"[INFO] obs_dim={num_obs}, actions={num_actions}, student={args_cli.student}")
 
-    # Build actor MLP: [128, 128, 128]
+    # Build actor MLP: [512, 256, 128]
     actor_layers = [
-        nn.Linear(num_obs, 128), nn.ELU(),
-        nn.Linear(128, 128), nn.ELU(),
-        nn.Linear(128, 128), nn.ELU(),
+        nn.Linear(num_obs, 512), nn.ELU(),
+        nn.Linear(512, 256), nn.ELU(),
+        nn.Linear(256, 128), nn.ELU(),
         nn.Linear(128, num_actions),
     ]
     if args_cli.tanh:
