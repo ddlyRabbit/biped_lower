@@ -118,30 +118,40 @@ def quat_rotate_inverse(q, v):
     return a - b + c
 
 
-def build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action):
+def build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, obs_dim=45):
     """Build 45d observation vector matching Isaac training order."""
-    obs = np.zeros(45, dtype=np.float32)
+    obs = np.zeros(obs_dim, dtype=np.float32)
+    offset = 0
+    # Projected gravity from orientation sensor
+    quat_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SENSOR, "orientation")
+    quat_adr = model.sensor_adr[quat_id]
+    base_quat = data.sensordata[quat_adr:quat_adr + 4].copy()  # w, x, y, z
+
+    if obs_dim == 48:
+        # [0-2] base linear velocity (body frame)
+        # data.qvel[0:3] is in world frame. We must rotate it to body frame using inverse base_quat
+        lin_vel_world = data.qvel[0:3].copy()
+        lin_vel_body = quat_rotate_inverse(base_quat, lin_vel_world)
+        obs[0:3] = lin_vel_body
+        offset = 3
 
     # Base angular velocity from gyro sensor
     gyro_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SENSOR, "angular-velocity")
     gyro_adr = model.sensor_adr[gyro_id]
     ang_vel = data.sensordata[gyro_adr:gyro_adr + 3].copy()
 
-    # Projected gravity from orientation sensor
-    quat_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SENSOR, "orientation")
-    quat_adr = model.sensor_adr[quat_id]
-    base_quat = data.sensordata[quat_adr:quat_adr + 4].copy()  # w, x, y, z
+    # Projected gravity
     gravity_world = np.array([0.0, 0.0, -1.0])
     proj_gravity = quat_rotate_inverse(base_quat, gravity_world)
 
     # [0-2] base angular velocity
-    obs[0:3] = ang_vel
+    obs[offset:offset+3] = ang_vel
 
     # [3-5] projected gravity
-    obs[3:6] = proj_gravity
+    obs[offset+3:offset+6] = proj_gravity
 
     # [6-8] velocity commands
-    obs[6:9] = cmd_vel
+    obs[offset+6:offset+9] = cmd_vel
 
     # Joint positions (relative to default) — need Isaac name mapping
     joint_pos_mj = data.qpos[qp_idx]
@@ -153,26 +163,26 @@ def build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action):
 
     # [9-14] hip_pos (relative to default)
     for i, name in enumerate(OBS_HIP_ORDER):
-        obs[9 + i] = pos_dict[name] - DEFAULT_POS_ISAAC[name]
+        obs[offset+9 + i] = pos_dict[name] - DEFAULT_POS_ISAAC[name]
 
     # [15-16] knee_pos
     for i, name in enumerate(OBS_KNEE_ORDER):
-        obs[15 + i] = pos_dict[name] - DEFAULT_POS_ISAAC[name]
+        obs[offset+15 + i] = pos_dict[name] - DEFAULT_POS_ISAAC[name]
 
     # [17-18] foot_pitch_pos
     for i, name in enumerate(OBS_FOOT_PITCH_ORDER):
-        obs[17 + i] = pos_dict[name] - DEFAULT_POS_ISAAC[name]
+        obs[offset+17 + i] = pos_dict[name] - DEFAULT_POS_ISAAC[name]
 
     # [19-20] foot_roll_pos
     for i, name in enumerate(OBS_FOOT_ROLL_ORDER):
-        obs[19 + i] = pos_dict[name] - DEFAULT_POS_ISAAC[name]
+        obs[offset+19 + i] = pos_dict[name] - DEFAULT_POS_ISAAC[name]
 
     # [21-32] joint_vel (Isaac runtime order)
     for i, name in enumerate(ISAAC_JOINTS):
-        obs[21 + i] = vel_dict[name]
+        obs[offset+21 + i] = vel_dict[name]
 
     # [33-44] last_action (Isaac order)
-    obs[33:45] = last_action
+    obs[offset+33:offset+45] = last_action
 
     return obs
 
@@ -192,6 +202,7 @@ def main():
     # Load ONNX model
     policy = ort.InferenceSession(args.checkpoint)
     input_name = policy.get_inputs()[0].name
+    obs_dim = policy.get_inputs()[0].shape[1]
     print(f"Policy: {args.checkpoint}")
     print(f"  Input: {policy.get_inputs()[0].shape}, Output: {policy.get_outputs()[0].shape}")
 
@@ -284,7 +295,7 @@ def main():
             t0 = time.perf_counter()
 
             # Build observation
-            obs = build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action)
+            obs = build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, obs_dim=obs_dim)
 
             # Run policy
             actions_isaac = policy.run(None, {input_name: obs.reshape(1, -1)})[0][0]
