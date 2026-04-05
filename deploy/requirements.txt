@@ -1,17 +1,21 @@
 # Deploy dependencies for biped_lower
-# Target: RPi 5, Ubuntu 24.04 arm64, Python 3.12, ROS2 Jazzy
 #
-# Install:
+# RPi 5 (Ubuntu 24.04, Python 3.12, ROS2 Jazzy):
 #   pip3 install --break-system-packages -r requirements.txt
 #
-# Note: pinocchio (pin) builds from source on arm64 (~5 min, needs 2GB swap on 1GB Pi)
-#   sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
-#   sudo mkswap /swapfile && sudo swapon /swapfile
+# Jetson Orin Nano (Ubuntu 22.04, Python 3.10, ROS2 Humble):
+#   pip3 install -r requirements.txt
 
-numpy>=2.0
-scipy>=1.14
-pin>=3.9.0               # pinocchio — FK, IK, dynamics
+numpy>=1.21
+scipy>=1.7
 onnxruntime>=1.17        # ONNX policy inference
-pyyaml>=6.0              # config file loading
+pyyaml>=5.4              # config file loading
 python-can>=4.0          # CAN bus driver (socketcan backend)
 
+# Optional — only needed for ZMP trajectory generation (pinocchio IK)
+# pin>=3.9.0             # builds from source on arm64 (~5 min)
+
+# Optional — BNO085 IMU (RPi 5 only, I2C)
+# adafruit-circuitpython-bno08x
+# adafruit-blinka
+# sudo apt install python3-lgpio  (for GPIO reset)
