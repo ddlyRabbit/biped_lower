@@ -1,7 +1,7 @@
 """Train biped V58 — +X forward, dual URDF (heavy/light).
 
 PPO config (Berkeley-matched):
-  - actor/critic: [512, 256, 128], ELU
+  - actor/critic: [128, 128, 128], ELU
   - init_noise_std: 1.0
   - entropy_coef: 0.005
   - LR: 1e-3 (adaptive)
@@ -19,7 +19,7 @@ from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--num_envs", type=int, default=4096)
-parser.add_argument("--max_iterations", type=int, default=15000)
+parser.add_argument("--max_iterations", type=int, default=24000)
 parser.add_argument("--seed", type=int, default=42)
 parser.add_argument("--resume", type=str, default=None)
 parser.add_argument("--rough", action="store_true", help="Use rough terrain config")
@@ -70,19 +70,22 @@ TRAIN_CFG = {
     "seed": 42,
     "runner_class_name": "OnPolicyRunner",
     "num_steps_per_env": 24,
-    "max_iterations": 15000,
+    "max_iterations": 24000,
     "save_interval": 200,
-    "experiment_name": "biped_flat_v57_implicit",
+    "experiment_name": "biped_flat_v79_asym_lstm",
     "empirical_normalization": False,
     "obs_groups": {
         "policy": ["policy"],
         "critic": ["critic"],
     },
     "policy": {
-        "class_name": "ActorCritic",
+        "class_name": "ActorCriticRecurrent",
+        "rnn_type": "lstm",
+        "rnn_hidden_dim": 256,
+        "rnn_num_layers": 1,
         "init_noise_std": 1.0,
-        "actor_hidden_dims": [512, 256, 128],
-        "critic_hidden_dims": [512, 256, 128],
+        "actor_hidden_dims": [128, 128, 128],
+        "critic_hidden_dims": [128, 128, 128],
         "activation": "elu",
     },
     "algorithm": {
