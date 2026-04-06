@@ -107,6 +107,30 @@ EFFORT_MJ = np.array([100, 50, 50, 100, 30, 30, 100, 50, 50, 100, 30, 30], dtype
 
 BASE_HEIGHT = 0.802
 
+# ─── History Buffers (20 frames) ─────────────────────────────────────────────
+HISTORY_LEN = 20
+hist_pos = np.zeros((HISTORY_LEN, 12), dtype=np.float32)
+hist_vel = np.zeros((HISTORY_LEN, 12), dtype=np.float32)
+hist_act = np.zeros((HISTORY_LEN, 12), dtype=np.float32)
+
+def update_history(pos, vel, act):
+    global hist_pos, hist_vel, hist_act
+    # Shift history left (oldest dropped, newest at [-1])
+    hist_pos[:-1] = hist_pos[1:]
+    hist_pos[-1] = pos
+    
+    hist_vel[:-1] = hist_vel[1:]
+    hist_vel[-1] = vel
+    
+    hist_act[:-1] = hist_act[1:]
+    hist_act[-1] = act
+
+def flatten_history(hist_array, indices):
+    # hist_array is (20, 12), indices selects which joints to slice
+    # Output needs to be flattened (20, num_indices) -> (20 * num_indices,)
+    return hist_array[:, indices].flatten()
+
+
 
 def quat_rotate_inverse(q, v):
     """Rotate vector v by inverse of quaternion q (w, x, y, z)."""
@@ -119,7 +143,7 @@ def quat_rotate_inverse(q, v):
 
 
 def build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, obs_dim=45):
-    """Build 45d observation vector matching Isaac training order."""
+    """Build observation vector matching Isaac training order."""
     obs = np.zeros(obs_dim, dtype=np.float32)
     offset = 0
     # Projected gravity from orientation sensor
@@ -127,9 +151,8 @@ def build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, obs_dim
     quat_adr = model.sensor_adr[quat_id]
     base_quat = data.sensordata[quat_adr:quat_adr + 4].copy()  # w, x, y, z
 
-    if obs_dim == 48:
+    if obs_dim in [48, 732]:
         # [0-2] base linear velocity (body frame)
-        # data.qvel[0:3] is in world frame. We must rotate it to body frame using inverse base_quat
         lin_vel_world = data.qvel[0:3].copy()
         lin_vel_body = quat_rotate_inverse(base_quat, lin_vel_world)
         obs[0:3] = lin_vel_body
@@ -146,10 +169,8 @@ def build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, obs_dim
 
     # [0-2] base angular velocity
     obs[offset:offset+3] = ang_vel
-
     # [3-5] projected gravity
     obs[offset+3:offset+6] = proj_gravity
-
     # [6-8] velocity commands
     obs[offset+6:offset+9] = cmd_vel
 
@@ -160,32 +181,53 @@ def build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, obs_dim
     # Build name→value dicts
     pos_dict = {MJ_TO_ISAAC_NAME[MJ_JOINTS[i]]: joint_pos_mj[i] for i in range(12)}
     vel_dict = {MJ_TO_ISAAC_NAME[MJ_JOINTS[i]]: joint_vel_mj[i] for i in range(12)}
+    
+    # Calculate relative pos in Isaac order
+    pos_rel = np.array([pos_dict[j] - DEFAULT_POS_ISAAC[j] for j in ISAAC_JOINTS])
+    vel_abs = np.array([vel_dict[j] for j in ISAAC_JOINTS])
+    
+    # Map last_action dict to ISAAC order array
+    act_abs = np.array([last_action[i] for i in range(12)])
 
-    # [9-14] hip_pos (relative to default)
-    for i, name in enumerate(OBS_HIP_ORDER):
-        obs[offset+9 + i] = pos_dict[name] - DEFAULT_POS_ISAAC[name]
-
-    # [15-16] knee_pos
-    for i, name in enumerate(OBS_KNEE_ORDER):
-        obs[offset+15 + i] = pos_dict[name] - DEFAULT_POS_ISAAC[name]
-
-    # [17-18] foot_pitch_pos
-    for i, name in enumerate(OBS_FOOT_PITCH_ORDER):
-        obs[offset+17 + i] = pos_dict[name] - DEFAULT_POS_ISAAC[name]
-
-    # [19-20] foot_roll_pos
-    for i, name in enumerate(OBS_FOOT_ROLL_ORDER):
-        obs[offset+19 + i] = pos_dict[name] - DEFAULT_POS_ISAAC[name]
-
-    # [21-32] joint_vel (Isaac runtime order)
-    for i, name in enumerate(ISAAC_JOINTS):
-        obs[offset+21 + i] = vel_dict[name]
-
-    # [33-44] last_action (Isaac order)
-    obs[offset+33:offset+45] = last_action
+    if obs_dim in [729, 732]:
+        # History-based observation (20 frames)
+        update_history(pos_rel, vel_abs, act_abs)
+        
+        # We need the indices for each group in ISAAC_JOINTS order
+        # ISAAC_JOINTS = [
+        #   "L_hip_pitch", "R_hip_pitch", "L_hip_roll", "R_hip_roll", "L_hip_yaw", "R_hip_yaw",
+        #   "L_knee", "R_knee", "L_foot_pitch", "R_foot_pitch", "L_foot_roll", "R_foot_roll"
+        # ]
+        hip_idx = [2, 3, 4, 5, 0, 1] # roll, yaw, pitch
+        knee_idx = [6, 7]
+        fp_idx = [8, 9]
+        fr_idx = [10, 11]
+        
+        idx = offset + 9
+        # hip_pos
+        obs[idx:idx+120] = flatten_history(hist_pos, hip_idx); idx += 120
+        # knee_pos
+        obs[idx:idx+40] = flatten_history(hist_pos, knee_idx); idx += 40
+        # foot_pitch_pos
+        obs[idx:idx+40] = flatten_history(hist_pos, fp_idx); idx += 40
+        # foot_roll_pos
+        obs[idx:idx+40] = flatten_history(hist_pos, fr_idx); idx += 40
+        # joint_vel
+        obs[idx:idx+240] = flatten_history(hist_vel, list(range(12))); idx += 240
+        # actions
+        obs[idx:idx+240] = flatten_history(hist_act, list(range(12))); idx += 240
+        
+    else:
+        # Traditional 45d/48d observation (no history)
+        hip_idx = [2, 3, 4, 5, 0, 1]
+        obs[offset+9:offset+15] = pos_rel[hip_idx]
+        obs[offset+15:offset+17] = pos_rel[[6, 7]]
+        obs[offset+17:offset+19] = pos_rel[[8, 9]]
+        obs[offset+19:offset+21] = pos_rel[[10, 11]]
+        obs[offset+21:offset+33] = vel_abs
+        obs[offset+33:offset+45] = act_abs
 
     return obs
-
 
 def main():
     playing = True

@@ -573,10 +573,7 @@ class ObservationsCfg:
 
     @configclass
     class PolicyCfg(ObsGroup):
-        base_lin_vel = ObsTerm(
-            func=base_mdp.base_lin_vel,
-            noise=Unoise(n_min=-0.1, n_max=0.1),
-        )
+
         base_ang_vel = ObsTerm(
             func=base_mdp.base_ang_vel,
             noise=Unoise(n_min=-0.2, n_max=0.2),
@@ -601,6 +598,9 @@ class ObservationsCfg:
                 ),
             },
             noise=Unoise(n_min=-0.03, n_max=0.03),
+        
+            history_length=20,
+            flatten_history_dim=True,
         )
         knee_pos = ObsTerm(
             func=base_mdp.joint_pos_rel,
@@ -610,6 +610,9 @@ class ObservationsCfg:
                 ),
             },
             noise=Unoise(n_min=-0.05, n_max=0.05),
+        
+            history_length=20,
+            flatten_history_dim=True,
         )
         foot_pitch_pos = ObsTerm(
             func=base_mdp.joint_pos_rel,
@@ -619,6 +622,9 @@ class ObservationsCfg:
                 ),
             },
             noise=Unoise(n_min=-0.08, n_max=0.08),
+        
+            history_length=20,
+            flatten_history_dim=True,
         )
         foot_roll_pos = ObsTerm(
             func=base_mdp.joint_pos_rel,
@@ -628,12 +634,18 @@ class ObservationsCfg:
                 ),
             },
             noise=Unoise(n_min=-0.03, n_max=0.03),
+        
+            history_length=20,
+            flatten_history_dim=True,
         )
         joint_vel = ObsTerm(
             func=base_mdp.joint_vel_rel,
             noise=Unoise(n_min=-1.5, n_max=1.5),
+        
+            history_length=20,
+            flatten_history_dim=True,
         )
-        actions = ObsTerm(func=base_mdp.last_action)
+        actions = ObsTerm(func=base_mdp.last_action, history_length=20, flatten_history_dim=True)
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -641,6 +653,10 @@ class ObservationsCfg:
 
     @configclass
     class CriticCfg(PolicyCfg):
+        base_lin_vel = ObsTerm(
+            func=base_mdp.base_lin_vel,
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+        )
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
@@ -924,7 +940,7 @@ class CurriculumsCfg:
         func=modify_push_force,
         params={
             "term_name": "push_robot",
-            "max_velocity": [1.50, 1.50],     # max push 0.75 m/s
+            "max_velocity": [0.75, 0.75],     # max push 0.75 m/s
             "interval": 200 * 24,
             "starting_step": 1000 * 24,     # start after 1000 iterations
         },
