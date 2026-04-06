@@ -94,9 +94,9 @@ ACTION_SCALE = np.array([
 ], dtype=np.float32)
 
 # ─── PD gains (from training config) ────────────────────────────────────────
-KP_ISAAC = {"L_hip_pitch": 225, "R_hip_pitch": 225, "L_hip_roll": 225, "R_hip_roll": 225,
-            "L_hip_yaw": 225, "R_hip_yaw": 225, "L_knee": 225, "R_knee": 225,
-            "L_foot_pitch": 37.5, "R_foot_pitch": 37.5, "L_foot_roll": 37.5, "R_foot_roll": 37.5}
+KP_ISAAC = {"L_hip_pitch": 180, "R_hip_pitch": 180, "L_hip_roll": 180, "R_hip_roll": 180,
+            "L_hip_yaw": 180, "R_hip_yaw": 180, "L_knee": 180, "R_knee": 180,
+            "L_foot_pitch": 30, "R_foot_pitch": 30, "L_foot_roll": 30, "R_foot_roll": 30}
 KD_ISAAC = {"L_hip_pitch": 6.5, "R_hip_pitch": 6.5, "L_hip_roll": 6.5, "R_hip_roll": 6.5,
             "L_hip_yaw": 3.0, "R_hip_yaw": 3.0, "L_knee": 6.5, "R_knee": 6.5,
             "L_foot_pitch": 1.0, "R_foot_pitch": 1.0, "L_foot_roll": 1.0, "R_foot_roll": 1.0}
