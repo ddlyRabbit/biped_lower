@@ -230,7 +230,19 @@
   </worldbody>
 
   <actuator>
-    <motor name="right_hip_pitch_04" joint="right_hip_pitch_04" ctrllimited="true" ctrlrange="-100 100" gear="1" /><motor name="right_hip_roll_03" joint="right_hip_roll_03" ctrllimited="true" ctrlrange="-50 50" gear="1" /><motor name="right_hip_yaw_03" joint="right_hip_yaw_03" ctrllimited="true" ctrlrange="-50 50" gear="1" /><motor name="right_knee_04" joint="right_knee_04" ctrllimited="true" ctrlrange="-100 100" gear="1" /><motor name="right_foot_pitch_02" joint="right_foot_pitch_02" ctrllimited="true" ctrlrange="-30 30" gear="1" /><motor name="right_foot_roll_02" joint="right_foot_roll_02" ctrllimited="true" ctrlrange="-30 30" gear="1" /><motor name="left_hip_pitch_04" joint="left_hip_pitch_04" ctrllimited="true" ctrlrange="-100 100" gear="1" /><motor name="left_hip_roll_03" joint="left_hip_roll_03" ctrllimited="true" ctrlrange="-50 50" gear="1" /><motor name="left_hip_yaw_03" joint="left_hip_yaw_03" ctrllimited="true" ctrlrange="-50 50" gear="1" /><motor name="left_knee_04" joint="left_knee_04" ctrllimited="true" ctrlrange="-100 100" gear="1" /><motor name="left_foot_pitch_02" joint="left_foot_pitch_02" ctrllimited="true" ctrlrange="-30 30" gear="1" /><motor name="left_foot_roll_02" joint="left_foot_roll_02" ctrllimited="true" ctrlrange="-30 30" gear="1" /></actuator>
+    <motor name="right_hip_pitch_04" joint="right_hip_pitch_04" ctrllimited="true" ctrlrange="-100 100" gear="1" />
+    <motor name="right_hip_roll_03" joint="right_hip_roll_03" ctrllimited="true" ctrlrange="-50 50" gear="1" />
+    <motor name="right_hip_yaw_03" joint="right_hip_yaw_03" ctrllimited="true" ctrlrange="-50 50" gear="1" />
+    <motor name="right_knee_04" joint="right_knee_04" ctrllimited="true" ctrlrange="-100 100" gear="1" />
+    <motor name="right_foot_pitch_02" joint="right_foot_pitch_02" ctrllimited="true" ctrlrange="-30 30" gear="1" />
+    <motor name="right_foot_roll_02" joint="right_foot_roll_02" ctrllimited="true" ctrlrange="-30 30" gear="1" />
+    <motor name="left_hip_pitch_04" joint="left_hip_pitch_04" ctrllimited="true" ctrlrange="-100 100" gear="1" />
+    <motor name="left_hip_roll_03" joint="left_hip_roll_03" ctrllimited="true" ctrlrange="-50 50" gear="1" />
+    <motor name="left_hip_yaw_03" joint="left_hip_yaw_03" ctrllimited="true" ctrlrange="-50 50" gear="1" />
+    <motor name="left_knee_04" joint="left_knee_04" ctrllimited="true" ctrlrange="-100 100" gear="1" />
+    <motor name="left_foot_pitch_02" joint="left_foot_pitch_02" ctrllimited="true" ctrlrange="-30 30" gear="1" />
+    <motor name="left_foot_roll_02" joint="left_foot_roll_02" ctrllimited="true" ctrlrange="-30 30" gear="1" />
+  </actuator>
 
   <sensor>
     <actuatorpos name="right_hip_pitch_04_p" actuator="right_hip_pitch_04" />
