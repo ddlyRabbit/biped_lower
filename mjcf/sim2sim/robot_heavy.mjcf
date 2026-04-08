@@ -227,7 +227,8 @@
           </body>
         </body>
       </body>
-    <body name="battery_chest" pos="-0.0004 0.0003 0.0436"><inertial pos="0 0 0" mass="0.5" diaginertia="0.000992 0.000766 0.00155" /></body></body>
+    <body name="battery_chest" pos="-0.0004 0.0003 0.0436"><inertial pos="0 0 0" mass="0.5" diaginertia="0.000992 0.000766 0.00155" /></body>
+  </body>
   </worldbody>
 
   <actuator>
