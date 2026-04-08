@@ -1,30 +1,28 @@
 # Biped Robot — Bringup Guide
 
-## Hardware Overview
+## Prerequisites
 
-- **Motors:** 12× RobStride (RS02/RS03/RS04) on CAN bus, IDs 1–12
-- **IMU:** BNO085 (I2C) or IM10A (USB serial)
-- **Policy:** Student ONNX (45-dim obs, 12 actions, tanh output)
+- RPi 5 with Ubuntu 24.04
+- Waveshare RS485 CAN HAT (B) — MCP2515 on SPI0
+- IMU: BNO085 (I2C) or IM10A (USB serial /dev/ttyUSB0)
+- All 12 motors on dual CAN bus (can0=right, can1=left), IDs 1–12
+- Student policy exported as ONNX (`student_flat.onnx`)
 
----
+## Fresh Pi Setup
 
-## Part 1: Platform Setup
-
-Choose your platform and follow the corresponding section.
-
-### A. Raspberry Pi 5 Setup
-
-**OS:** Ubuntu 24.04 | **ROS2:** Jazzy | **Python:** 3.12  
-**CAN:** Waveshare 2-CH CAN HAT (MCP2515 × 2) — dual bus (can0=right, can1=left)
-
-#### 1. System packages
+### 1. System packages
 
 ```bash
 sudo apt update && sudo apt install -y \
-  net-tools can-utils i2c-tools git python3-pip libeigen3-dev
+  net-tools can-utils i2c-tools git \
+  python3-pip libeigen3-dev
+
+# BNO085 IMU dependencies (I2C, adafruit driver + lgpio for hardware reset)
+sudo apt install -y python3-lgpio
+pip3 install --break-system-packages adafruit-circuitpython-bno08x adafruit-blinka
 ```
 
-#### 2. ROS2 Jazzy
+### 2. ROS2 Jazzy
 
 ```bash
 sudo apt install -y software-properties-common curl
@@ -35,23 +33,50 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-a
   sudo tee /etc/apt/sources.list.d/ros2.list
 sudo apt update
 sudo apt install -y ros-jazzy-ros-base python3-colcon-common-extensions
+
+# Add to bashrc
 echo 'source /opt/ros/jazzy/setup.bash' >> ~/.bashrc
+source ~/.bashrc
 ```
 
-#### 3. BNO085 IMU dependencies (if using I2C IMU)
+### 3. Foxglove Bridge (live visualization)
 
 ```bash
-sudo apt install -y python3-lgpio
-pip3 install --break-system-packages adafruit-circuitpython-bno08x adafruit-blinka
+sudo apt install -y ros-jazzy-foxglove-bridge
 ```
 
-#### 4. Python packages
+Launch alongside bringup:
+```bash
+ros2 launch foxglove_bridge foxglove_bridge_launch.xml
+```
+Then open Foxglove Studio → Connect → WebSocket → `ws://<pi-ip>:8765`
 
+### 4. Python packages
+
+On 1GB Pi, add swap first:
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+```
+
+Install:
 ```bash
 pip3 install --break-system-packages -r ~/biped_lower/deploy/requirements.txt
 ```
 
-#### 5. CAN HAT device tree (one-time)
+### 5. Build workspace
+
+```bash
+source /opt/ros/jazzy/setup.bash
+cd ~/biped_lower/deploy/biped_ws
+colcon build --symlink-install
+source install/setup.bash
+
+# Add to bashrc
+echo 'source ~/biped_lower/deploy/biped_ws/install/setup.bash' >> ~/.bashrc
+```
+
+## CAN HAT Setup (one-time)
 
 Add to `/boot/firmware/config.txt`:
 ```
@@ -62,182 +87,41 @@ dtoverlay=spi-bcm2835-overlay
 ```
 Reboot. Verify: `ls /sys/class/net/ | grep can` → should show `can0` and `can1`.
 
-#### 6. CAN bring-up (every boot)
+## Step 1: Bring Up CAN (every boot)
 
 ```bash
-bash ~/biped_lower/deploy/scripts/setup_can.sh
+cd ~/biped_lower/deploy
+./scripts/setup_can.sh
 ```
 
-#### 7. IMU wiring (BNO085)
+Verify: `candump can0` / `candump can1` — shows frames if motors powered.
 
-| BNO085 Pin | RPi 5 Header | Pin # |
-|---|---|---|
-| SDA | I2C1_SDA | **Pin 3** |
-| SCL | I2C1_SCL | **Pin 5** |
-| RST | GPIO4 | **Pin 7** |
-| VIN | 3.3V | **Pin 1** |
-| GND | GND | **Pin 6** |
+## Step 2: Scan Motors
 
-Verify: `sudo i2cdetect -y 1` → expect `4b`
-
----
-
-### B. Jetson Orin Nano Setup
-
-**OS:** Ubuntu 22.04 | **ROS2:** Humble | **Python:** 3.10  
-**CAN:** Native CAN controller — single bus (can0, all 12 motors)
-
-#### 1. System packages
-
+Power on motors, then:
 ```bash
-sudo apt update && sudo apt install -y \
-  can-utils i2c-tools python3-pip
+python3 scripts/scan_motors.py
 ```
 
-#### 2. ROS2 Humble
+All 12 motors should respond with position/velocity/voltage readings.
 
-```bash
-sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
-  -o /usr/share/keyrings/ros-archive-keyring.gpg
-echo "deb [arch=arm64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
-  http://packages.ros.org/ros2/ubuntu jammy main" | sudo tee /etc/apt/sources.list.d/ros2.list
-sudo apt update && sudo apt install -y \
-  ros-humble-ros-base ros-humble-rmw-cyclonedds-cpp \
-  python3-colcon-common-extensions ros-humble-rosbag2-storage-mcap
-echo 'source /opt/ros/humble/setup.bash' >> ~/.bashrc
-```
-
-#### 3. BNO085 IMU dependencies (if using I2C IMU)
-
-```bash
-pip3 install adafruit-circuitpython-bno08x adafruit-blinka
-sudo pip3 install Jetson.GPIO --upgrade
-```
-
-#### 4. Python packages
-
-```bash
-pip3 install onnxruntime numpy pyyaml pyserial scipy
-```
-
-#### 5. CAN bring-up (every boot)
-
-```bash
-bash ~/biped_lower/deploy/scripts/setup_can_jetson.sh
-```
-
-#### 6. IMU wiring (BNO085)
-
-| BNO085 Pin | Jetson 40-Pin Header | Pin # |
-|---|---|---|
-| SDA | I2C1_SDA (Bus 7) | **Pin 3** |
-| SCL | I2C1_SCL (Bus 7) | **Pin 5** |
-| RST | GPIO09 | **Pin 7** |
-| VIN | 3.3V | **Pin 1** |
-| GND | GND | **Pin 6** |
-
-Verify: `sudo i2cdetect -y -r 7` → expect `4b`
-
----
-
-## Part 2: Build ROS2 Workspace (common)
-
-```bash
-cd ~/biped_lower/deploy/biped_ws
-colcon build --symlink-install
-source install/setup.bash
-echo 'source ~/biped_lower/deploy/biped_ws/install/setup.bash' >> ~/.bashrc
-```
-
----
-
-## Part 3: Robot Bringup (common)
-
-### Launch Command
-
-```bash
-ros2 launch biped_bringup bringup.launch.py \
-  can_driver:=<driver>         \
-  robot_config:=<config>       \
-  imu_type:=<imu>              \
-  calibration_file:=<cal>      \
-  onnx_model:=<path>           \
-  gain_scale:=<scale>
-```
-
-### Launch Parameters
-
-| Parameter | Description | Default | Options |
-|---|---|---|---|
-| `can_driver` | CAN driver node | `can_bus_node_cpp` | `can_bus_node_cpp` (recommended), `can_bus_node_async`, `can_bus_node` |
-| `robot_config` | Motor-to-CAN mapping | `robot.yaml` | `robot.yaml` (RPi dual-bus), `robot_jetson.yaml` (Jetson single-bus) |
-| `imu_type` | IMU driver | `bno085` | `bno085` (I2C), `im10a` (USB serial) |
-| `calibration_file` | Motor calibration | `calibration.yaml` | Any `.yaml` in `config/` |
-| `onnx_model` | Student policy ONNX | `student_flat.onnx` | Absolute path to `.onnx` file |
-| `gain_scale` | PD gain multiplier | `1.0` | `0.1`–`1.0` (start low!) |
-| `record` | Enable rosbag recording | `false` | `true` / `false` |
-
-### Platform-Specific Examples
-
-**RPi 5 (dual CAN, BNO085 I2C):**
-```bash
-ros2 launch biped_bringup bringup.launch.py \
-  can_driver:=can_bus_node_cpp \
-  robot_config:=robot.yaml \
-  imu_type:=bno085 \
-  calibration_file:=calibration.yaml \
-  onnx_model:=~/biped_lower/deploy/v76_student_5600_tanh.onnx \
-  gain_scale:=0.3
-```
-
-**Jetson Orin Nano (single CAN, BNO085 I2C):**
-```bash
-ros2 launch biped_bringup bringup.launch.py \
-  can_driver:=can_bus_node_cpp \
-  robot_config:=robot_jetson.yaml \
-  imu_type:=bno085 \
-  calibration_file:=calibration.yaml \
-  onnx_model:=~/biped_lower/deploy/v76_student_5600_tanh.onnx \
-  gain_scale:=0.3
-```
-
-**Either platform with IM10A USB IMU:**
-```bash
-ros2 launch biped_bringup bringup.launch.py \
-  can_driver:=can_bus_node_cpp \
-  imu_type:=im10a \
-  ...
-```
-
-### IMU Parameter Overrides
-
-The BNO085 node auto-detects the platform (Jetson vs RPi) for GPIO reset. Override if needed:
-
-```bash
-# RPi 5: I2C bus 1
-ros2 launch biped_bringup bringup.launch.py imu_type:=bno085 i2c_bus:=1
-
-# Jetson: I2C bus 7 (default)
-ros2 launch biped_bringup bringup.launch.py imu_type:=bno085 i2c_bus:=7
-```
-
----
-
-## Part 4: Testing Sequence
-
-### Step 1: Scan Motors
-
-```bash
-python3 ~/biped_lower/deploy/scripts/scan_motors.py
-```
-
-### Step 2: Calibrate (once per assembly)
+## Step 3: Calibrate (once per assembly)
 
 ```bash
 ros2 launch biped_bringup calibrate.launch.py
 ```
 
-### Step 3: Test Hardware (no policy)
+To recalibrate a single joint (merges into existing calibration):
+```bash
+ros2 launch biped_bringup calibrate.launch.py joint:=R_knee
+ros2 launch biped_bringup calibrate.launch.py joint:=L_foot_top
+ros2 launch biped_bringup calibrate.launch.py joint:=L_foot_bottom
+```
+
+Move each joint to both mechanical limits. Joints auto-mark ✅ when range matches
+URDF limits ±20%. Press Ctrl+C to save `calibration.yaml`.
+
+## Step 4: Test Hardware (no policy)
 
 ```bash
 ros2 launch biped_bringup hardware.launch.py \
@@ -245,91 +129,136 @@ ros2 launch biped_bringup hardware.launch.py \
   imu_type:=bno085 \
   calibration_file:=calibration.yaml
 
-# Verify:
-ros2 topic echo /joint_states     # motor feedback
-ros2 topic echo /imu/data         # IMU data
+# For IM10A IMU (USB):
+#   imu_type:=im10a
+
+# In another terminal:
+ros2 topic echo /joint_states     # motor positions + velocities
+ros2 topic echo /imu/data         # IMU quaternion + gyro
 ros2 topic echo /safety/status    # should be True
 ```
 
-### Step 4: Suspended Test (robot hanging)
+## Step 5: Suspended Test (robot hanging, feet off ground)
 
-⚠️ **Robot must be suspended with feet off ground!**
+⚠️ **Robot must be suspended!**
 
 ```bash
-# Terminal 1: launch
+# Terminal 1: full robot with C++ CAN driver
+# imu_type: bno085 (default, I2C) | im10a (USB serial)
 ros2 launch biped_bringup bringup.launch.py \
   can_driver:=can_bus_node_cpp \
-  onnx_model:=~/biped_lower/deploy/v76_student_5600_tanh.onnx \
+  imu_type:=im10a \
+  calibration_file:=calibration.yaml \
+  onnx_model:=~/biped_lower/deploy/v68b_student_flat.onnx \
   gain_scale:=0.3
 
-# Terminal 2: teleop
+# Terminal 2: keyboard teleop (state transitions + velocity)
 ros2 run biped_teleop keyboard_teleop
+
+# Terminal 3: monitoring (optional)
+ros2 launch biped_bringup record.launch.py
 ```
 
-Press `SPACE` → stand, then `v` → SIM_WALK (safe viz), then `g` → WALK (real).
-
-### Step 5: Ground Test
-
-Same as Step 4 but with `gain_scale:=0.5` or higher.
-
----
+Press SPACE to stand, then `v` for SIM_WALK (safe viz test) before `g` for real WALK.
 
 ## State Machine
 
 ```
- IDLE ──SPACE──▶ STAND ──g──▶ WALK ──b──▶ STAND
-                  ├──v──▶ SIM_WALK ──b──▶ STAND
-                  ├──p──▶ PLAY_TRAJ_SIM ──b──▶ STAND
-                  ├──P──▶ PLAY_TRAJ ──b──▶ STAND
+              ┌──────────────────────────────────────┐
+              │                                      │
+ IDLE ──SPACE──▶ STAND ──g──▶ WALK ──b──▶ STAND     │
+                  │                                  │
+                  ├──v──▶ SIM_WALK ──b──▶ STAND      │
+                  │                                  │
                   ├──t──▶ WIGGLE_SEQ ──(auto)──▶ STAND
-                  └──y──▶ WIGGLE_ALL ──b──▶ STAND
-              ESC ── any ──▶ ESTOP
+                  │                                  │
+                  └──y──▶ WIGGLE_ALL ──b──▶ STAND    │
+                                                     │
+              ESC ── any state ──▶ ESTOP ◀───────────┘
 ```
 
-### Keyboard Teleop Keys
+### States
+
+| State | Description | Motors |
+|-------|-------------|--------|
+| **IDLE** | Motors disabled, waiting | Off |
+| **STAND** | Soft start → hold default pose | PD hold at defaults |
+| **WALK** | Policy active, responds to cmd_vel | Policy output → motors |
+| **SIM_WALK** | Policy runs for visualization only | PD hold at defaults (STAND) |
+| **WIGGLE_SEQ** | Sequential sine sweep, one joint at a time | Sine wave per joint |
+| **WIGGLE_ALL** | All joints wiggle simultaneously | Sine wave all joints |
+| **ESTOP** | Emergency stop, zero torque | Zero torque |
+
+### SIM_WALK (Visualization Mode)
+
+SIM_WALK keeps the motors safely in STAND position while running the ONNX policy
+in the background. Policy output publishes to `/policy_viz` instead of `/joint_commands`.
+
+Use this to:
+- Verify policy behavior before enabling real walking
+- Compare policy targets vs actual joint positions in Foxglove
+- Test with real IMU/sensor data without risk
+
+**Topics:**
+- `/policy_viz` (MITCommandArray) — what the policy *would* command
+- `/joint_commands` (MITCommandArray) — actual STAND commands to motors
+- `/joint_states` (JointState) — real motor feedback
+
+### Keyboard Teleop
+
+```bash
+ros2 run biped_teleop keyboard_teleop
+```
+
+#### Keys
 
 | Key | Action |
 |-----|--------|
-| SPACE | IDLE → STAND |
-| g | STAND → WALK |
-| v | STAND → SIM_WALK (viz only) |
-| p | STAND → PLAY_TRAJ_SIM (CSV viz) |
-| P | STAND → PLAY_TRAJ (CSV motors) |
-| t | STAND → WIGGLE_SEQ |
-| y | STAND → WIGGLE_ALL |
-| b | any → STAND |
-| ESC | any → ESTOP |
+| **SPACE** | IDLE → STAND (enable motors) |
+| **g** | STAND → WALK (policy active) |
+| **v** | STAND → SIM_WALK (viz only) |
+| **t** | STAND → WIGGLE_SEQ |
+| **y** | STAND → WIGGLE_ALL |
+| **b** | any → STAND (stop) |
+| **ESC** | any → ESTOP (emergency) |
 | w/s | forward / backward velocity |
 | a/d | left / right velocity |
 | q/e | yaw left / yaw right |
 | x | zero all velocities |
 | 1-5 | speed presets (0.1–1.0 m/s) |
+| +/- | adjust step size |
+| Ctrl+C | quit teleop |
 
----
+### Manual State Commands (without teleop)
 
-## Gain Tuning
-
-| gain_scale | Use case |
-|---|---|
-| 0.1–0.2 | First power-on test |
-| 0.3 | Suspended test |
-| 0.5 | Suspended walking |
-| 0.7 | Ground standing |
-| 1.0 | Full sim-matched gains |
-
-Base PD gains are in `obs_builder.py`:
-```python
-DEFAULT_GAINS = {
-    "L_hip_pitch": (180.0, 6.5), "R_hip_pitch": (180.0, 6.5),
-    "L_hip_roll":  (180.0, 6.5), "R_hip_roll":  (180.0, 6.5),
-    "L_hip_yaw":   (180.0, 3.0), "R_hip_yaw":   (180.0, 3.0),
-    "L_knee":      (180.0, 3.0), "R_knee":      (180.0, 3.0),
-    "L_foot_pitch": (30.0, 1.0), "R_foot_pitch": (30.0, 1.0),
-    "L_foot_roll":  (30.0, 1.0), "R_foot_roll":  (30.0, 1.0),
-}
+```bash
+ros2 topic pub --once /state_command std_msgs/String "data: START"
+ros2 topic pub --once /state_command std_msgs/String "data: WALK"
+ros2 topic pub --once /state_command std_msgs/String "data: SIM_WALK"
+ros2 topic pub --once /state_command std_msgs/String "data: WIGGLE_SEQ"
+ros2 topic pub --once /state_command std_msgs/String "data: WIGGLE_ALL"
+ros2 topic pub --once /state_command std_msgs/String "data: STOP"
+ros2 topic pub --once /state_command std_msgs/String "data: ESTOP"
 ```
 
----
+## Step 6: Ground Test
+
+After suspended test looks good:
+```bash
+# Terminal 1: full robot with higher gains
+# imu_type: bno085 (default) | im10a
+ros2 launch biped_bringup bringup.launch.py \
+  can_driver:=can_bus_node_cpp \
+  imu_type:=im10a \
+  calibration_file:=calibration.yaml \
+  onnx_model:=~/biped_lower/deploy/v68b_student_flat.onnx \
+  gain_scale:=0.5
+
+# Terminal 2: teleop
+ros2 run biped_teleop keyboard_teleop
+# SPACE → stand, v → SIM_WALK (verify policy), g → WALK (real walking)
+# w/1-5 for velocity, ESC for emergency stop
+```
 
 ## Emergency Stop
 
@@ -338,36 +267,107 @@ ESC key in teleop, or:
 ros2 topic pub --once /state_command std_msgs/String "data: ESTOP"
 ```
 
-Reset: `ros2 topic pub --once /state_command std_msgs/String "data: RESET"`
+Also triggers automatically on pitch/roll violation or motor fault.
+Reset: power cycle or `ros2 topic pub --once /state_command std_msgs/String "data: RESET"`
 
----
+## Gain Tuning
 
-## Platform Comparison
+Use `gain_scale` launch argument to scale all PD gains uniformly:
 
-| | RPi 5 | Jetson Orin Nano |
-|---|---|---|
-| OS | Ubuntu 24.04 | Ubuntu 22.04 |
-| ROS2 | Jazzy | Humble |
-| Python | 3.12 | 3.10 |
-| CAN | Dual MCP2515 SPI (can0+can1) | Native CAN (can0 only) |
-| Motor layout | Right=can0, Left=can1 | All 12 on can0 |
-| CAN setup | `setup_can.sh` | `setup_can_jetson.sh` |
-| Robot config | `robot.yaml` | `robot_jetson.yaml` |
-| BNO085 I2C bus | Bus 1 (`i2cdetect -y 1`) | Bus 7 (`i2cdetect -y -r 7`) |
-| BNO085 GPIO reset | lgpio (RPi) | Jetson.GPIO (auto-detected) |
-| IMU pin wiring | Pin 3/5/7/1/6 | Pin 3/5/7/1/6 (same physical pins!) |
+| Scale | Use case |
+|-------|----------|
+| 0.3 | First suspended test |
+| 0.5 | Suspended walking test |
+| 0.7 | Ground standing test |
+| 1.0 | Full sim gains |
 
----
+### Where to change PD Gains in code
+
+The base PD gains (which `gain_scale` multiplies against) are hardcoded in the observation builder file because they must match the training simulation exactly. 
+
+To change the base gains, edit `DEFAULT_GAINS` in:
+`biped_ws/src/biped_control/biped_control/obs_builder.py`
+
+```python
+DEFAULT_GAINS = {
+    "L_hip_pitch": (180.0, 6.5), "R_hip_pitch": (180.0, 6.5),
+    "L_hip_roll":  (180.0, 6.5), "R_hip_roll":  (180.0, 6.5),
+    "L_hip_yaw":   (180.0, 3.0), "R_hip_yaw":   (180.0, 3.0),
+    "L_knee":      (180.0, 3.0), "R_knee":      (180.0, 3.0),
+    "L_foot_pitch": (120.0, 3.0), "R_foot_pitch": (120.0, 3.0),
+    "L_foot_roll":  (120.0, 3.0), "R_foot_roll":  (120.0, 3.0),
+}
+```
+
+*Note: The old V72 default gains (Kp=10/15) have been replaced with the higher-stiffness V57+ implicit actuator gains (Kp=120/180). Make sure to start with a very low `gain_scale` (e.g. 0.1 or 0.2) when testing these new high gains on hardware for the first time!*
+
+Safety ESTOP triggers on base tilt: pitch > 45° or roll > 30° (adjustable via `max_pitch_deg` / `max_roll_deg` launch args). These are torso orientation limits, not joint limits.
+
+## Launch Files
+
+| Launch | Purpose |
+|--------|---------|
+| `hardware.launch.py` | IMU + CAN + safety (no policy) |
+| `calibrate.launch.py` | Interactive joint calibration |
+| `bringup.launch.py` | Full robot (all nodes) |
+| `record.launch.py` | Foxglove bridge + rosbag recording |
+
+## CAN Driver Options
+
+| Driver | Language | Loop Rate | Launch Param |
+|--------|----------|-----------|--------------|
+| `can_bus_node_cpp` | C++ | ~300Hz | `can_driver:=can_bus_node_cpp` **(recommended)** |
+| `can_bus_node_async` | Python (async) | ~200Hz | `can_driver:=can_bus_node_async` |
+| `can_bus_node` | Python (sync) | ~50Hz | `can_driver:=can_bus_node` |
+
+All drivers share the same ROS2 interface:
+- Sub: `/joint_commands` (biped_msgs/MITCommandArray)
+- Pub: `/joint_states` (sensor_msgs/JointState)
+- Pub: `/motor_states` (biped_msgs/MotorStateArray)
+
+## Wiggle Test
+
+Test individual or all joints with sine wave sweeps. Press `t` (sequential) or `y` (all) in teleop from STAND state.
+
+### Config
+
+Edit `deploy/biped_ws/src/biped_bringup/config/wiggle.yaml` (no rebuild needed):
+```yaml
+wiggle:
+  duration_per_joint: 3.0
+
+  joints:
+    R_hip_pitch:   { pos: 0.087, neg: -0.087, freq: 1.0 }
+    R_knee:        { pos: 0.15,  neg: -0.05,  freq: 0.5 }
+```
+
+Config is **re-read on each WIGGLE command** — edit and re-trigger without restart.
+
+### Safety
+- Joint targets clamped to URDF limits
+- Config validated at load (warns if range exceeds limits)
+- ESTOP always available (ESC key)
+- gain_scale applies to wiggle PD gains
+
+## Build (on Pi)
+
+```bash
+cd ~/biped_lower/deploy/biped_ws
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select biped_msgs biped_driver biped_driver_cpp biped_control biped_teleop biped_bringup
+source setup_biped.bash
+```
 
 ## Troubleshooting
 
 | Problem | Solution |
-|---|---|
-| No CAN device (RPi) | Run `setup_can.sh`, check dtoverlay in `/boot/firmware/config.txt` |
-| No CAN device (Jetson) | Run `setup_can_jetson.sh`, check `ip link show can0` |
-| Motor no response | Check 48V power, run `scan_motors.py`, verify CAN ID in `robot.yaml` |
-| BNO085 not detected | Check wiring, run `i2cdetect` for correct bus (RPi: `-y 1`, Jetson: `-y -r 7`) |
-| IM10A no data | Check `ls /dev/ttyUSB0`, add user to `dialout` group |
-| Robot falls immediately | Reduce `gain_scale` to 0.1, verify calibration offsets |
+|---------|----------|
+| No CAN device | Run `setup_can.sh`, check dtoverlay in `/boot/firmware/config.txt` |
+| Motor no response | Check 48V power, run `scan_motors.py`, verify CAN ID |
+| BNO085 IMU init fails | Power cycle BNO085, check I2C: `i2cdetect -y 1` (expect 0x4B) |
+| IM10A IMU no data | Check `ls /dev/ttyUSB0`, add user to `dialout` group, verify 460800 baud |
+| Robot falls immediately | Reduce `gain_scale`, verify calibration offsets |
 | ESTOP triggered | Check: `ros2 topic echo /safety/fault` |
-| Ankle motors track poorly | Re-calibrate ankles, check linkage rod lengths |
+| Foxglove won't connect | Check Pi IP, ensure port 8765 not blocked |
+| TX buffer full errors | Normal at startup (MCP2515 has 3 slots), retries handle it |
+| Ankle motors track poorly | Re-calibrate ankles, check linkage rod lengths match CAD |
