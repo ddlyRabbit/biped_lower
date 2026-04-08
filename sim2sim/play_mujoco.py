@@ -197,6 +197,7 @@ def main():
     parser.add_argument("--cmd_vx", type=float, default=0.5, help="Forward velocity command")
     parser.add_argument("--cmd_vy", type=float, default=0.0)
     parser.add_argument("--cmd_wz", type=float, default=0.0)
+    parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"])
     args = parser.parse_args()
 
     # Load ONNX model
@@ -207,7 +208,9 @@ def main():
     print(f"  Input: {policy.get_inputs()[0].shape}, Output: {policy.get_outputs()[0].shape}")
 
     # Load MuJoCo model
-    model = mujoco.MjModel.from_xml_path(MJCF_PATH)
+    mjcf = MJCF_PATH.replace("robot.mjcf", f"robot_{args.urdf}.mjcf") if args.urdf == "light" else MJCF_PATH
+    print(f"[INFO] Using MJCF: {mjcf}")
+    model = mujoco.MjModel.from_xml_path(mjcf)
     data = mujoco.MjData(model)
 
     PHYSICS_DT = model.opt.timestep

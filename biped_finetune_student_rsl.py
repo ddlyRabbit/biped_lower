@@ -87,7 +87,7 @@ TRAIN_CFG = {
     "seed": 42,
     "runner_class_name": "OnPolicyRunner",
     "num_steps_per_env": 24,
-    "max_iterations": 5000,
+    "max_iterations": 10000,
     "save_interval": 200,
     "experiment_name": experiment,
     "empirical_normalization": False,
