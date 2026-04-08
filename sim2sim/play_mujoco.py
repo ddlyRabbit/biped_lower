@@ -217,6 +217,7 @@ def main():
     SUBSTEPS = int(round(POLICY_DT / PHYSICS_DT))
     qp_idx = np.array([model.jnt_qposadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)] for n in MJ_JOINTS])
     qv_idx = np.array([model.jnt_dofadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)] for n in MJ_JOINTS])
+    actuator_idx = np.array([mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, n) for n in MJ_JOINTS])
 
     # Check sensors exist
     for sname in ["angular-velocity", "orientation"]:
@@ -327,7 +328,7 @@ def main():
                 jv = data.qvel[qv_idx]
                 torques = KP_MJ * (targets_mj - jp) + KD_MJ * (0.0 - jv)
                 torques = np.clip(torques, -EFFORT_MJ, EFFORT_MJ)
-                data.ctrl[:] = torques
+                data.ctrl[actuator_idx] = torques
                 mujoco.mj_step(model, data)
 
             if csv_writer is not None:
