@@ -208,7 +208,7 @@ def main():
     print(f"  Input: {policy.get_inputs()[0].shape}, Output: {policy.get_outputs()[0].shape}")
 
     # Load MuJoCo model
-    mjcf = MJCF_PATH.replace("robot.mjcf", f"robot_{args.urdf}.mjcf") if args.urdf == "light" else MJCF_PATH
+    mjcf = MJCF_PATH.replace("robot.mjcf", f"robot_{args.urdf}.mjcf")
     print(f"[INFO] Using MJCF: {mjcf}")
     model = mujoco.MjModel.from_xml_path(mjcf)
     data = mujoco.MjData(model)
