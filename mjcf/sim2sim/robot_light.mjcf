@@ -61,7 +61,7 @@
     <camera name="fixed" pos="0 -3.0 1.4074332229119006" xyaxes="1 0 0 0 0 1" />
     <camera name="track" mode="trackcom" pos="0 -3.0 1.4074332229119006" xyaxes="1 0 0 0 0 1" />
     <body name="root" pos="0 0 0.9074332229119006" quat="1 0 0 0">
-      <freejoint name="root" />
+      <inertial pos="-0.0003038 0.000275941 -0.0780049" mass="3.4392" diaginertia="0.00794758 0.00739254 0.00754132" /><freejoint name="root" />
       <site name="imu" size="0.01" pos="0 0 0" />
       <geom pos="0.0166412 0.161281 0.36514" quat="0.499998 -0.5 -0.500002 0.5" type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs04" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
       <geom type="mesh" rgba="0.929412 0.505882 0 1" mesh="rs04" pos="0.0166412 0.161281 0.36514" quat="0.499998 -0.5 -0.500002 0.5" contype="0" conaffinity="0" />
@@ -225,7 +225,7 @@
           </body>
         </body>
       </body>
-    <inertial pos="0 0 0" mass="3.4392" diaginertia="0.01 0.01 0.01" /></body>
+    <body name="battery_chest" pos="-0.0004 0.0003 0.0436"><inertial pos="0 0 0" mass="0.5" diaginertia="0.000992 0.000766 0.00155" /></body></body>
   </worldbody>
 
   <actuator>
