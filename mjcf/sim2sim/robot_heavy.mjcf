@@ -81,8 +81,6 @@
       <geom type="mesh" rgba="0.956863 0.956863 0.964706 1" mesh="kd_d_104l_sus304" pos="0.0636412 0.000280909 -0.0828599" quat="0.707105 0 0 -0.707108" contype="0" conaffinity="0" />
       <geom pos="-0.000358761 0.000280909 -0.0188599" quat="0.499998 -0.5 -0.500002 0.5" type="mesh" rgba="0.717647 0.717647 0.717647 1" mesh="assy_formfg___kc_d_107l_l_cover" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
       <geom type="mesh" rgba="0.717647 0.717647 0.717647 1" mesh="assy_formfg___kc_d_107l_l_cover" pos="-0.000358761 0.000280909 -0.0188599" quat="0.499998 -0.5 -0.500002 0.5" contype="0" conaffinity="0" />
-      <geom size="0.063 0.073 0.025" pos="-0.0004 0.0003 0.0436" type="box" rgba="0.2 0.2 0.2 1" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-      <geom type="box" rgba="0.2 0.2 0.2 1" size="0.063 0.073 0.025" pos="-0.0004 0.0003 0.0436" contype="0" conaffinity="0" />
       <body name="kd_d_102r_6061" pos="-0.000358761 -0.0547191 -0.0828599" quat="9.38184e-07 9.38187e-07 0.707108 0.707105">
         <inertial pos="-0.00547037 -0.00477853 -0.0395434" quat="-0.369673 0.591401 -0.0597663 0.714153" mass="0.523694" diaginertia="0.0013848 0.00110106 0.000826062" />
         <joint name="right_hip_pitch_04" pos="0 0 0" axis="0 0 1" range="-2.21657 1.0472" actuatorfrcrange="-100 100" />
@@ -227,7 +225,7 @@
           </body>
         </body>
       </body>
-    <body name="battery_chest" pos="-0.0004 0.0003 0.0436"><inertial pos="0 0 0" mass="0.5" diaginertia="0.000992 0.000766 0.00155" /></body>
+    <body name="battery_chest" pos="-0.0004 0.0003 0.0436"><inertial pos="0 0 0" mass="0.5" diaginertia="0.000992 0.000766 0.00155" /><geom size="0.063 0.073 0.025" pos="0 0 0" type="box" rgba="0.2 0.2 0.2 1" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" /><geom type="box" rgba="0.2 0.2 0.2 1" size="0.063 0.073 0.025" pos="0 0 0" contype="0" conaffinity="0" /></body>
   </body>
   </worldbody>
 

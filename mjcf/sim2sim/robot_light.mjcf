@@ -225,7 +225,7 @@
           </body>
         </body>
       </body>
-    <body name="battery_chest" pos="-0.0004 0.0003 0.0436"><inertial pos="0 0 0" mass="0.5" diaginertia="0.000992 0.000766 0.00155" /></body>
+    <body name="battery_chest" pos="-0.0004 0.0003 0.0436"><inertial pos="0 0 0" mass="0.5" diaginertia="0.000992 0.000766 0.00155" /><geom size="0.063 0.073 0.025" pos="0 0 0" type="box" rgba="0.2 0.2 0.2 1" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" /><geom type="box" rgba="0.2 0.2 0.2 1" size="0.063 0.073 0.025" pos="0 0 0" contype="0" conaffinity="0" /></body>
   </body>
   </worldbody>
 
