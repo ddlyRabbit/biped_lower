@@ -108,7 +108,6 @@ class StateMachineNode(Node):
         self._pub_cmd = self.create_publisher(MITCommandArray, '/joint_commands', 10)
         self._pub_vel = self.create_publisher(Twist, '/cmd_vel', 10)
         self._pub_viz_js = self.create_publisher(JointState, '/policy_viz_joints', 10)
-        self._pub_viz_js = self.create_publisher(JointState, '/policy_viz_joints', 10)
 
         # Transition commands via topic
         self.create_subscription(String, '/state_command', self._command_cb, 10)
