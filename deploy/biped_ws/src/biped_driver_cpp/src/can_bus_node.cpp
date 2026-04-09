@@ -75,6 +75,10 @@ public:
     }
 
     void notify_new_commands() {
+        {
+            std::lock_guard<std::mutex> lk(cmd_cv_mtx_);
+            new_command_ready_ = true;
+        }
         cmd_cv_.notify_all();
     }
 
@@ -82,8 +86,10 @@ public:
     /// Returns true if woken by command, false on timeout.
     bool wait_for_command(int timeout_ms = 25) {
         std::unique_lock<std::mutex> lk(cmd_cv_mtx_);
-        return cmd_cv_.wait_for(lk, std::chrono::milliseconds(timeout_ms))
-               == std::cv_status::no_timeout;
+        bool woken_by_cmd = cmd_cv_.wait_for(lk, std::chrono::milliseconds(timeout_ms), 
+                                             [this] { return new_command_ready_; });
+        new_command_ready_ = false;
+        return woken_by_cmd;
     }
 
     std::unordered_map<std::string, MotorCommand> read_commands() {
@@ -118,6 +124,7 @@ private:
     std::unordered_map<std::string, FeedbackEntry> feedback_;
     double loop_dt_ = 0.0;
     uint64_t loop_count_ = 0;
+    bool new_command_ready_ = false;
 };
 
 // ── CAN Worker Thread ────────────────────────────────────────────
