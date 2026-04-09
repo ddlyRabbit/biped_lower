@@ -35,10 +35,10 @@ BipedMotorManager::urdf_limits() {
 
 static std::pair<double, double> ankle_motor_theoretical_limits(
     bool is_upper, int pitch_sign) {
-    constexpr double pitch_min = -0.87267;
-    constexpr double pitch_max =  0.52360;
-    constexpr double roll_min  = -0.26180;
-    constexpr double roll_max  =  0.26180;
+    constexpr double pitch_min = -0.7267;
+    constexpr double pitch_max =  0.42360;
+    constexpr double roll_min  = -0.20180;
+    constexpr double roll_max  =  0.20180;
 
     int sign = is_upper ? pitch_sign : -pitch_sign;
     double corners[4];

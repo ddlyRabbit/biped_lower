@@ -33,7 +33,7 @@ from biped_control.obs_builder import ObsBuilder, JOINT_ORDER, DEFAULT_POSITIONS
 # Soft start timing
 SOFT_START_POSITION_SECS = 2.0  # interpolate current → target over this
 SOFT_START_GAIN_SECS = 1.0       # ramp gains from 10% → 100% after position interp
-WALK_GAIN_RAMP_SECS = 5.0        # ramp gains from 10% → 100% on WALK entry
+WALK_GAIN_RAMP_SECS = 0.1        # ramp gains from 10% → 100% on WALK entry
 
 
 class PolicyNode(Node):
