@@ -343,7 +343,7 @@ void RobstrideBus::write_operation_frame(
     kp  = clamp(kp, 0.0, scale.kp);
     kd  = clamp(kd, 0.0, scale.kd);
     trq = clamp(trq, -scale.torque, scale.torque);
-
+    RCLCPP_INFO(get_logger(), "Name: %s, pos: %d,Vel: %d, KP: %d, KD: %d, TRQ: %d", name, pos, vel, kp, kd, trq);
     // Encode to uint16
     uint16_t pos_u16 = static_cast<uint16_t>(clamp(((pos / scale.position) + 1.0) * 0x7FFF, 0.0, 65535.0));
     uint16_t vel_u16 = static_cast<uint16_t>(clamp(((vel / scale.velocity) + 1.0) * 0x7FFF, 0.0, 65535.0));
