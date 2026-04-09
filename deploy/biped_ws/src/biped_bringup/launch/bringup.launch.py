@@ -67,6 +67,7 @@ def _make_can_driver_node(context):
         package=pkg,
         executable=exe,
         name=exe, output='screen',
+        prefix=['taskset -c 1'],
         parameters=[{
             'robot_config': LaunchConfiguration('robot_config').perform(context),
             'calibration_file': LaunchConfiguration('calibration_file').perform(context),
@@ -154,6 +155,7 @@ def generate_launch_description():
         # Policy
         Node(
             package='biped_control', executable='policy_node',
+            prefix=['taskset -c 2'],
             name='policy_node', output='screen',
             parameters=[{
                 'onnx_model': LaunchConfiguration('onnx_model'),

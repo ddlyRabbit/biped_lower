@@ -16,6 +16,7 @@ def generate_launch_description():
         # Foxglove WebSocket bridge
         Node(
             package='foxglove_bridge',
+            prefix=['taskset -c 3'],
             executable='foxglove_bridge',
             name='foxglove_bridge',
             output='screen',
