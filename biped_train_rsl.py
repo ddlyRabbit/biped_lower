@@ -111,7 +111,7 @@ def main():
     else:
         env_cfg = BipedFlatEnvCfg()
         env_id = "Biped-Flat-v0"
-        experiment = "biped_flat_v84"
+        experiment = "biped_flat_v85"
 
     env_cfg.scene.num_envs = args_cli.num_envs
     env_cfg.seed = args_cli.seed
