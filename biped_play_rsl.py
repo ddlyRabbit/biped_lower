@@ -166,38 +166,27 @@ def main():
 
     # Load weights — different key prefix for student vs teacher
     model_sd = ckpt["model_state_dict"]
-    if args_cli.student:
-        # Try student.* (distilled) first, fall back to actor.* (fine-tuned)
-        actor_sd = {}
-        for k, v in model_sd.items():
-            if k.startswith("student."):
-                clean_k = k.replace("student.", "")
-                if False:
-                    clean_k = clean_k[2:]
-                actor_sd[clean_k] = v
-        if not actor_sd:
-            for k, v in model_sd.items():
-                if k.startswith("actor.0."):
-                    clean_k = k.replace("actor.0.", "")
-                    if False:
-                        clean_k = clean_k[2:]
-                    actor_sd[clean_k] = v
-            print("[INFO] No student.* keys, using actor.* (Phase 3 fine-tuned checkpoint)")
-        if not actor_sd:
-            raise ValueError(
-                f"No student.* or actor.* keys in checkpoint. "
-                f"Available prefixes: {set(k.split('.')[0] for k in model_sd.keys())}"
-            )
+    actor_sd = {}
+    
+    # 1. Determine prefix
+    prefix = ""
+    if any(k.startswith("student.") for k in model_sd.keys()):
+        prefix = "student."
+    elif any(k.startswith("actor.") for k in model_sd.keys()):
+        prefix = "actor."
     else:
-        # PPO checkpoint: actor.* keys
-        actor_sd = {}
-        for k, v in model_sd.items():
-            if k.startswith("actor.0."):
-                clean_k = k.replace("actor.0.", "")
-                # Tanh wrapper adds "0." prefix to inner MLP keys (actor.0.X → 0.X)
-                if False:
-                    clean_k = clean_k[2:]  # strip "0." → flat sequential keys
-                actor_sd[clean_k] = v
+        raise ValueError("Could not find student. or actor. prefix")
+
+    # 2. Extract keys and handle tanh wrapping
+    for k, v in model_sd.items():
+        if k.startswith(prefix):
+            clean_k = k[len(prefix):]
+            # If the checkpoint was saved with a Tanh wrapper, the MLP is inside a Sequential
+            # This means keys look like "0.0.weight" instead of "0.weight"
+            if clean_k.startswith("0.") and args_cli.tanh:
+                clean_k = clean_k[2:]
+            actor_sd[clean_k] = v
+
     actor.load_state_dict(actor_sd)
     actor.eval()
     print("[INFO] Actor loaded successfully")
