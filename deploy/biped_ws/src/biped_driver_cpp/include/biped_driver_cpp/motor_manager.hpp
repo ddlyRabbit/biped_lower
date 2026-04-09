@@ -23,7 +23,7 @@ namespace biped_driver_cpp {
 // ── Soft-stop config ─────────────────────────────────────────────
 
 constexpr double SOFTSTOP_BUFFER_RAD = 2.0 * M_PI / 180.0;  // 0.0349 rad
-constexpr double SOFTSTOP_KP = 0.0;  // Nm/rad restoring spring
+constexpr double SOFTSTOP_KP = 20.0;  // Nm/rad restoring spring
 
 // ── Ankle constants ──────────────────────────────────────────────
 
