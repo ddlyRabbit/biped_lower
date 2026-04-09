@@ -17,6 +17,7 @@ import time
 import numpy as np
 import onnxruntime as ort
 import mujoco
+import random
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MJCF_PATH = os.path.join(REPO_ROOT, "mjcf", "sim2sim", "robot.mjcf")
@@ -94,9 +95,9 @@ ACTION_SCALE = np.array([
 ], dtype=np.float32)
 
 # ─── PD gains (from training config) ────────────────────────────────────────
-KP_ISAAC = {"L_hip_pitch": 180, "R_hip_pitch": 180, "L_hip_roll": 180, "R_hip_roll": 180,
-            "L_hip_yaw": 180, "R_hip_yaw": 180, "L_knee": 180, "R_knee": 180,
-            "L_foot_pitch": 30, "R_foot_pitch": 30, "L_foot_roll": 30, "R_foot_roll": 30}
+KP_ISAAC = {"L_hip_pitch": 120, "R_hip_pitch": 120, "L_hip_roll": 120, "R_hip_roll": 120,
+            "L_hip_yaw": 120, "R_hip_yaw": 120, "L_knee": 120, "R_knee": 120,
+            "L_foot_pitch": 20, "R_foot_pitch": 20, "L_foot_roll": 20, "R_foot_roll": 20}
 KD_ISAAC = {"L_hip_pitch": 6.5, "R_hip_pitch": 6.5, "L_hip_roll": 6.5, "R_hip_roll": 6.5,
             "L_hip_yaw": 3.0, "R_hip_yaw": 3.0, "L_knee": 6.5, "R_knee": 6.5,
             "L_foot_pitch": 1.0, "R_foot_pitch": 1.0, "L_foot_roll": 1.0, "R_foot_roll": 1.0}
@@ -194,7 +195,7 @@ def main():
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--duration", type=float, default=None, help="Playback duration in seconds (default: 10s for video, inf for interactive)")
     parser.add_argument("--video", type=str, default=None, help="Save video to path")
-    parser.add_argument("--cmd_vx", type=float, default=0.5, help="Forward velocity command")
+    parser.add_argument("--cmd_vx", type=float, default=0.0, help="Forward velocity command")
     parser.add_argument("--cmd_vy", type=float, default=0.0)
     parser.add_argument("--cmd_wz", type=float, default=0.0)
     parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"])
@@ -348,10 +349,12 @@ def main():
             step += 1
             if POLICY_DT - dt > 0:
                 time.sleep(POLICY_DT - dt)
+            time.sleep(random.uniform(0,40)/10000.0)
 
             if step % 50 == 0:
                 print(f"[{step * POLICY_DT:.1f}s] z={data.qpos[2]:.3f} qw={data.qpos[3]:.3f} "
                       f"con={data.ncon} act_rms={np.sqrt(np.mean(actions_isaac**2)):.2f}")
+                print(f"Gravity: {obs}")
 
     except KeyboardInterrupt:
         print("\nStopped.")
@@ -363,7 +366,6 @@ def main():
             fps = int(1.0 / POLICY_DT)
             print(f"Saving {len(frames)} frames to {args.video} at {fps} FPS...")
             media.write_video(args.video, frames, fps=fps)
-
 
 if __name__ == "__main__":
     main()
