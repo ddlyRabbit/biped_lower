@@ -175,6 +175,8 @@ private:
         RCLCPP_INFO(logger_, "[%s] Worker started: %zu normal + %zu ankle pairs (event-driven, 25ms timeout)",
                      bus_name_.c_str(), normal_motors_.size(), ankle_pairs_.size());
 
+        auto last_t0 = std::chrono::steady_clock::now();
+
         while (running_) {
             // Wait for command or 25ms timeout — avoids busy spinning
             buffer_->wait_for_command(25);
@@ -280,8 +282,8 @@ private:
                 }
             }
 
-            auto dt = std::chrono::duration<double>(
-                std::chrono::steady_clock::now() - t0).count();
+            auto dt = std::chrono::duration<double>(t0 - last_t0).count();
+            last_t0 = t0;
             buffer_->update_stats(dt);
         }
     }
