@@ -95,11 +95,11 @@ ACTION_SCALE = np.array([
 ], dtype=np.float32)
 
 # ─── PD gains (from training config) ────────────────────────────────────────
-KP_ISAAC = {"L_hip_pitch": 120, "R_hip_pitch": 120, "L_hip_roll": 120, "R_hip_roll": 120,
-            "L_hip_yaw": 120, "R_hip_yaw": 120, "L_knee": 120, "R_knee": 120,
-            "L_foot_pitch": 20, "R_foot_pitch": 20, "L_foot_roll": 20, "R_foot_roll": 20}
+KP_ISAAC = {"L_hip_pitch": 180, "R_hip_pitch": 180, "L_hip_roll": 180, "R_hip_roll": 180,
+            "L_hip_yaw": 180, "R_hip_yaw": 180, "L_knee": 180, "R_knee": 180,
+            "L_foot_pitch": 30, "R_foot_pitch": 30, "L_foot_roll": 30, "R_foot_roll": 30}
 KD_ISAAC = {"L_hip_pitch": 6.5, "R_hip_pitch": 6.5, "L_hip_roll": 6.5, "R_hip_roll": 6.5,
-            "L_hip_yaw": 3.0, "R_hip_yaw": 3.0, "L_knee": 6.5, "R_knee": 6.5,
+            "L_hip_yaw": 3.0, "R_hip_yaw": 3.0, "L_knee": 3.0, "R_knee": 3.0,
             "L_foot_pitch": 1.0, "R_foot_pitch": 1.0, "L_foot_roll": 1.0, "R_foot_roll": 1.0}
 
 KP_MJ = np.array([KP_ISAAC[MJ_TO_ISAAC_NAME[mj]] for mj in MJ_JOINTS], dtype=np.float32)
