@@ -50,7 +50,7 @@ def _make_imu_node(context):
         return [Node(
             package='biped_driver', executable='imu_node',
             name='imu_node', output='screen',
-            parameters=[{'rate_hz': 50.0, 'i2c_address': 75, 'reset_pin': 4}],
+            parameters=[{'rate_hz': 100.0, 'i2c_address': 75, 'reset_pin': 4}],
         )]
 
 
@@ -71,8 +71,8 @@ def _make_can_driver_node(context):
         parameters=[{
             'robot_config': LaunchConfiguration('robot_config').perform(context),
             'calibration_file': LaunchConfiguration('calibration_file').perform(context),
-            'loop_rate': 50.0,
-            'publish_rate': 50.0,
+            'loop_rate': 200.0,
+            'publish_rate': 200.0,
         }],
     )]
 

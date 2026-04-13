@@ -47,7 +47,7 @@ class BNO085Node(Node):
         # Parameters
         self.declare_parameter('i2c_bus', 7)  # Jetson Orin Nano: bus 7 (pins 3,5), RPi5: bus 1
         self.declare_parameter('i2c_address', 0x4B)
-        self.declare_parameter('rate_hz', 50.0)
+        self.declare_parameter('rate_hz', 200.0)
         self.declare_parameter('frame_id', 'imu_link')
         self.declare_parameter('use_game_quaternion', False)  # True = no mag correction
         self.declare_parameter('reset_pin', 7)  # BOARD pin 7 for BNO085 RST (-1 = not connected)

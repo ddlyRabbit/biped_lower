@@ -84,7 +84,7 @@ public:
 
     /// Block until a command arrives or timeout_ms elapses.
     /// Returns true if woken by command, false on timeout.
-    bool wait_for_command(int timeout_ms = 25) {
+    bool wait_for_command(int timeout_ms = 0) {
         std::unique_lock<std::mutex> lk(cmd_cv_mtx_);
         bool woken_by_cmd = cmd_cv_.wait_for(lk, std::chrono::milliseconds(timeout_ms), 
                                              [this] { return new_command_ready_; });
@@ -179,7 +179,7 @@ private:
 
         while (running_) {
             // Wait for command or 25ms timeout — avoids busy spinning
-            buffer_->wait_for_command(25);
+            buffer_->wait_for_command(0);
 
             auto t0 = std::chrono::steady_clock::now();
             auto commands = buffer_->read_commands();
@@ -317,7 +317,7 @@ public:
         // ── Parameters ───────────────────────────────────────────
         declare_parameter("robot_config", "");
         declare_parameter("calibration_file", "");
-        declare_parameter("publish_rate", 50.0);
+        declare_parameter("publish_rate", 200.0);
 
         std::string robot_config_path = get_parameter("robot_config").as_string();
         std::string cal_file = get_parameter("calibration_file").as_string();
