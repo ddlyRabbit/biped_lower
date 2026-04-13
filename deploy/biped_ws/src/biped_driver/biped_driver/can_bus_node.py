@@ -230,110 +230,123 @@ class CanBusNode(Node):
 
                 pair = self._mgr.get_ankle_pair(name)
                 if pair:
-                    self._send_ankle(pair)
+                    self._handle_ankle(pair, joint_msg, motor_msg)
                     processed.add(pair[0])
                     processed.add(pair[1])
                 else:
-                    self._send_normal(name)
-                    processed.add(name)
-                    
-        # Fire-and-forget complete. Now we poll all returned messages asynchronously.
-        all_feedbacks = self._mgr.poll_all_feedback()
-        
-        # Now process the feedbacks and append to ROS messages
-        processed.clear()
-        for bus_joints in self._bus_joint_order:
-            for name in bus_joints:
-                if name in processed:
-                    continue
-                pair = self._mgr.get_ankle_pair(name)
-                if pair:
-                    self._process_ankle_feedback(pair, all_feedbacks, joint_msg, motor_msg)
-                    processed.add(pair[0])
-                    processed.add(pair[1])
-                else:
-                    self._process_normal_feedback(name, all_feedbacks, joint_msg, motor_msg)
+                    self._handle_normal(name, joint_msg, motor_msg)
                     processed.add(name)
 
         self._pub_joints.publish(joint_msg)
         self._pub_motors.publish(motor_msg)
 
-    def _send_normal(self, name: str):
+    def _handle_normal(self, name: str, joint_msg: JointState, motor_msg: MotorStateArray):
+        """Send/receive for a normal (non-ankle) joint.
+
+        send_mit_command handles clamping + soft-stop in motor
+        command-space (= joint-space for normal joints).
+        """
         cmd = self._last_commands.get(name)
         actual_pos = self._last_positions.get(name)
+        fb = None
+
         try:
             if cmd:
                 self._mgr.send_mit_command(
                     name, cmd.position, cmd.kp, cmd.kd, cmd.velocity, cmd.torque_ff,
                     actual_pos=actual_pos)
             else:
+                # No command yet — truly zero torque (no soft stops)
                 self._mgr.send_mit_command(name, 0.0, 0.0, 0.0)
+            fb = self._mgr.read_feedback(name)
         except Exception as e:
-            self.get_logger().warn(f"{name}: CAN send error: {e}", throttle_duration_sec=1.0)
+            self.get_logger().warn(
+                f"{name}: CAN error: {e}", throttle_duration_sec=1.0)
 
-    def _process_normal_feedback(self, name: str, all_feedbacks: dict, joint_msg: JointState, motor_msg: MotorStateArray):
-        fb = all_feedbacks.get(name)
         if fb is not None:
             self._last_positions[name] = fb.position
+
         self._append_feedback(name, fb, joint_msg, motor_msg)
 
-    def _send_ankle(self, pair: tuple[str, str]):
+    def _handle_ankle(
+        self,
+        pair: tuple[str, str],
+        joint_msg: JointState,
+        motor_msg: MotorStateArray,
+    ):
+        """Send/receive for an ankle pair with parallel linkage transform.
+
+        Flow: policy joint-space → URDF clamp → Asimov forward → motor-space clamp → CAN
+        Feedback: CAN → Asimov inverse → joint-space → /joint_states
+
+        Two levels of clamping:
+        1. Joint-space: URDF pitch/roll limits (before linkage forward)
+        2. Motor command-space: calibration limits + soft-stop (after linkage forward)
+
+        top_name   → upper motor (knee-side CAN ID, motor A)
+        bottom_name → lower motor (foot-side CAN ID, motor B)
+
+        Publishes joint-space names (foot_pitch/foot_roll) on /joint_states.
+        """
         top_name, bottom_name = pair
+        # Joint-space names for /joint_states (policy compatibility)
         pitch_joint = ANKLE_MOTOR_TO_JOINT[top_name]
         roll_joint = ANKLE_MOTOR_TO_JOINT[bottom_name]
         pitch_cmd = self._last_commands.get(pitch_joint)
         roll_cmd = self._last_commands.get(roll_joint)
 
+        # L ankle has mirrored pitch axis
         pitch_sign = -1 if top_name.startswith("L") else 1
+
+        fb_upper = None
+        fb_lower = None
 
         try:
             if pitch_cmd and roll_cmd:
+                # 1. Clamp joint-space commands to URDF limits
                 pitch_lo, pitch_hi = ANKLE_JOINT_LIMITS["foot_pitch"]
                 roll_lo, roll_hi = ANKLE_JOINT_LIMITS["foot_roll"]
                 pitch_pos = max(pitch_lo, min(pitch_hi, pitch_cmd.position))
                 roll_pos = max(roll_lo, min(roll_hi, roll_cmd.position))
 
+                # 2. Asimov forward: joint-space → motor-space
                 motor_upper, motor_lower = ankle_command_to_motors(
                     pitch_pos, roll_pos, pitch_sign)
 
+                # Average gains (both are RS02)
                 kp = (pitch_cmd.kp + roll_cmd.kp) / 2.0
                 kd = (pitch_cmd.kd + roll_cmd.kd) / 2.0
                 tff = (pitch_cmd.torque_ff + roll_cmd.torque_ff) / 2.0
 
+                # 2. Send with per-motor soft-stop in motor command-space
                 self._mgr.send_ankle_mit_command(
                     top_name, motor_upper, kp, kd, 0.0, tff,
                     actual_pos=self._last_positions.get(top_name))
+                fb_upper = self._mgr.read_feedback(top_name)
 
                 self._mgr.send_ankle_mit_command(
                     bottom_name, motor_lower, kp, kd, 0.0, tff,
                     actual_pos=self._last_positions.get(bottom_name))
+                fb_lower = self._mgr.read_feedback(bottom_name)
             else:
+                # No commands — zero stiffness, just read
                 self._mgr.send_ankle_mit_command(top_name, 0.0, 0.0, 0.0)
+                fb_upper = self._mgr.read_feedback(top_name)
                 self._mgr.send_ankle_mit_command(bottom_name, 0.0, 0.0, 0.0)
+                fb_lower = self._mgr.read_feedback(bottom_name)
         except Exception as e:
-            self.get_logger().warn(f"Ankle {top_name}/{bottom_name}: CAN send error: {e}", throttle_duration_sec=1.0)
+            self.get_logger().warn(
+                f"Ankle {top_name}/{bottom_name}: CAN error: {e}",
+                throttle_duration_sec=1.0)
 
-    def _process_ankle_feedback(
-        self,
-        pair: tuple[str, str],
-        all_feedbacks: dict,
-        joint_msg: JointState,
-        motor_msg: MotorStateArray,
-    ):
-        top_name, bottom_name = pair
-        pitch_joint = ANKLE_MOTOR_TO_JOINT[top_name]
-        roll_joint = ANKLE_MOTOR_TO_JOINT[bottom_name]
-        pitch_sign = -1 if top_name.startswith("L") else 1
-
-        fb_upper = all_feedbacks.get(top_name)
-        fb_lower = all_feedbacks.get(bottom_name)
-
+        # Store raw motor positions for next cycle's soft-stop torque
         if fb_upper is not None:
             self._last_positions[top_name] = fb_upper.position
         if fb_lower is not None:
             self._last_positions[bottom_name] = fb_lower.position
 
         if fb_upper is not None and fb_lower is not None:
+            # Asimov inverse: motor-space → joint-space for /joint_states
             foot_pitch, foot_roll = ankle_motors_to_feedback(
                 fb_upper.position, fb_lower.position, pitch_sign)
             foot_pitch_vel, foot_roll_vel = ankle_motors_to_feedback(
@@ -346,10 +359,6 @@ class CanBusNode(Node):
                 self._append_feedback(jname, fb, joint_msg, motor_msg,
                                       override_pos=pos, override_vel=vel,
                                       motor_name=motor_name)
-        elif fb_upper is not None:
-            self._append_feedback(pitch_joint, fb_upper, joint_msg, motor_msg, motor_name=top_name)
-        elif fb_lower is not None:
-            self._append_feedback(roll_joint, fb_lower, joint_msg, motor_msg, motor_name=bottom_name)
 
     def _append_feedback(
         self,

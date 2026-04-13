@@ -387,13 +387,6 @@ class BipedMotorManager:
         bus = self._bus_for(joint_name)
         return bus.read_operation_frame(joint_name, timeout)
 
-    def poll_all_feedback(self) -> dict[str, MotorFeedback]:
-        """Non-blocking drain of all pending MIT status frames across all buses."""
-        all_feedback = {}
-        for bus in self._buses.values():
-            all_feedback.update(bus.poll_all_feedback())
-        return all_feedback
-
     # ── Ankle helpers ───────────────────────────────────────────────
 
     def is_ankle_top(self, name: str) -> bool:
