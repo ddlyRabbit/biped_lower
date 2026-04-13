@@ -31,11 +31,11 @@ def main():
     print("--- Initializing I2C bus ---")
     try:
         # board.I2C() uses the default SCL/SDA pins on the Raspberry Pi (I2C bus 1)
-        i2c = busio.I2C(board.SCL, board.SDA)
+        i2c = busio.I2C(board.SCL, board.SDA, frequency=400_000)
         
-        print("--- Connecting to BNO085 ---")
-        # The BNO085 default I2C address is usually 0x4A (or 0x4B if jumpered)
-        bno = BNO08X_I2C(i2c)
+        print("--- Connecting to BNO085 at 0x4B ---")
+        # The BNO085 default I2C address is usually 0x4A, but wired to 0x4B (75) on this robot
+        bno = BNO08X_I2C(i2c, address=0x4B)
     except Exception as e:
         print(f"Failed to initialize I2C or find BNO085: {e}")
         print("Check if the sensor is wired correctly and I2C is enabled.")
