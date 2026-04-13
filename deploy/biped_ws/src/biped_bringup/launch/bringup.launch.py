@@ -77,6 +77,72 @@ def _make_can_driver_node(context):
         parameters=[{
             'robot_config': LaunchConfiguration('robot_config').perform(context),
             'calibration_file': LaunchConfiguration('calibration_file').perform(context),
+            'loop_rate': 50.0,
+            'publish_rate': 50.0,
+        }],
+    )]
+
+
+def _make_control_nodes(context):
+    """Select control package based on control_driver arg."""
+    driver = LaunchConfiguration('control_driver').perform(context)
+    if driver == 'biped_control_cpp':
+        pkg = 'biped_control_cpp'
+        sm_exe = 'state_machine_node_cpp'
+        sf_exe = 'safety_node_cpp'
+        pl_exe = 'policy_node_cpp'
+    else:
+        pkg = 'biped_control'
+        sm_exe = 'state_machine_node'
+        sf_exe = 'safety_node'
+        pl_exe = 'policy_node'
+
+    return [
+        Node(
+            package=pkg, executable=sf_exe,
+            name='safety_node', output='screen',
+            parameters=[{
+                'max_pitch_deg': LaunchConfiguration('max_pitch_deg'),
+                'max_roll_deg': LaunchConfiguration('max_roll_deg'),
+            }],
+        ),
+        Node(
+            package=pkg, executable=sm_exe,
+            name='state_machine_node', output='screen',
+            parameters=[{
+                'wiggle_config': os.path.join(get_package_share_directory('biped_bringup'), 'config', 'wiggle.yaml'),
+                'gain_scale': LaunchConfiguration('gain_scale'),
+            }],
+        ),
+        Node(
+            package=pkg, executable=pl_exe,
+            name='policy_node', output='screen',
+            prefix=['taskset -c 2'],
+            parameters=[{
+                'onnx_model': LaunchConfiguration('onnx_model'),
+                'gain_scale': LaunchConfiguration('gain_scale'),
+            }],
+            remappings=[
+                ('joint_states', '/policy_viz_joints'),
+            ],
+        )
+    ]
+    """Select CAN driver package based on can_driver arg."""
+    driver = LaunchConfiguration('can_driver').perform(context)
+    if driver == 'can_bus_node_cpp':
+        pkg = 'biped_driver_cpp'
+        exe = 'can_bus_node_cpp'
+    else:
+        pkg = 'biped_driver'
+        exe = driver
+    return [Node(
+        package=pkg,
+        executable=exe,
+        name=exe, output='screen',
+        prefix=['taskset -c 1'],
+        parameters=[{
+            'robot_config': LaunchConfiguration('robot_config').perform(context),
+            'calibration_file': LaunchConfiguration('calibration_file').perform(context),
             'loop_rate': 200.0,
             'publish_rate': 200.0,
         }],
@@ -100,6 +166,8 @@ def generate_launch_description():
         DeclareLaunchArgument('robot_config', default_value=default_robot_config),
         DeclareLaunchArgument('can_driver', default_value='can_bus_node',
                               description='CAN driver: can_bus_node | can_bus_node_async | can_bus_node_cpp'),
+        DeclareLaunchArgument('control_driver', default_value='biped_control',
+                              description='Control package: biped_control | biped_control_cpp'),
         DeclareLaunchArgument('onnx_model', default_value='student_flat.onnx'),
         DeclareLaunchArgument('gain_scale', default_value='1.0'),
         DeclareLaunchArgument('max_pitch_deg', default_value='85.0'),
@@ -137,38 +205,8 @@ def generate_launch_description():
         # Package depends on driver: can_bus_node_cpp uses biped_driver_cpp
         OpaqueFunction(function=_make_can_driver_node),
 
-        # Safety
-        Node(
-            package='biped_control', executable='safety_node',
-            name='safety_node', output='screen',
-            parameters=[{
-                'max_pitch_deg': LaunchConfiguration('max_pitch_deg'),
-                'max_roll_deg': LaunchConfiguration('max_roll_deg'),
-            }],
-        ),
-
-        # State machine
-        Node(
-            package='biped_control', executable='state_machine_node',
-            name='state_machine_node', output='screen',
-            parameters=[{
-                'gain_scale': LaunchConfiguration('gain_scale'),
-                'wiggle_config': os.path.join(os.path.expanduser('~'), 'biped_lower', 'deploy', 'biped_ws', 'src', 'biped_bringup', 'config', 'wiggle.yaml'),
-                'trajectory_file': os.path.join(os.path.expanduser('~'), 'biped_lower', 'deploy', 'biped_ws', 'src', 'biped_bringup', 'config', 'trajectory.csv'),
-            }],
-        ),
-
-        # Policy
-        Node(
-            package='biped_control', executable='policy_node',
-            prefix=['taskset -c 2'],
-            name='policy_node', output='screen',
-            parameters=[{
-                'onnx_model': LaunchConfiguration('onnx_model'),
-                'gain_scale': LaunchConfiguration('gain_scale'),
-                'loop_rate': 50.0,
-            }],
-        ),
+        # Control Nodes (Safety, State Machine, Policy)
+        OpaqueFunction(function=_make_control_nodes),
 
         # Rosbag recording (MCAP format — open directly in Foxglove)
         ExecuteProcess(

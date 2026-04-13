@@ -17,6 +17,21 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 
+def _make_safety_node(context):
+    """Select safety node based on control_driver arg."""
+    driver = LaunchConfiguration('control_driver').perform(context)
+    pkg = 'biped_control_cpp' if driver == 'biped_control_cpp' else 'biped_control'
+    exe = 'safety_node_cpp' if driver == 'biped_control_cpp' else 'safety_node'
+    return [Node(
+        package=pkg, executable=exe,
+        name='safety_node', output='screen',
+        parameters=[{
+            'max_pitch_deg': LaunchConfiguration('max_pitch_deg'),
+            'max_roll_deg': LaunchConfiguration('max_roll_deg'),
+        }],
+    )]
+
+
 def _make_imu_node(context):
     """Select IMU driver based on imu_type arg."""
     imu_type = LaunchConfiguration('imu_type').perform(context)
@@ -56,6 +71,8 @@ def generate_launch_description():
                               description='IMU driver: bno085 (I2C) | im10a (USB serial)'),
         DeclareLaunchArgument('max_pitch_deg', default_value='85.0'),
         DeclareLaunchArgument('max_roll_deg', default_value='85.0'),
+        DeclareLaunchArgument('control_driver', default_value='biped_control',
+                              description='Control package: biped_control | biped_control_cpp'),
 
         # Robot description
         Node(
@@ -79,12 +96,5 @@ def generate_launch_description():
         ),
 
         # Safety
-        Node(
-            package='biped_control', executable='safety_node',
-            name='safety_node', output='screen',
-            parameters=[{
-                'max_pitch_deg': LaunchConfiguration('max_pitch_deg'),
-                'max_roll_deg': LaunchConfiguration('max_roll_deg'),
-            }],
-        ),
+        OpaqueFunction(function=_make_safety_node),
     ])
