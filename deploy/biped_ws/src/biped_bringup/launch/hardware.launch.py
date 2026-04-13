@@ -30,13 +30,13 @@ def _make_imu_node(context):
         return [Node(
             package='biped_driver_cpp', executable='imu_node',
             name='imu_node', output='screen',
-            parameters=[{'rate_hz': 200.0, 'i2c_address': 74, 'reset_pin': 4}],
+            parameters=[{'rate_hz': 200.0, 'i2c_address': 75, 'reset_pin': 4}],
         )]
     else:  # bno085 (default)
         return [Node(
             package='biped_driver', executable='imu_node',
             name='imu_node', output='screen',
-            parameters=[{'rate_hz': 50.0, 'i2c_address': 74, 'reset_pin': 4}],
+            parameters=[{'rate_hz': 50.0, 'i2c_address': 75, 'reset_pin': 4}],
         )]
 
 
@@ -52,8 +52,8 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('calibration_file', default_value=''),
         DeclareLaunchArgument('robot_config', default_value=default_robot_config),
-        DeclareLaunchArgument('imu_type', default_value='bno085_cpp',
-                              description='IMU driver: bno085_cpp (I2C) | bno085 (Python) | im10a (USB serial)'),
+        DeclareLaunchArgument('imu_type', default_value='bno085',
+                              description='IMU driver: bno085 (I2C) | im10a (USB serial)'),
         DeclareLaunchArgument('max_pitch_deg', default_value='85.0'),
         DeclareLaunchArgument('max_roll_deg', default_value='85.0'),
 
