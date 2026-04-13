@@ -54,10 +54,13 @@ def main():
     with open(CONFIG_PATH, 'r') as f:
         config = yaml.safe_load(f)
     
+    # Check if 'biped_hardware' root key exists, otherwise assume root is the config
+    hardware_cfg = config.get("biped_hardware", config)
+    
     # 2. Initialize the Manager
     # We pass empty offsets here so it defaults to theoretical limits.
     # The packing/unpacking math latency remains identical.
-    manager = BipedMotorManager.from_robot_yaml(config["biped_hardware"], offsets={})
+    manager = BipedMotorManager.from_robot_yaml(hardware_cfg, offsets={})
     
     if TARGET_JOINT not in manager.joints:
         print(f"Error: Target joint '{TARGET_JOINT}' not found in robot.yaml!")
