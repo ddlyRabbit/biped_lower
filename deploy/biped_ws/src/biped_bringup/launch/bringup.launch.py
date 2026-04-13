@@ -46,6 +46,12 @@ def _make_imu_node(context):
             name='imu_node', output='screen',
             parameters=[{'serial_port': '/dev/ttyUSB0', 'baudrate': 460800, 'rate_hz': 300.0}],
         )]
+    elif imu_type == 'bno085_cpp':
+        return [Node(
+            package='biped_driver_cpp', executable='imu_node',
+            name='imu_node', output='screen',
+            parameters=[{'rate_hz': 200.0, 'i2c_address': 75, 'reset_pin': 4}],
+        )]
     else:  # bno085 (default)
         return [Node(
             package='biped_driver', executable='imu_node',

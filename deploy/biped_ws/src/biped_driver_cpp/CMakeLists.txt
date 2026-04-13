@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(biped_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
@@ -49,8 +51,24 @@ ament_target_dependencies(can_bus_node_cpp
   biped_msgs
 )
 
+# ── Executable: imu_node ──────────────────────────────────────────
+add_executable(imu_node
+  src/bno085_node.cpp
+)
+
+target_link_libraries(imu_node
+  pthread
+)
+
+ament_target_dependencies(imu_node
+  rclcpp
+  sensor_msgs
+  geometry_msgs
+  tf2_ros
+)
+
 # ── Install ───────────────────────────────────────────────────────
-install(TARGETS can_bus_node_cpp
+install(TARGETS can_bus_node_cpp imu_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
