@@ -19,7 +19,7 @@ class Bno085NodeCpp : public rclcpp::Node {
 public:
     Bno085NodeCpp() : Node("imu_node") {
         // Parameters
-        declare_parameter("i2c_bus", 7); // Jetson Orin Nano: bus 7, RPi5: bus 1
+        declare_parameter("i2c_bus", 1); // Jetson Orin Nano: bus 7, RPi5: bus 1
         declare_parameter("i2c_address", 0x4B);
         declare_parameter("rate_hz", 200.0);
         declare_parameter("frame_id", "imu_link");
