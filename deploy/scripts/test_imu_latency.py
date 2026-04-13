@@ -23,8 +23,8 @@ from adafruit_bno08x import BNO_REPORT_ROTATION_VECTOR
 
 # --- CONFIGURATION ---
 NUM_READS = 1000            # Total number of times to poll the IMU
-REPORT_INTERVAL_S = 0.01    # Tell the IMU to prepare a new report every 10ms (100Hz)
-DELAY_BETWEEN_READS = 0.02  # Simulate our actual 50Hz control loop (20ms wait between polls)
+REPORT_INTERVAL_S = 0.0033  # Tell the IMU to prepare a new report every ~3.3ms (300Hz)
+DELAY_BETWEEN_READS = 0.0033  # Simulate the actual 300Hz IMU node loop
 
 
 def main():
