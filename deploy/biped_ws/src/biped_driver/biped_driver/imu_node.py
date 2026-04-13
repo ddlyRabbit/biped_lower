@@ -137,7 +137,7 @@ class BNO085Node(Node):
 
             # Enable reports with retry (sensor may need time after reset)
 
-            interval_us = 3000  # Hardcoded 3ms (3000us) per request
+            interval_us = 10000  # Hardcoded 3ms (3000us) per request
             # Original: int(1_000_000 / self._rate)
             max_retries = 3
 
