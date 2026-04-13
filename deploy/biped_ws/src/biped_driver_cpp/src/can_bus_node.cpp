@@ -179,7 +179,7 @@ private:
 
         while (running_) {
             // Wait for command or 25ms timeout — avoids busy spinning
-            buffer_->wait_for_command(25);
+            buffer_->wait_for_command(5);
 
             auto t0 = std::chrono::steady_clock::now();
             auto commands = buffer_->read_commands();
