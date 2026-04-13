@@ -94,7 +94,7 @@ private:
                               "time.sleep(0.1); "
                               "lgpio.gpio_write(h, " + std::to_string(reset_pin_) + ", 1); "
                               "time.sleep(1.0); "
-                              "lgpio.gpio_free(h); "
+                              "lgpio.gpio_free(h, " + std::to_string(reset_pin_) + "); "
                               "lgpio.gpiochip_close(h)\" 2>/dev/null";
             int ret = system(cmd.c_str());
             if (ret != 0) {
