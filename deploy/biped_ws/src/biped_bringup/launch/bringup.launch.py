@@ -50,7 +50,7 @@ def _make_imu_node(context):
         return [Node(
             package='biped_driver', executable='imu_node',
             name='imu_node', output='screen',
-            parameters=[{'rate_hz': 50.0, 'i2c_address': 75, 'reset_pin': 4}],
+            parameters=[{'rate_hz': 50.0, 'i2c_address': 74, 'reset_pin': 4}],
         )]
 
 
