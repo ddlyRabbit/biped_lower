@@ -956,9 +956,9 @@ class BipedFlatEnvCfg(ManagerBasedRLEnvCfg):
     curriculum: CurriculumsCfg = CurriculumsCfg()
 
     def __post_init__(self):
-        self.decimation = 4  # 50 Hz control (Berkeley exact)
+        self.decimation = 20  # 50 Hz control (Berkeley exact)
         self.episode_length_s = 20.0
-        self.sim.dt = 0.005
+        self.sim.dt = 0.001
         self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = False  # required for self-collisions
         self.sim.physics_material = self.scene.terrain.physics_material
