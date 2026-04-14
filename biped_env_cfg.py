@@ -37,7 +37,7 @@ from typing import Literal, TYPE_CHECKING
 from collections.abc import Sequence
 
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import ImplicitActuatorCfg
+from isaaclab.actuators import ImplicitActuatorCfg, DelayedPDActuatorCfg
 from isaaclab.assets import Articulation, ArticulationCfg, AssetBaseCfg
 from isaaclab.sim.converters.urdf_converter_cfg import UrdfConverterCfg
 from isaaclab.managers import EventTermCfg as EventTerm
@@ -460,41 +460,47 @@ BIPED_CFG = ArticulationCfg(
     ),
     soft_joint_pos_limit_factor=0.9,
     actuators={
-        "hip_roll": ImplicitActuatorCfg(
+        "hip_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_roll.*"],
-            effort_limit_sim=50.0, velocity_limit_sim=10.0,
+            effort_limit=50.0, velocity_limit=10.0,
             stiffness=180.0, damping=6.5, armature=0.0152,
             friction=0.375,
+            min_delay=0, max_delay=10,
         ),
-        "hip_yaw": ImplicitActuatorCfg(
+        "hip_yaw": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
-            effort_limit_sim=50.0, velocity_limit_sim=10.0,
+            effort_limit=50.0, velocity_limit=10.0,
             stiffness=180.0, damping=3.0, armature=0.0152,
             friction=0.375,
+            min_delay=0, max_delay=10,
         ),
-        "hip_pitch": ImplicitActuatorCfg(
+        "hip_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
-            effort_limit_sim=100.0, velocity_limit_sim=10.0,
+            effort_limit=100.0, velocity_limit=10.0,
             stiffness=180.0, damping=6.5, armature=0.0152,
             friction=0.5,
+            min_delay=0, max_delay=10,
         ),
-        "knee": ImplicitActuatorCfg(
+        "knee": DelayedPDActuatorCfg(
             joint_names_expr=[".*knee.*"],
-            effort_limit_sim=100.0, velocity_limit_sim=10.0,
+            effort_limit=100.0, velocity_limit=10.0,
             stiffness=180.0, damping=3.0, armature=0.024,
             friction=0.5,
+            min_delay=0, max_delay=10,
         ),
-        "foot_pitch": ImplicitActuatorCfg(
+        "foot_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
-            effort_limit_sim=30.0, velocity_limit_sim=10.0,
+            effort_limit=30.0, velocity_limit=10.0,
             stiffness=30.0, damping=1.0, armature=0.0112,
             friction=0.25,
+            min_delay=0, max_delay=10,
         ),
-        "foot_roll": ImplicitActuatorCfg(
+        "foot_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
-            effort_limit_sim=30.0, velocity_limit_sim=10.0,
+            effort_limit=30.0, velocity_limit=10.0,
             stiffness=30.0, damping=1.0, armature=0.001,
             friction=0.25,
+            min_delay=0, max_delay=10,
         ),
     },
 )
@@ -956,9 +962,9 @@ class BipedFlatEnvCfg(ManagerBasedRLEnvCfg):
     curriculum: CurriculumsCfg = CurriculumsCfg()
 
     def __post_init__(self):
-        self.decimation = 4  # 50 Hz control (Berkeley exact)
+        self.decimation = 20  # 50 Hz control
         self.episode_length_s = 20.0
-        self.sim.dt = 0.005
+        self.sim.dt = 0.001  # 1000 Hz physics
         self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = False  # required for self-collisions
         self.sim.physics_material = self.scene.terrain.physics_material
