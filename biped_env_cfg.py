@@ -482,44 +482,44 @@ BIPED_CFG = ArticulationCfg(
         "hip_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_roll.*"],
             effort_limit=50.0, velocity_limit=10.0,
-            stiffness=180.0, damping=6.5, armature=0.0152,
+            stiffness=180.0, damping=6.5, armature=0.015,
             friction=0.375,
-            min_delay=0, max_delay=10,
+            min_delay=0, max_delay=6,
         ),
         "hip_yaw": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
             effort_limit=50.0, velocity_limit=10.0,
-            stiffness=180.0, damping=3.0, armature=0.0152,
+            stiffness=180.0, damping=3.0, armature=0.015,
             friction=0.375,
-            min_delay=0, max_delay=10,
+            min_delay=0, max_delay=6,
         ),
         "hip_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
             effort_limit=100.0, velocity_limit=10.0,
-            stiffness=180.0, damping=6.5, armature=0.0152,
+            stiffness=180.0, damping=6.5, armature=0.02,
             friction=0.5,
-            min_delay=0, max_delay=10,
+            min_delay=0, max_delay=6,
         ),
         "knee": DelayedPDActuatorCfg(
             joint_names_expr=[".*knee.*"],
             effort_limit=100.0, velocity_limit=10.0,
-            stiffness=180.0, damping=3.0, armature=0.024,
+            stiffness=180.0, damping=3.0, armature=0.02,
             friction=0.5,
-            min_delay=0, max_delay=10,
+            min_delay=0, max_delay=6,
         ),
         "foot_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=30.0, damping=1.0, armature=0.0112,
+            stiffness=30.0, damping=1.0, armature=0.01,
             friction=0.25,
-            min_delay=0, max_delay=10,
+            min_delay=0, max_delay=6,
         ),
         "foot_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=30.0, damping=1.0, armature=0.001,
+            stiffness=30.0, damping=1.0, armature=0.01,
             friction=0.25,
-            min_delay=0, max_delay=10,
+            min_delay=0, max_delay=6,
         ),
     },
 )
@@ -983,9 +983,9 @@ class BipedFlatEnvCfg(ManagerBasedRLEnvCfg):
     curriculum: CurriculumsCfg = CurriculumsCfg()
 
     def __post_init__(self):
-        self.decimation = 20  # 50 Hz control
+        self.decimation = 10  # 50 Hz control
         self.episode_length_s = 20.0
-        self.sim.dt = 0.001  # 1000 Hz physics
+        self.sim.dt = 0.002  # 1000 Hz physics
         self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = False  # required for self-collisions
         self.sim.physics_material = self.scene.terrain.physics_material
