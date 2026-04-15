@@ -502,12 +502,11 @@ private:
                 if (pair) {
                     auto& [top_name, bottom_name] = *pair;
                     // Check both are on this bus
-                    bool both_here = false;
+                    int found = 0;
                     for (auto& n : bus_motor_names) {
-                        if (n == top_name || n == bottom_name) {
-                            both_here = true;
-                        }
+                        if (n == top_name || n == bottom_name) found++;
                     }
+                    bool both_here = (found == 2);
 
                     auto fb_top = feedback.count(top_name) ? feedback[top_name] : FeedbackEntry{};
                     auto fb_bot = feedback.count(bottom_name) ? feedback[bottom_name] : FeedbackEntry{};

@@ -152,8 +152,15 @@ private:
             }
         }
 
-        // 4. Command watchdog (optional pass, matches python: `pass` instead of faulting)
-        // if (last_cmd_time_ > 0 && (current_time - last_cmd_time_) > cmd_timeout_) { ... }
+        // 4. Command watchdog
+        if (ok) {
+            if (last_cmd_time_ > 0 && (current_time - last_cmd_time_) > cmd_timeout_) {
+                ok = false;
+                char buf[64];
+                snprintf(buf, sizeof(buf), "Command timeout (%.0fms)", (current_time - last_cmd_time_) * 1000.0);
+                reason = buf;
+            }
+        }
 
         // 5. IMU watchdog
         if (ok) {

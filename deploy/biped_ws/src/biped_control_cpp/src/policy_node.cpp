@@ -66,11 +66,11 @@ public:
             
             // Get input/output info
             Ort::AllocatorWithDefaultOptions allocator;
-            auto input_name = session_->GetInputNameAllocated(0, allocator);
-            input_node_names_.push_back(input_name.get());
-            
-            auto output_name = session_->GetOutputNameAllocated(0, allocator);
-            output_node_names_.push_back(output_name.get());
+            owned_input_names_.push_back(session_->GetInputNameAllocated(0, allocator));
+            input_node_names_.push_back(owned_input_names_.back().get());
+
+            owned_output_names_.push_back(session_->GetOutputNameAllocated(0, allocator));
+            output_node_names_.push_back(owned_output_names_.back().get());
 
             RCLCPP_INFO(get_logger(), "ONNX model loaded: %s", model_path.c_str());
         } catch (const std::exception& e) {
@@ -118,6 +118,8 @@ private:
     int debug_timer_ = 0;
 
     std::unique_ptr<Ort::Session> session_;
+    std::vector<Ort::AllocatedStringPtr> owned_input_names_;
+    std::vector<Ort::AllocatedStringPtr> owned_output_names_;
     std::vector<const char*> input_node_names_;
     std::vector<const char*> output_node_names_;
 

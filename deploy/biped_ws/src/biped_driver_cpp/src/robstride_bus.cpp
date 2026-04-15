@@ -28,13 +28,13 @@ namespace biped_driver_cpp {
 // From table.py: all models use ±4π position
 
 static const std::unordered_map<std::string, MitScale> MIT_SCALES = {
-    {"rs-00", {4.0 * M_PI,  50.0,  17.0,  500.0,   5.0}},
-    {"rs-01", {4.0 * M_PI,  44.0,  17.0,  500.0,   5.0}},
-    {"rs-02", {4.0 * M_PI,  44.0,  17.0,  500.0,   5.0}},
-    {"rs-03", {4.0 * M_PI,  50.0,  60.0, 5000.0, 100.0}},
-    {"rs-04", {4.0 * M_PI,  15.0, 120.0, 5000.0, 100.0}},
-    {"rs-05", {4.0 * M_PI,  33.0,  17.0,  500.0,   5.0}},
-    {"rs-06", {4.0 * M_PI,  20.0,  60.0, 5000.0, 100.0}},
+    {"rs-00", {4.0 * M_PI,  50.0,  17.0,  200.0, 200.0}},
+    {"rs-01", {4.0 * M_PI,  44.0,  17.0,  200.0, 200.0}},
+    {"rs-02", {4.0 * M_PI,  44.0,  17.0,  200.0, 200.0}},
+    {"rs-03", {4.0 * M_PI,  50.0,  60.0,  200.0, 200.0}},
+    {"rs-04", {4.0 * M_PI,  15.0, 120.0,  200.0, 200.0}},
+    {"rs-05", {4.0 * M_PI,  33.0,  17.0,  200.0, 200.0}},
+    {"rs-06", {4.0 * M_PI,  20.0,  60.0,  200.0, 200.0}},
 };
 
 const MitScale& get_mit_scale(const std::string& model) {
@@ -359,8 +359,6 @@ void RobstrideBus::write_operation_frame(
     data[6] = (kd_u16  >> 8) & 0xFF; data[7] = kd_u16  & 0xFF;
 
     transmit(CommType::OPERATION_CONTROL, trq_u16, m.id, data);
-    // 0.2ms settle for MCP2515 SPI
-    std::this_thread::sleep_for(std::chrono::microseconds(200));
 }
 
 // ── Bulk operations ──────────────────────────────────────────────

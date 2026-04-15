@@ -285,6 +285,9 @@ private:
         // Covariance: -1 in first element = unknown
         imu_msg.linear_acceleration_covariance[0] = -1.0;
 
+        imu_msg.orientation_covariance[0] = -1.0;
+        imu_msg.angular_velocity_covariance[0] = -1.0;
+
         pub_imu_->publish(imu_msg);
 
         // --- Publish /imu/gravity ---
