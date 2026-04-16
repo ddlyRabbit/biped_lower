@@ -124,6 +124,45 @@ docker run --gpus all \
   --num_envs 8 --urdf light --video --global_camera --headless
 ```
 
+## V116 Teacher — Berkeley Impact + Clamped Reward (Apr 16, 2026)
+
+| File | Description |
+|------|-------------|
+| `v116_10200/model_10200.pt` | 10.2K iters, best pre-reward-rework checkpoint |
+| `v116_10200/v116_10200.mp4` | Video (8 envs, light URDF) |
+
+**Config:**
+- Actuator: DelayedPDActuator, delay 0-6 steps, friction hip=0.375/0.5, knee=0.5, foot=0.25
+- Kp: hip_roll/yaw=180, hip_pitch=180, knee=180, foot_pitch=30, foot_roll=30
+- Kd: hip_roll/pitch=6.5, hip_yaw/knee=3.0, foot_pitch/roll=1.0
+- action_scale=0.5, tanh output
+- Light URDF (15.6kg), 16384 envs, rsl_rl PPO [128,128,128]
+- 500Hz physics (dt=0.002), decimation=10 (50Hz control)
+- Self-collisions OFF
+- 13 reward terms (Berkeley exact)
+
+**Reward at iter 10200:**
+- track_lin_vel_xy_exp: +0.90 (weight=1.0)
+- feet_air_time: -0.03 (weight=5.0, Berkeley impact, threshold_min=0.2s)
+- feet_slide: -0.03 (weight=-0.25)
+- timeouts: 98.5%
+
+**Note:** This checkpoint predates the feet_air_time reward rework (weight 5→20→10, threshold changes, fixed 1.0 reward for optimal range). Good baseline for comparison.
+
+**Play:**
+```bash
+docker run --gpus all --network host \
+  -v /home/ubuntu/workspace:/workspace -v /home/ubuntu/results:/results -v /home/ubuntu/uploads:/uploads \
+  -v /tmp:/tmp -e DISPLAY=:0 \
+  --entrypoint /isaac-sim/python.sh isaaclab:latest \
+  /workspace/biped_locomotion/biped_play_rsl.py \
+  --urdf light --checkpoint /tmp/model_10200.pt \
+  --tanh --num_envs 8 --video --video_length 300 \
+  --video_dir /results/videos/v116_10200
+```
+
+---
+
 ## V76 Teacher - Soft Ankles (Apr 3, 2026)
 
 | File | Description |
