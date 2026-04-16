@@ -100,8 +100,8 @@ def feet_air_time_berkeley(
     env: "ManagerBasedRLEnv",
     command_name: str,
     sensor_cfg: SceneEntityCfg = SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
-    threshold_min: float = 0.2,
-    threshold_max: float = 0.5,
+    threshold_min: float = 0.3,
+    threshold_max: float = 0.35,
 ) -> torch.Tensor:
     """Pure Berkeley impact-based air time reward.
 
@@ -111,15 +111,8 @@ def feet_air_time_berkeley(
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
     first_contact = contact_sensor.compute_first_contact(env.step_dt)[:, sensor_cfg.body_ids]
     last_air_time = contact_sensor.data.last_air_time[:, sensor_cfg.body_ids]
-    # Calculate the base reward/penalty
-    raw_reward = (last_air_time - threshold_min) * first_contact
-    # Set reward to 1.0 if air time is within the desired range
-    air_time_ok = (last_air_time >= threshold_min) & (last_air_time <= threshold_max) & first_contact
-    raw_reward[air_time_ok] = 1.0 * first_contact[air_time_ok] # Ensure we only reward on first contact
-    # Sum across feet
-    reward = torch.sum(raw_reward, dim=1)
-    # Apply the original minimum clamp. The new logic handles the max effectively.
-    reward = torch.clamp(reward, min=-0.25)
+    reward = torch.sum((last_air_time - threshold_min) * first_contact, dim=1)
+    reward = torch.clamp(reward, min=-0.25, max=threshold_max - threshold_min)
 
     reward *= torch.norm(
         env.command_manager.get_command(command_name)[:, :2], dim=1
