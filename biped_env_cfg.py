@@ -124,7 +124,7 @@ def feet_air_time_berkeley(
 def foot_contact_force_l2(
     env: "ManagerBasedRLEnv",
     sensor_cfg: SceneEntityCfg = SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
-    threshold: float = 100.0,
+    threshold: float = 150.0,
 ) -> torch.Tensor:
     """Penalize high ground reaction forces on feet above threshold.
     Promotes gentle stepping by penalizing total contact force magnitude.
@@ -759,10 +759,10 @@ class RewardsCfg:
     )
     foot_contact_force = RewTerm(
         func="biped_env_cfg:foot_contact_force_l2",
-        weight=-0.01,
+        weight=-0.001,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
-            "threshold": 100.0,
+            "threshold": 150.0,
         },
     )
     undesired_contacts = RewTerm(
