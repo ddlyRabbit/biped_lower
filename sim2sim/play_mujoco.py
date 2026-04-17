@@ -13,6 +13,7 @@ PD control in Python, torques sent to MuJoCo motor actuators.
 import argparse
 import os
 import time
+import collections
 
 import numpy as np
 import onnxruntime as ort
@@ -199,6 +200,7 @@ def main():
     parser.add_argument("--cmd_vy", type=float, default=0.0)
     parser.add_argument("--cmd_wz", type=float, default=0.0)
     parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"])
+    parser.add_argument("--latency_ms", type=float, default=0.0, help="Artificial hardware latency in milliseconds")
     args = parser.parse_args()
 
     # Load ONNX model
@@ -285,6 +287,9 @@ def main():
     if args.duration is None:
         args.duration = 10.0 if args.video else float('inf')
 
+    latency_steps = int(args.latency_ms / 1000.0 / PHYSICS_DT)
+    target_buffer = collections.deque([DEFAULT_POS_MJ.copy() for _ in range(latency_steps + 1)], maxlen=latency_steps + 1)
+
     csv_writer = None
     if args.video:
         import csv
@@ -325,9 +330,12 @@ def main():
 
             # Step physics at 2000Hz, computing PD torque every step
             for _ in range(SUBSTEPS):
+                target_buffer.append(targets_mj.copy())
+                delayed_targets_mj = target_buffer[0]
+
                 jp = data.qpos[qp_idx]
                 jv = data.qvel[qv_idx]
-                torques = KP_MJ * (targets_mj - jp) + KD_MJ * (0.0 - jv)
+                torques = KP_MJ * (delayed_targets_mj - jp) + KD_MJ * (0.0 - jv)
                 torques = np.clip(torques, -EFFORT_MJ, EFFORT_MJ)
                 data.ctrl[actuator_idx] = torques
                 mujoco.mj_step(model, data)
