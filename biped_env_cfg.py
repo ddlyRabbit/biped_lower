@@ -759,7 +759,7 @@ class RewardsCfg:
     )
     foot_contact_force = RewTerm(
         func="biped_env_cfg:foot_contact_force_l2",
-        weight=-0.001,
+        weight=-0.005,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
             "threshold": 200.0,
@@ -973,7 +973,7 @@ class CurriculumsCfg:
         func=modify_push_force,
         params={
             "term_name": "push_robot",
-            "max_velocity": [1.50, 1.50],     # max push 0.75 m/s
+            "max_velocity": [0.80, 0.80],     # max push 0.4 m/s
             "interval": 200 * 24,
             "starting_step": 1000 * 24,     # start after 1000 iterations
         },
