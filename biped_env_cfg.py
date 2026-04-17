@@ -745,8 +745,8 @@ class RewardsCfg:
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
-            "threshold_min": 0.3,
-            "threshold_max": 0.35,
+            "threshold_min": 0.25,
+            "threshold_max": 0.30,
         },
     )
     feet_slide = RewTerm(
