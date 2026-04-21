@@ -33,12 +33,17 @@ RECORD_TOPICS = [
     '/robot_state',
     '/safety/status',
     '/safety/fault',
+    '/policy_viz',
+    '/policy_viz_joints',
     '/tf',
 ]
 
 
 def _make_imu_node(context):
     """Select IMU driver based on imu_type arg."""
+    unified = LaunchConfiguration('unified').perform(context)
+    if unified == 'true':
+        return []  # IMU handled by unified node
     imu_type = LaunchConfiguration('imu_type').perform(context)
     if imu_type == 'im10a':
         return [Node(
@@ -62,6 +67,9 @@ def _make_imu_node(context):
 
 def _make_can_driver_node(context):
     """Select CAN driver package based on can_driver arg."""
+    unified = LaunchConfiguration('unified').perform(context)
+    if unified == 'true':
+        return []  # CAN handled by unified node
     driver = LaunchConfiguration('can_driver').perform(context)
     if driver == 'can_bus_node_cpp':
         pkg = 'biped_driver_cpp'
@@ -85,7 +93,9 @@ def _make_can_driver_node(context):
 
 def _make_control_nodes(context):
     """Select control package based on control_driver arg."""
+    unified = LaunchConfiguration('unified').perform(context)
     driver = LaunchConfiguration('control_driver').perform(context)
+
     if driver == 'biped_control_cpp':
         pkg = 'biped_control_cpp'
         sm_exe = 'state_machine_node_cpp'
@@ -97,7 +107,7 @@ def _make_control_nodes(context):
         sf_exe = 'safety_node'
         pl_exe = 'policy_node'
 
-    return [
+    nodes = [
         Node(
             package=pkg, executable=sf_exe,
             name='safety_node', output='screen',
@@ -114,7 +124,28 @@ def _make_control_nodes(context):
                 'gain_scale': LaunchConfiguration('gain_scale'),
             }],
         ),
-        Node(
+    ]
+
+    # Unified node replaces IMU + CAN + policy; otherwise use separate policy node
+    if unified == 'true':
+        nodes.append(Node(
+            package='biped_unified_cpp', executable='unified_node',
+            name='unified_node', output='screen',
+            prefix=['taskset -c 1'],
+            parameters=[{
+                'robot_config': LaunchConfiguration('robot_config').perform(context),
+                'calibration_file': LaunchConfiguration('calibration_file').perform(context),
+                'onnx_model': LaunchConfiguration('onnx_model'),
+                'gain_scale': LaunchConfiguration('gain_scale'),
+                'loop_rate': 50.0,
+                'i2c_bus': 1,
+                'i2c_address': 75,
+                'imu_rate_hz': 200.0,
+                'imu_reset_pin': 4,
+            }],
+        ))
+    else:
+        nodes.append(Node(
             package=pkg, executable=pl_exe,
             name='policy_node', output='screen',
             prefix=['taskset -c 2'],
@@ -125,28 +156,9 @@ def _make_control_nodes(context):
             remappings=[
                 ('joint_states', '/policy_viz_joints'),
             ],
-        )
-    ]
-    """Select CAN driver package based on can_driver arg."""
-    driver = LaunchConfiguration('can_driver').perform(context)
-    if driver == 'can_bus_node_cpp':
-        pkg = 'biped_driver_cpp'
-        exe = 'can_bus_node_cpp'
-    else:
-        pkg = 'biped_driver'
-        exe = driver
-    return [Node(
-        package=pkg,
-        executable=exe,
-        name=exe, output='screen',
-        prefix=['taskset -c 1'],
-        parameters=[{
-            'robot_config': LaunchConfiguration('robot_config').perform(context),
-            'calibration_file': LaunchConfiguration('calibration_file').perform(context),
-            'loop_rate': 200.0,
-            'publish_rate': 200.0,
-        }],
-    )]
+        ))
+
+    return nodes
 
 
 def generate_launch_description():
@@ -168,6 +180,8 @@ def generate_launch_description():
                               description='CAN driver: can_bus_node | can_bus_node_async | can_bus_node_cpp'),
         DeclareLaunchArgument('control_driver', default_value='biped_control',
                               description='Control package: biped_control | biped_control_cpp'),
+        DeclareLaunchArgument('unified', default_value='false',
+                              description='Use unified sense+control node (replaces imu+can+policy)'),
         DeclareLaunchArgument('onnx_model', default_value='student_flat.onnx'),
         DeclareLaunchArgument('gain_scale', default_value='1.0'),
         DeclareLaunchArgument('max_pitch_deg', default_value='85.0'),

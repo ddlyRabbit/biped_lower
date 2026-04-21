@@ -18,6 +18,7 @@ find_package(yaml-cpp REQUIRED)
 add_library(biped_driver_cpp_lib STATIC
   src/robstride_bus.cpp
   src/motor_manager.cpp
+  src/bno085_reader.cpp
 )
 
 target_include_directories(biped_driver_cpp_lib PUBLIC
