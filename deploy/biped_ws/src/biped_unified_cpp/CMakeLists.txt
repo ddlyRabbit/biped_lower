@@ -25,6 +25,11 @@ endif()
 # ── Executable: unified_node ─────────────────────────────────────
 add_executable(unified_node src/unified_node.cpp)
 
+target_include_directories(unified_node PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/../biped_driver_cpp/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../biped_control_cpp/include
+)
+
 target_link_libraries(unified_node
   biped_driver_cpp_lib
   biped_control_cpp_lib
