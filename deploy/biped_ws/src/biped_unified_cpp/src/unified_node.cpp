@@ -692,9 +692,9 @@ private:
 
                 if (pit != cmd_map.end() && rit != cmd_map.end()) {
                     double pp = std::max(ANKLE_PITCH_LO,
-                               std::min(ANKLE_PITCH_HI, pit->second->position));
+                               std::min(ANKLE_PITCH_HI, (double)pit->second->position));
                     double rp = std::max(ANKLE_ROLL_LO,
-                                std::min(ANKLE_ROLL_HI, rit->second->position));
+                                std::min(ANKLE_ROLL_HI, (double)rit->second->position));
 
                     auto [motor_upper, motor_lower] = ankle_command_to_motors(pp, rp, pitch_sign);
 
