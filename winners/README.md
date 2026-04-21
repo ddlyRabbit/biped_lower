@@ -1,186 +1,157 @@
 # Winner Models
 
-## V72 Teacher (Mar 23, 2026) — Best Walking Policy
+## V124 Teacher (Apr 21, 2026) — ACTIVE TRAINING
 
 | File | Description |
 |------|-------------|
-| `v72_teacher_5999.pt` | 6K iters from scratch |
-| `v72_teacher_8998.pt` | +3K continued (threshold 0.15s) |
-| `v72_teacher_5999.mp4` | Video of 5999 checkpoint |
+| *(training in progress)* | Light URDF, tanh, IMU delay, adaptive airtime |
 
 **Config:**
-- Actuator: DelayedPDActuator, delay 0-5ms, friction 0.75/1.0/0.5 Nm
-- Kp: hip_roll/yaw=10, hip_pitch/knee=15, foot=8 | Kd: hip=3, foot=0.2
-- action_scale=0.5, no tanh (unbounded actions, RMS 2-4, max ~10)
-- Self-collisions OFF, symmetry loss ON
-- Berkeley impact air_time, threshold_min=0.15s
-- Defaults: hip_pitch ±0.08, knee 0.25, foot_pitch -0.17
-- Light URDF (15.6kg), 8192 envs, rsl_rl PPO [128,128,128]
+- **Physics**: 500 Hz (dt=0.002), **Policy**: 50 Hz (decimation=10)
+- **URDF**: Light (15.6kg)
+- **Actuator**: DelayedPDActuator, delay 0-6 steps, friction 0.25-0.5
+  - Kp: hip_roll/yaw=180, hip_pitch=180, knee=180, foot_pitch/roll=30
+  - Kd: hip_roll/pitch=6.5, hip_yaw/knee=3.0, foot=1.0
+- **IMU delay**: 0-3 steps (0-6ms) on base_lin_vel, base_ang_vel, projected_gravity
+- **Action scale**: 0.5 (hip/knee), 0.25 (foot_roll), tanh output
+- **Envs**: 16384, PPO [512, 256, 128] ELU
+- **Obs dim**: 48 (includes base_lin_vel)
 
-**Metrics (5999):** reward 20.5, vel 0.89, falls 2.4%
+**Reward Terms (V124 — 16 terms):**
 
-**Note:** Unbounded actions — policy saturates actuators. Superseded by V74 (tanh).
+| # | Term | Function | Weight | Notes |
+|---|------|----------|--------|-------|
+| 1 | track_lin_vel_xy_exp | base_mdp | +1.0 | std=0.5 |
+| 2 | track_ang_vel_z_exp | base_mdp | +0.5 | std=0.5 |
+| 3 | lin_vel_z_l2 | base_mdp | -2.0 | |
+| 4 | ang_vel_xy_l2 | base_mdp | -0.01 | |
+| 5 | joint_torques_l2 | base_mdp | -1e-5 | |
+| 6 | action_rate_l2 | base_mdp | -0.01 | |
+| 7 | feet_air_time | adaptive_berkeley | +20.0 | 500 iters positive_biped → impact, 0.15-0.35 |
+| 8 | feet_slide | berkeley | -0.25 | contact-sensor based |
+| 9 | foot_contact_force | custom l2 | -0.02 | threshold 200N (4x from V116) |
+| 10 | undesired_contacts | base_mdp | -1.0 | torso/hip links, threshold 1.0 |
+| 11 | joint_deviation_hip | base_mdp | -0.1 | hip_roll + hip_yaw + hip_pitch |
+| 12 | joint_deviation_knee | base_mdp | -0.01 | knee only |
+| 13 | joint_deviation_foot | base_mdp | -0.1 | foot_pitch + foot_roll |
+| 14 | stand_still | custom | -0.2 | penalize foot shuffle at zero cmd |
+| 15 | flat_orientation_l2 | base_mdp | -0.5 | |
+| 16 | dof_pos_limits | base_mdp | -1.0 | |
 
-## V74 Teacher (active training, Mar 24, 2026)
+**What changed from V122:**
+- IMU observation delay (0-3 steps) — sim-to-real robustness
+- Adaptive feet_air_time: positive_biped (500 iters) → berkeley impact
+- feet_air_time weight 10→20, thresholds 0.15-0.35
+- joint_deviation_hip: added hip_pitch, weight -0.5→-0.1
+- joint_deviation_foot: added foot_pitch, renamed, weight -0.3→-0.1
+- Training from scratch (not resume)
 
-**Config:**
-- Tanh output layer (actions bounded [-1, +1])
-- Actuator: DelayedPDActuator, delay 0-5ms
-- Kp: hip_roll=120, hip_yaw=60, hip_pitch=180, knee=180, foot_pitch=96, foot_roll=48
-- Kd: hip=3, foot=2 | action_scale=0.5
-- Push curriculum: active, ramped to 3.0 m/s (max)
-- Heavy URDF (0.5kg battery), 8192 envs
-- Symmetry loss ON, Berkeley impact air_time
+---
 
-**Metrics (iter ~17800):** reward 9.8 (under 3.0 m/s push), vel 0.74, 70% survive
-**Pre-push peak (iter ~16400):** reward 21.7, vel 0.92, 99% survive
-
-**Full tanh pipeline verified:** Train → Distill → Fine-tune → Play → ONNX export
-
-### V74 iter 18400 — push-hardened checkpoint
-
-| File | Description |
-|------|-------------|
-| `v74_teacher_18400.pt` | Trained with push curriculum at 3.0 m/s (max) |
-
-| File | Description |
-|------|-------------|
-| `v74_teacher_18400.pt` | Push-hardened checkpoint |
-| `v74_teacher_18400.mp4` | Video under 3.0 m/s push |
-| `v74_teacher_18400_actions.csv` | Per-joint action stats (300-step rollout) |
-
-**Metrics (18400):** reward 11.7, vel ~0.80, falls 23%, push 3.0 m/s
-
-**Action magnitudes (300-step rollout):**
-```
-Joint           abs   rms    min    max   off(rad) Kp
-R_hip_yaw      0.61  0.68  -0.97  +0.78   -0.22   60
-R_hip_roll     0.25  0.30  -0.78  +0.80   +0.02  120
-R_hip_pitch    0.60  0.64  -0.96  +0.22   -0.30  180
-R_knee         0.75  0.80  -0.13  +1.00   +0.38  180
-R_foot_pitch   0.60  0.67  -1.00  +0.98   -0.21   96
-R_foot_roll    0.82  0.85  -1.00  +1.00   +0.26   48
-L_hip_yaw      0.58  0.64  -0.71  +0.99   +0.16   60
-L_hip_roll     0.33  0.41  -0.69  +0.91   +0.01  120
-L_hip_pitch    0.49  0.53  -0.27  +0.86   +0.24  180
-L_knee         0.69  0.75  -0.11  +1.00   +0.34  180
-L_foot_pitch   0.57  0.67  -1.00  +0.98   -0.21   96
-L_foot_roll    0.75  0.80  -1.00  +0.89   -0.24   48
-```
-
-**Training history:** Kp×1.5 at iter 15000, push ramped 0.5→3.0 over iters 16100-17200.
-Policy survived max push for 1200+ iters, survival improved 58%→77%.
-**To resume:** `--resume model_18400.pt --max_iterations 6000 --urdf heavy --tanh`
-
-## V74 Student iter 1000 — Best Deployable Policy
+## V122 Teacher @ 28000 (Apr 21, 2026)
 
 | File | Description |
 |------|-------------|
-| `v74_student_1000.pt` | Phase 3 fine-tune, pre-push peak (reward 19.2) |
-| `v74_student_1000.mp4` | Video (heavy URDF, 300-step rollout) |
+| `v122_28000/model_28000.pt` | 28K iters (resumed from V116) |
+| `v122_28000/mujoco_v122_28000_v03.mp4` | MuJoCo render at 0.3 m/s |
+| `v122_28000/README.md` | Full details |
 
-**Config:** 45d obs (no base_lin_vel), tanh output, action_scale=0.5
-**Metrics:** reward 19.2, vel 0.81, falls 3%, 97% survive
-**ONNX:** `deploy/v74_student_1000_tanh.onnx` (163KB, 45→12, tanh bounded)
-
-**Deploy:**
-```bash
-ros2 launch biped_bringup bringup.launch.py \
-  can_driver:=can_bus_node_cpp \
-  imu_type:=im10a \
-  onnx_model:=~/biped_lower/deploy/v74_student_1000_tanh.onnx \
-  gain_scale:=0.3
-```
-
-### V74 iter 16600 — saved checkpoint
-
-| File | Description |
-|------|-------------|
-| `v74_teacher_16600.pt` | Trained with push curriculum (1.69 m/s at this point) |
-| `v74_teacher_16600.mp4` | Video with push active |
-
-**Metrics (16600):** reward 20.3, vel 0.89, falls 3.4%, push 1.69 m/s
-**Pre-push peak (16400):** reward 21.7, vel 0.92, falls 0.7%
+**Metrics (iter 28000):**
+- **Reward**: 35.44 | **Timeout**: 99.87% | **Falls**: 0.13%
+- **Velocity**: lin 0.877 (88%) | ang 0.862 (86%)
+- **feet_air_time**: +0.308 | **foot_contact_force**: -0.098
 
 **Play:**
 ```bash
-docker run --gpus all \
-  -e DISPLAY=:2 -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v /home/ubuntu/workspace/biped_locomotion:/workspace/biped_locomotion \
-  -v /home/ubuntu/uploads:/uploads -v /home/ubuntu/results:/results \
-  isaaclab:latest /isaac-sim/python.sh /workspace/biped_locomotion/biped_play_rsl.py \
-  --checkpoint /results/winners/v74_teacher_16600.pt \
-  --num_envs 8 --urdf heavy --tanh --video --global_camera --headless
-```
-
-**Play:**
-```bash
-docker run --gpus all \
-  -e DISPLAY=:2 -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v /home/ubuntu/workspace/biped_locomotion:/workspace/biped_locomotion \
-  -v /home/ubuntu/uploads:/uploads -v /home/ubuntu/results:/results \
-  isaaclab:latest /isaac-sim/python.sh /workspace/biped_locomotion/biped_play_rsl.py \
-  --checkpoint /results/winners/v72_teacher_5999.pt \
-  --num_envs 8 --urdf light --video --global_camera --headless
-```
-
-## V116 Teacher — Berkeley Impact + Clamped Reward (Apr 16, 2026)
-
-| File | Description |
-|------|-------------|
-| `v116_10200/model_10200.pt` | 10.2K iters, best pre-reward-rework checkpoint |
-| `v116_10200/v116_10200.mp4` | Video (8 envs, light URDF) |
-
-**Config:**
-- Actuator: DelayedPDActuator, delay 0-6 steps, friction hip=0.375/0.5, knee=0.5, foot=0.25
-- Kp: hip_roll/yaw=180, hip_pitch=180, knee=180, foot_pitch=30, foot_roll=30
-- Kd: hip_roll/pitch=6.5, hip_yaw/knee=3.0, foot_pitch/roll=1.0
-- action_scale=0.5, tanh output
-- Light URDF (15.6kg), 16384 envs, rsl_rl PPO [128,128,128]
-- 500Hz physics (dt=0.002), decimation=10 (50Hz control)
-- Self-collisions OFF
-- 13 reward terms (Berkeley exact)
-
-**Reward at iter 10200:**
-- track_lin_vel_xy_exp: +0.90 (weight=1.0)
-- feet_air_time: -0.03 (weight=5.0, Berkeley impact, threshold_min=0.2s)
-- feet_slide: -0.03 (weight=-0.25)
-- timeouts: 98.5%
-
-**Note:** This checkpoint predates the feet_air_time reward rework (weight 5→20→10, threshold changes, fixed 1.0 reward for optimal range). Good baseline for comparison.
-
-**Play:**
-```bash
-docker run --gpus all --network host \
-  -v /home/ubuntu/workspace:/workspace -v /home/ubuntu/results:/results -v /home/ubuntu/uploads:/uploads \
-  -v /tmp:/tmp -e DISPLAY=:0 \
-  --entrypoint /isaac-sim/python.sh isaaclab:latest \
-  /workspace/biped_locomotion/biped_play_rsl.py \
-  --urdf light --checkpoint /tmp/model_10200.pt \
-  --tanh --num_envs 8 --video --video_length 300 \
-  --video_dir /results/videos/v116_10200
+docker run --gpus all -v /home/ubuntu/workspace:/workspace -v /home/ubuntu/results:/results -v /home/ubuntu/uploads:/uploads isaaclab:latest \
+  /isaac-sim/python.sh /workspace/biped_locomotion/biped_play_rsl.py \
+  --checkpoint /results/winners/v122_28000/model_28000.pt \
+  --num_envs 8 --video --video_length 300 --headless --tanh
 ```
 
 ---
 
-## V76 Teacher - Soft Ankles (Apr 3, 2026)
+## V116 Teacher (Apr 16-20, 2026)
 
 | File | Description |
 |------|-------------|
-| `v76_teacher_soft_ankles_17800.pt` | 17.8k iterations, soft ankle gains |
+| `v116_44000/model_44000.pt` | 44K iters, light URDF, tanh |
+| `v116_44000/v116_isaac_41600.mp4` | Isaac Sim render |
+| `v116_44000/v116_mujoco_42200.mp4` | MuJoCo render |
+| `v116_44000/README.md` | Full details |
+| `v116_10200/model_10200.pt` | 10.2K iter checkpoint (for resume experiments) |
 
-**Config:**
-- **Ankles (Foot Pitch/Roll):** Soft compliance — Kp=30.0, Kd=1.0 (vs Kp=120)
-- **Hips/Knees:** Stiff tracking — Kp=180.0, Kd=6.5
-- **Actions:** Bounded with Tanh (`--tanh`), uniform scale=0.5
-- **Observations:** V74-style 45d (current-only)
-- **URDF:** Light (15.6kg)
-- **Training:** Resumed from an early stiff checkpoint at 9.8k, adapted successfully by 17.8k.
+**Metrics (iter 44000):**
+- **Reward**: 22.5 | **Timeout**: 100% | **Falls**: ~0%
+- **Velocity**: 0.89 | **sliding gait** (air_time negative)
+- Berkeley impact air_time, threshold 0.25-0.30, weight 10
+- PPO [512,256,128] ELU + tanh, 16384 envs
 
-**Metrics (17800):**
-- **Reward:** 21.91
-- **Track Vel (XY):** 0.8732 (87%)
-- **Falls:** 1.0% (Incredible stability)
-- **Feet Air Time:** +0.0130 (Positive clear stepping gait)
+---
 
-**Notes:** Soft ankle gains dramatically improved compliance and absorbed ground shock without violent torque spikes.
+## V76 Teacher — Soft Ankles (Apr 3, 2026)
+
+| File | Description |
+|------|-------------|
+| `v76_teacher_soft_ankles_17800.pt` | 17.8K iters, soft ankle gains |
+
+**Metrics:** reward 21.91, vel 0.87, falls 1.0%, feet_air +0.013
+
+---
+
+## V74 Teacher (Mar 24, 2026) — Push-Hardened
+
+| File | Description |
+|------|-------------|
+| `v74_teacher_18400.pt` | Push curriculum at 3.0 m/s |
+| `v74_teacher_16600.pt` | Pre-push peak (reward 21.7) |
+| `v74_teacher_18400.mp4` | Video under push |
+| `v74_student_1000.pt` | Best deployable student (45d obs) |
+| `v74_student_1000.mp4` | Student video |
+
+**V74 Student (deployable):** reward 19.2, vel 0.81, falls 3%, 45d obs → ONNX
+**V74 16600:** reward 21.7, vel 0.92, falls 0.7% (pre-push peak)
+**V74 18400:** reward 11.7, vel 0.80, falls 23% (push 3.0 m/s)
+
+---
+
+## V72 Teacher (Mar 23, 2026)
+
+| File | Description |
+|------|-------------|
+| `v72_teacher_5999.pt` | 6K iters from scratch |
+| `v72_teacher_8998.pt` | +3K continued |
+| `v72_teacher_5999.mp4` | Video |
+
+**Metrics:** reward 20.5, vel 0.89, falls 2.4%
+**Note:** Unbounded actions (no tanh). Superseded by V74.
+
+---
+
+## Config Reference
+
+### Actuator Gains (across versions)
+
+| Version | hip_roll Kp | hip_pitch Kp | knee Kp | foot Kp | Delay | Tanh |
+|---------|-------------|--------------|---------|---------|-------|------|
+| V72 | 10 | 15 | 15 | 8 | 0-5ms | No |
+| V74 | 120 | 180 | 180 | 96/48 | 0-5ms | Yes |
+| V76 | 180 | 180 | 180 | 30 | 0-12ms | Yes |
+| V116 | 180 | 180 | 180 | 30 | 0-12ms | Yes |
+| V122 | 180 | 180 | 180 | 30 | 0-12ms | Yes |
+| V124 | 180 | 180 | 180 | 30 | 0-12ms | Yes |
+
+### Obs Dimension
+
+| Version | Obs | Notes |
+|---------|-----|-------|
+| V72-V76 | 48 | Includes base_lin_vel |
+| V74 student | 45 | No base_lin_vel (deployable) |
+| V116-V124 | 48 | Includes base_lin_vel |
+
+### URDF
+
+| Version | Mass | Battery | Forward Axis |
+|---------|------|---------|-------------|
+| V72-V74 | 30.7kg (heavy) | 0.5kg | +X |
+| V76-V124 | 15.6kg (light) | none | +X |

@@ -60,6 +60,77 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
 
+###############################################################################
+# Delayed IMU observations — history buffer with per-env random delay (0-3 steps)
+# Each physics step = 2ms (500Hz). 0-3 steps = 0-6ms IMU latency.
+###############################################################################
+_IMU_DELAY_MAX_STEPS = 3
+_imu_history_lin_vel = None
+_imu_history_ang_vel = None
+_imu_history_gravity = None
+_imu_delay_steps = None
+_imu_history_len = 0
+_imu_step_counter = 0
+
+
+def _init_imu_buffers(env: "ManagerBasedRLEnv"):
+    global _imu_history_lin_vel, _imu_history_ang_vel, _imu_history_gravity
+    global _imu_delay_steps, _imu_history_len, _imu_step_counter
+    num_envs = env.num_envs
+    _imu_history_len = _IMU_DELAY_MAX_STEPS + 1
+    _imu_history_lin_vel = torch.zeros(_imu_history_len, num_envs, 3, device=env.device)
+    _imu_history_ang_vel = torch.zeros(_imu_history_len, num_envs, 3, device=env.device)
+    _imu_history_gravity = torch.zeros(_imu_history_len, num_envs, 3, device=env.device)
+    _imu_delay_steps = torch.randint(0, _IMU_DELAY_MAX_STEPS + 1, (num_envs,), device=env.device)
+    _imu_step_counter = 0
+
+
+def _reset_imu_delay(env: "ManagerBasedRLEnv", env_ids: torch.Tensor):
+    global _imu_delay_steps
+    if _imu_delay_steps is None:
+        _init_imu_buffers(env)
+    _imu_delay_steps[env_ids] = torch.randint(
+        0, _IMU_DELAY_MAX_STEPS + 1, (len(env_ids),), device=env.device
+    )
+
+
+def _roll_imu_history(env: "ManagerBasedRLEnv") -> int:
+    global _imu_step_counter, _imu_history_lin_vel, _imu_history_ang_vel, _imu_history_gravity
+    if _imu_history_lin_vel is None:
+        _init_imu_buffers(env)
+    _imu_history_lin_vel = torch.roll(_imu_history_lin_vel, -1, dims=0)
+    _imu_history_ang_vel = torch.roll(_imu_history_ang_vel, -1, dims=0)
+    _imu_history_gravity = torch.roll(_imu_history_gravity, -1, dims=0)
+    _imu_history_lin_vel[-1] = env.scene["robot"].data.root_lin_vel_b.clone()
+    _imu_history_ang_vel[-1] = env.scene["robot"].data.root_ang_vel_b.clone()
+    _imu_history_gravity[-1] = env.scene["robot"].data.projected_gravity_b.clone()
+    _imu_step_counter += 1
+    return _imu_step_counter
+
+
+def delayed_base_lin_vel(env: "ManagerBasedRLEnv", asset_cfg=None) -> torch.Tensor:
+    if _imu_history_lin_vel is None:
+        _init_imu_buffers(env)
+    global _imu_step_counter
+    expected_step = getattr(env, "_imu_obs_step", -1)
+    if expected_step != _imu_step_counter:
+        _roll_imu_history(env)
+        env._imu_obs_step = _imu_step_counter
+    return _imu_history_lin_vel[_imu_delay_steps, torch.arange(env.num_envs, device=env.device)]
+
+
+def delayed_base_ang_vel(env: "ManagerBasedRLEnv", asset_cfg=None) -> torch.Tensor:
+    if _imu_history_ang_vel is None:
+        _init_imu_buffers(env)
+    return _imu_history_ang_vel[_imu_delay_steps, torch.arange(env.num_envs, device=env.device)]
+
+
+def delayed_projected_gravity(env: "ManagerBasedRLEnv", asset_cfg=None) -> torch.Tensor:
+    if _imu_history_gravity is None:
+        _init_imu_buffers(env)
+    return _imu_history_gravity[_imu_delay_steps, torch.arange(env.num_envs, device=env.device)]
+
+
 ALL_JOINTS = [
     "right_hip_yaw_03", "right_hip_roll_03", "right_hip_pitch_04",
     "right_knee_04", "right_foot_pitch_02", "right_foot_roll_02",
@@ -71,6 +142,28 @@ ALL_JOINTS = [
 ###############################################################################
 # Custom reward functions — EXACT Berkeley implementations
 ###############################################################################
+
+
+def feet_air_time_positive_biped(
+    env: "ManagerBasedRLEnv",
+    command_name: str,
+    threshold_min: float = 0.1,
+    threshold_max: float = 0.5,
+    sensor_cfg: SceneEntityCfg = SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
+) -> torch.Tensor:
+    """Reward long steps for bipeds — continuous single-stance airtime.
+    Berkeley implementation: rewards when exactly one foot is in contact.
+    """
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    air_time = contact_sensor.data.current_air_time[:, sensor_cfg.body_ids]
+    contact_time = contact_sensor.data.current_contact_time[:, sensor_cfg.body_ids]
+    in_contact = contact_time > 0.0
+    in_mode_time = torch.where(in_contact, contact_time, air_time)
+    single_stance = torch.sum(in_contact.int(), dim=1) == 1
+    reward = torch.min(torch.where(single_stance.unsqueeze(-1), in_mode_time, 0.0), dim=1)[0]
+    reward = torch.clamp(reward, max=threshold_max)
+    reward *= reward > threshold_min
+    return reward
 
 
 def stand_still(
@@ -230,13 +323,16 @@ def feet_air_time_adaptive_berkeley(
     command_name: str,
     asset_cfg: SceneEntityCfg,
     sensor_cfg: SceneEntityCfg,
-    threshold_min: float = 0.20,
-    threshold_max: float = 0.45,
+    threshold_min: float = 0.10,
+    threshold_max: float = 0.40,
     height_threshold: float = 0.058,
-    switch_step: int = 300 * 24,
+    switch_step: int = 500 * 24,  # 500 iters continuous positive_biped, then impact
 ) -> torch.Tensor:
     if env.common_step_counter < switch_step:
-        return feet_air_time(env, command_name, asset_cfg, height_threshold)
+        return feet_air_time_positive_biped(
+            env, command_name, threshold_min=threshold_min, threshold_max=threshold_max,
+            sensor_cfg=sensor_cfg,
+        )
     else:
         return feet_air_time_berkeley(
             env, command_name, sensor_cfg,
@@ -615,15 +711,15 @@ class ObservationsCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         base_lin_vel = ObsTerm(
-            func=base_mdp.base_lin_vel,
+            func=delayed_base_lin_vel,
             noise=Unoise(n_min=-0.1, n_max=0.1),
         )
         base_ang_vel = ObsTerm(
-            func=base_mdp.base_ang_vel,
+            func=delayed_base_ang_vel,
             noise=Unoise(n_min=-0.2, n_max=0.2),
         )
         projected_gravity = ObsTerm(
-            func=base_mdp.projected_gravity,
+            func=delayed_projected_gravity,
             noise=Unoise(n_min=-0.05, n_max=0.05),
         )
         velocity_commands = ObsTerm(
@@ -740,13 +836,14 @@ class RewardsCfg:
     )
     action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.01)
     feet_air_time = RewTerm(
-        func="biped_env_cfg:feet_air_time_berkeley",
-        weight=10.0,
+        func="biped_env_cfg:feet_air_time_adaptive_berkeley",
+        weight=20.0,
         params={
             "command_name": "base_velocity",
+            "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
-            "threshold_min": 0.25,
-            "threshold_max": 0.30,
+            "threshold_min": 0.15,
+            "threshold_max": 0.35,
         },
     )
     feet_slide = RewTerm(
@@ -759,7 +856,7 @@ class RewardsCfg:
     )
     foot_contact_force = RewTerm(
         func="biped_env_cfg:foot_contact_force_l2",
-        weight=-0.005,
+        weight=-0.02,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
             "threshold": 200.0,
@@ -781,10 +878,10 @@ class RewardsCfg:
     )
     joint_deviation_hip = RewTerm(
         func=base_mdp.joint_deviation_l1,
-        weight=-0.5,
+        weight=-0.1,
         params={
             "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*hip_roll.*", ".*hip_yaw.*"],
+                "robot", joint_names=[".*hip_roll.*", ".*hip_yaw.*", ".*hip_pitch.*"],
             ),
         },
     )
@@ -795,11 +892,11 @@ class RewardsCfg:
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*knee.*"]),
         },
     )
-    joint_deviation_foot_roll = RewTerm(
+    joint_deviation_foot = RewTerm(
         func=base_mdp.joint_deviation_l1,
-        weight=-0.3,
+        weight=-0.1,
         params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_roll.*"]),
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_pitch.*", ".*foot_roll.*"]),
         },
     )
     stand_still = RewTerm(
@@ -1007,7 +1104,7 @@ class BipedFlatEnvCfg(ManagerBasedRLEnvCfg):
     def __post_init__(self):
         self.decimation = 10  # 50 Hz control
         self.episode_length_s = 20.0
-        self.sim.dt = 0.002  # 1000 Hz physics
+        self.sim.dt = 0.002  # 500 Hz physics (1/0.002)
         self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = False  # required for self-collisions
         self.sim.physics_material = self.scene.terrain.physics_material
