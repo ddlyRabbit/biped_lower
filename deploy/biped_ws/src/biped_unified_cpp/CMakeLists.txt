@@ -30,15 +30,27 @@ target_include_directories(unified_node PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../biped_control_cpp/include
 )
 
-# Static libs from sibling packages (in colcon build dir)
-link_directories(
-  ${CMAKE_BINARY_DIR}/biped_driver_cpp
-  ${CMAKE_BINARY_DIR}/biped_control_cpp
-)
+# Static libs from sibling packages — colcon builds in isolated dirs
+# so we use find_library to locate them.
+find_library(BIPED_DRIVER_CPP_LIB
+  NAMES biped_driver_cpp_lib
+  PATHS ${CMAKE_CURRENT_SOURCE_DIR}/../../build/biped_driver_cpp
+  NO_DEFAULT_PATH)
+find_library(BIPED_CONTROL_CPP_LIB
+  NAMES biped_control_cpp_lib
+  PATHS ${CMAKE_CURRENT_SOURCE_DIR}/../../build/biped_control_cpp
+  NO_DEFAULT_PATH)
+
+if(NOT BIPED_DRIVER_CPP_LIB)
+  message(FATAL_ERROR "biped_driver_cpp_lib not found")
+endif()
+if(NOT BIPED_CONTROL_CPP_LIB)
+  message(FATAL_ERROR "biped_control_cpp_lib not found")
+endif()
 
 target_link_libraries(unified_node
-  biped_driver_cpp_lib
-  biped_control_cpp_lib
+  ${BIPED_DRIVER_CPP_LIB}
+  ${BIPED_CONTROL_CPP_LIB}
   yaml-cpp
   pthread
 )
