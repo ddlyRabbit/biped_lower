@@ -30,6 +30,12 @@ target_include_directories(unified_node PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../biped_control_cpp/include
 )
 
+# Static libs from sibling packages (in colcon build dir)
+link_directories(
+  ${CMAKE_CURRENT_BINARY_DIR}/../biped_driver_cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/../biped_control_cpp
+)
+
 target_link_libraries(unified_node
   biped_driver_cpp_lib
   biped_control_cpp_lib
