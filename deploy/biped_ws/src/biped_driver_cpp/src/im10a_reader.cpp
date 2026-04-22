@@ -107,6 +107,11 @@ bool Im10aReader::auto_baud_and_upgrade() {
         ::write(fd_, set_output, sizeof(set_output));
         usleep(100000);
 
+        // Set Return Rate to 200Hz (0x0B)
+        uint8_t set_rate[] = {0xFF, 0xAA, 0x03, 0x0B, 0x00};
+        ::write(fd_, set_rate, sizeof(set_rate));
+        usleep(100000);
+
         // Save
         uint8_t save[] = {0xFF, 0xAA, 0x00, 0x00, 0x00};
         ::write(fd_, save, sizeof(save));
@@ -148,6 +153,11 @@ bool Im10aReader::auto_baud_and_upgrade() {
         // and Quat (Bit 1) = 0x02 (RSWH)
         uint8_t set_output[] = {0xFF, 0xAA, 0x02, 0x06, 0x02};
         ::write(fd_, set_output, sizeof(set_output));
+        usleep(100000);
+
+        // Set Return Rate to 200Hz (0x0B)
+        uint8_t set_rate[] = {0xFF, 0xAA, 0x03, 0x0B, 0x00};
+        ::write(fd_, set_rate, sizeof(set_rate));
         usleep(100000);
 
         // Save
