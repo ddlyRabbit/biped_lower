@@ -172,9 +172,6 @@ def _make_control_nodes(context):
                 'onnx_model': LaunchConfiguration('onnx_model'),
                 'gain_scale': LaunchConfiguration('gain_scale'),
             }],
-            remappings=[
-                ('joint_states', '/policy_viz_joints'),
-            ],
         ))
 
     return nodes
