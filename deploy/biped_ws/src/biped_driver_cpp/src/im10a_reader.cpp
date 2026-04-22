@@ -64,23 +64,33 @@ bool Im10aReader::configure_serial(int fd, int baud) {
 }
 
 bool Im10aReader::auto_baud_and_upgrade() {
-    // Basic implementation: try target baud directly first. If no data, try 9600 and upgrade.
+    // Check target baud first.
     if (!configure_serial(fd_, target_baud_)) return false;
     
-    // Give it a moment and check for data
-    usleep(100000); 
-    uint8_t dummy;
-    int n = ::read(fd_, &dummy, 1);
-    if (n > 0) {
+    usleep(300000); 
+    uint8_t dummy[256];
+    int n = ::read(fd_, dummy, sizeof(dummy));
+    bool found_header = false;
+    for(int i=0; i<n; i++) {
+        if(dummy[i] == 0x55) { found_header = true; break; }
+    }
+
+    if (found_header) {
         // Already at target baud
         return true;
     }
 
     // Try 9600
     if (!configure_serial(fd_, 9600)) return false;
-    usleep(100000);
-    n = ::read(fd_, &dummy, 1);
-    if (n > 0) {
+    usleep(300000);
+    n = ::read(fd_, dummy, sizeof(dummy));
+    found_header = false;
+    for(int i=0; i<n; i++) {
+        if(dummy[i] == 0x55) { found_header = true; break; }
+    }
+
+    if (found_header) {
+        std::cerr << "IM10A detected at 9600. Sending upgrade to " << target_baud_ << "..." << std::endl;
         // We are at 9600. Send unlock and upgrade commands.
         uint8_t unlock[] = {0xFF, 0xAA, 0x69, 0x88, 0xB5};
         ::write(fd_, unlock, sizeof(unlock));
