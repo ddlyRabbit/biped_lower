@@ -64,7 +64,7 @@ if TYPE_CHECKING:
 # Delayed IMU observations — history buffer with per-env random delay (0-3 steps)
 # Each physics step = 2ms (500Hz). 0-3 steps = 0-6ms IMU latency.
 ###############################################################################
-_IMU_DELAY_MAX_STEPS = 3
+_IMU_DELAY_MAX_STEPS = 0
 _imu_history_lin_vel = None
 _imu_history_ang_vel = None
 _imu_history_gravity = None
@@ -712,15 +712,15 @@ class ObservationsCfg:
     class PolicyCfg(ObsGroup):
         base_lin_vel = ObsTerm(
             func=delayed_base_lin_vel,
-            noise=Unoise(n_min=-0.1, n_max=0.1),
+            noise=Unoise(n_min=-0.2, n_max=0.2),
         )
         base_ang_vel = ObsTerm(
             func=delayed_base_ang_vel,
-            noise=Unoise(n_min=-0.2, n_max=0.2),
+            noise=Unoise(n_min=-0.4, n_max=0.4),
         )
         projected_gravity = ObsTerm(
             func=delayed_projected_gravity,
-            noise=Unoise(n_min=-0.05, n_max=0.05),
+            noise=Unoise(n_min=-0.1, n_max=0.1),
         )
         velocity_commands = ObsTerm(
             func=base_mdp.generated_commands,
@@ -834,7 +834,7 @@ class RewardsCfg:
         func=base_mdp.joint_torques_l2,
         weight=-1e-05,
     )
-    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.01)
+    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.3)
     feet_air_time = RewTerm(
         func="biped_env_cfg:feet_air_time_adaptive_berkeley",
         weight=20.0,
