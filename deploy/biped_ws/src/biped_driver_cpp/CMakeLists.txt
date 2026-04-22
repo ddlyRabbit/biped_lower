@@ -19,6 +19,7 @@ add_library(biped_driver_cpp_lib STATIC
   src/robstride_bus.cpp
   src/motor_manager.cpp
   src/bno085_reader.cpp
+  src/im10a_reader.cpp
 )
 
 target_include_directories(biped_driver_cpp_lib PUBLIC
@@ -68,8 +69,25 @@ ament_target_dependencies(imu_node
   tf2_ros
 )
 
+# ── Executable: im10a_node ──────────────────────────────────────────
+add_executable(im10a_node
+  src/im10a_node.cpp
+)
+
+target_link_libraries(im10a_node
+  biped_driver_cpp_lib
+  pthread
+)
+
+ament_target_dependencies(im10a_node
+  rclcpp
+  sensor_msgs
+  geometry_msgs
+  tf2_ros
+)
+
 # ── Install ───────────────────────────────────────────────────────
-install(TARGETS can_bus_node_cpp imu_node
+install(TARGETS can_bus_node_cpp imu_node im10a_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

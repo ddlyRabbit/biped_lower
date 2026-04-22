@@ -44,12 +44,28 @@ def _make_imu_node(context):
     unified = LaunchConfiguration('unified').perform(context)
     if unified == 'true':
         return []  # IMU handled by unified node
+    
     imu_type = LaunchConfiguration('imu_type').perform(context)
+    
     if imu_type == 'im10a':
         return [Node(
             package='biped_driver', executable='im10a_imu_node',
             name='imu_node', output='screen',
-            parameters=[{'serial_port': '/dev/ttyUSB0', 'baudrate': 460800, 'rate_hz': 300.0}],
+            parameters=[{
+                'serial_port': LaunchConfiguration('im10a_port'), 
+                'baudrate': LaunchConfiguration('im10a_baud'), 
+                'rate_hz': 200.0
+            }],
+        )]
+    elif imu_type == 'im10a_cpp':
+        return [Node(
+            package='biped_driver_cpp', executable='im10a_node',
+            name='imu_node', output='screen',
+            parameters=[{
+                'serial_port': LaunchConfiguration('im10a_port'), 
+                'baud_rate': LaunchConfiguration('im10a_baud'), 
+                'rate_hz': 200.0
+            }],
         )]
     elif imu_type == 'bno085_cpp':
         return [Node(
@@ -138,6 +154,9 @@ def _make_control_nodes(context):
                 'onnx_model': LaunchConfiguration('onnx_model'),
                 'gain_scale': LaunchConfiguration('gain_scale'),
                 'loop_rate': 50.0,
+                'imu_type': LaunchConfiguration('imu_type'),
+                'im10a_port': LaunchConfiguration('im10a_port'),
+                'im10a_baud': LaunchConfiguration('im10a_baud'),
                 'i2c_bus': 1,
                 'i2c_address': 75,
                 'imu_rate_hz': 200.0,
@@ -177,6 +196,13 @@ def generate_launch_description():
         DeclareLaunchArgument('calibration_file', default_value=''),
         DeclareLaunchArgument('robot_config', default_value=default_robot_config),
         DeclareLaunchArgument('can_driver', default_value='can_bus_node',
+                              description='CAN node: can_bus_node | can_bus_node_cpp'),
+        DeclareLaunchArgument('imu_type', default_value='bno085',
+                              description='IMU: bno085 | bno085_cpp | im10a | im10a_cpp'),
+        DeclareLaunchArgument('im10a_port', default_value='/dev/ttyUSB0',
+                              description='Serial port for IM10A'),
+        DeclareLaunchArgument('im10a_baud', default_value='460800',
+                              description='Baud rate for IM10A'),
                               description='CAN driver: can_bus_node | can_bus_node_async | can_bus_node_cpp'),
         DeclareLaunchArgument('control_driver', default_value='biped_control',
                               description='Control package: biped_control | biped_control_cpp'),

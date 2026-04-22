@@ -148,6 +148,9 @@ public:
         declare_parameter("gains_file", "");
         declare_parameter("gain_scale", 1.0);
         declare_parameter("loop_rate", 50.0);
+        declare_parameter("imu_type", "bno085");
+        declare_parameter("im10a_port", "/dev/ttyUSB0");
+        declare_parameter("im10a_baud", 460800);
         declare_parameter("i2c_bus", 1);
         declare_parameter("i2c_address", 0x4B);
         declare_parameter("imu_rate_hz", 200.0);
@@ -194,17 +197,29 @@ public:
         RCLCPP_INFO(get_logger(), "All motors enabled in MIT mode.");
 
         // ── Init IMU ─────────────────────────────────────────────
-        int i2c_bus      = get_parameter("i2c_bus").as_int();
-        int i2c_addr     = get_parameter("i2c_address").as_int();
-        double imu_rate  = get_parameter("imu_rate_hz").as_double();
-        bool game_quat   = get_parameter("use_game_quaternion").as_bool();
-        int reset_pin    = get_parameter("imu_reset_pin").as_int();
+        imu_type_ = get_parameter("imu_type").as_string();
 
-        if (imu_.init(i2c_bus, i2c_addr, reset_pin, imu_rate, game_quat)) {
-            RCLCPP_INFO(get_logger(), "BNO085 initialized — bus %d, addr 0x%02X, %.0fHz",
-                        i2c_bus, i2c_addr, imu_rate);
+        if (imu_type_ == "im10a") {
+            std::string port = get_parameter("im10a_port").as_string();
+            int baud = get_parameter("im10a_baud").as_int();
+            if (im10a_imu_.init(port, baud)) {
+                RCLCPP_INFO(get_logger(), "IM10A initialized — port %s, baud %d", port.c_str(), baud);
+            } else {
+                RCLCPP_ERROR(get_logger(), "IM10A init failed!");
+            }
         } else {
-            RCLCPP_ERROR(get_logger(), "BNO085 init failed!");
+            int i2c_bus      = get_parameter("i2c_bus").as_int();
+            int i2c_addr     = get_parameter("i2c_address").as_int();
+            double imu_rate  = get_parameter("imu_rate_hz").as_double();
+            bool game_quat   = get_parameter("use_game_quaternion").as_bool();
+            int reset_pin    = get_parameter("imu_reset_pin").as_int();
+
+            if (bno085_imu_.init(i2c_bus, i2c_addr, reset_pin, imu_rate, game_quat)) {
+                RCLCPP_INFO(get_logger(), "BNO085 initialized — bus %d, addr 0x%02X, %.0fHz",
+                            i2c_bus, i2c_addr, imu_rate);
+            } else {
+                RCLCPP_ERROR(get_logger(), "BNO085 init failed!");
+            }
         }
 
         // ── Init ONNX ───────────────────────────────────────────
