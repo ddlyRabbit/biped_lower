@@ -102,7 +102,7 @@ def _make_can_driver_node(context):
             'robot_config': LaunchConfiguration('robot_config').perform(context),
             'calibration_file': LaunchConfiguration('calibration_file').perform(context),
             'loop_rate': 50.0,
-            'publish_rate': 50.0,
+            'publish_rate': 200.0,
         }],
     )]
 

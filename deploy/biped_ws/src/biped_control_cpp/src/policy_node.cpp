@@ -259,7 +259,7 @@ private:
                 js.effort.push_back(0.0);
             }
             pub_viz_js_->publish(js);
-        } else {
+        } else if (fsm_state_ == "WALK") {
             pub_cmd_->publish(cmd_msg);
         }
     }
