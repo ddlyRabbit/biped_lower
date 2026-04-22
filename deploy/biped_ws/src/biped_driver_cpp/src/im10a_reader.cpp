@@ -70,19 +70,53 @@ bool Im10aReader::auto_baud_and_upgrade() {
     if (!configure_serial(fd_, target_baud_)) return false;
     
     usleep(300000); 
-    uint8_t dummy[256];
+    uint8_t dummy[1024];
     int n = ::read(fd_, dummy, sizeof(dummy));
     bool found_header = false;
-    for(int i=0; i<n; i++) {
-        if(dummy[i] == 0x55) { found_header = true; break; }
+    bool found_unwanted = false;
+
+    for(int i=0; i<n-1; i++) {
+        if(dummy[i] == 0x55) { 
+            found_header = true; 
+            // Check the type byte immediately following the header
+            uint8_t type = dummy[i+1];
+            // Unwanted types: 0x50 (Time), 0x53 (Euler), 0x54 (Mag), 0x56 (Pressure)
+            if (type == 0x50 || type == 0x53 || type == 0x54 || type == 0x56) {
+                found_unwanted = true;
+            }
+        }
     }
 
-    if (found_header) {
-        // Already at target baud
+    if (found_header && !found_unwanted) {
+        // Already at target baud and output content is optimized
+        std::cout << "IM10A detected at " << target_baud_ << " baud with optimized output." << std::endl;
         return true;
     }
 
-    // Try 9600
+    if (found_header && found_unwanted) {
+        std::cout << "IM10A detected at " << target_baud_ << " baud but outputting unwanted packets. Reconfiguring..." << std::endl;
+        
+        // Unlock config
+        uint8_t unlock[] = {0xFF, 0xAA, 0x69, 0x88, 0xB5};
+        ::write(fd_, unlock, sizeof(unlock));
+        usleep(100000);
+
+        // Set Output Content to Accel (Bit 1) | Gyro (Bit 2) = 0x06 (RSWL)
+        // and Quat (Bit 1) = 0x02 (RSWH)
+        uint8_t set_output[] = {0xFF, 0xAA, 0x02, 0x06, 0x02};
+        ::write(fd_, set_output, sizeof(set_output));
+        usleep(100000);
+
+        // Save
+        uint8_t save[] = {0xFF, 0xAA, 0x00, 0x00, 0x00};
+        ::write(fd_, save, sizeof(save));
+        usleep(200000); // Give it time to flash
+        
+        tcflush(fd_, TCIOFLUSH);
+        return true;
+    }
+
+    // If no header found, it might be at the factory default 9600 baud
     if (!configure_serial(fd_, 9600)) return false;
     usleep(300000);
     n = ::read(fd_, dummy, sizeof(dummy));
@@ -92,27 +126,36 @@ bool Im10aReader::auto_baud_and_upgrade() {
     }
 
     if (found_header) {
-        std::cerr << "IM10A detected at 9600. Sending upgrade to " << target_baud_ << "..." << std::endl;
-        // We are at 9600. Send unlock and upgrade commands.
+        std::cout << "IM10A detected at 9600 baud. Upgrading to " << target_baud_ << " and optimizing output..." << std::endl;
+        
+        // Unlock config
         uint8_t unlock[] = {0xFF, 0xAA, 0x69, 0x88, 0xB5};
         ::write(fd_, unlock, sizeof(unlock));
         usleep(100000);
 
+        // Set baud rate
         uint8_t baud_code = 0x08; // 460800
         if (target_baud_ == 921600) baud_code = 0x09;
-        
         uint8_t set_baud[] = {0xFF, 0xAA, 0x04, baud_code, 0x00};
         ::write(fd_, set_baud, sizeof(set_baud));
         usleep(100000);
 
-        // Switch host to target baud BEFORE sending save command
+        // Switch host to target baud BEFORE sending subsequent commands
         if (!configure_serial(fd_, target_baud_)) return false;
         usleep(100000);
 
-        uint8_t save[] = {0xFF, 0xAA, 0x00, 0x00, 0x00};
-        ::write(fd_, save, sizeof(save));
+        // Set Output Content to Accel (Bit 1) | Gyro (Bit 2) = 0x06 (RSWL)
+        // and Quat (Bit 1) = 0x02 (RSWH)
+        uint8_t set_output[] = {0xFF, 0xAA, 0x02, 0x06, 0x02};
+        ::write(fd_, set_output, sizeof(set_output));
         usleep(100000);
 
+        // Save
+        uint8_t save[] = {0xFF, 0xAA, 0x00, 0x00, 0x00};
+        ::write(fd_, save, sizeof(save));
+        usleep(200000); // Give it time to flash
+
+        tcflush(fd_, TCIOFLUSH);
         return true;
     }
 
