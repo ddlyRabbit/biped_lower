@@ -326,7 +326,7 @@ def feet_air_time_adaptive_berkeley(
     threshold_min: float = 0.10,
     threshold_max: float = 0.40,
     height_threshold: float = 0.058,
-    switch_step: int = 0,  # immediate impact-based air time
+    switch_step: int = 300 * 24,  # 300 iters continuous positive_biped, then impact
 ) -> torch.Tensor:
     if env.common_step_counter < switch_step:
         return feet_air_time_positive_biped(
@@ -834,10 +834,10 @@ class RewardsCfg:
         func=base_mdp.joint_torques_l2,
         weight=-1e-05,
     )
-    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.006)
+    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.01)
     feet_air_time = RewTerm(
         func="biped_env_cfg:feet_air_time_adaptive_berkeley",
-        weight=20.0,
+        weight=10.0,
         params={
             "command_name": "base_velocity",
             "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
