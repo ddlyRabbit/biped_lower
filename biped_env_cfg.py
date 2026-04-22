@@ -718,15 +718,15 @@ class ObservationsCfg:
     class PolicyCfg(ObsGroup):
         base_lin_vel = ObsTerm(
             func=delayed_base_lin_vel,
-            noise=Unoise(n_min=-0.2, n_max=0.2),
+            noise=Unoise(n_min=-0.1, n_max=0.1),
         )
         base_ang_vel = ObsTerm(
             func=delayed_base_ang_vel,
-            noise=Unoise(n_min=-0.4, n_max=0.4),
+            noise=Unoise(n_min=-0.2, n_max=0.2),
         )
         projected_gravity = ObsTerm(
             func=delayed_projected_gravity,
-            noise=Unoise(n_min=-0.1, n_max=0.1),
+            noise=Unoise(n_min=-0.05, n_max=0.05),
         )
         velocity_commands = ObsTerm(
             func=base_mdp.generated_commands,
