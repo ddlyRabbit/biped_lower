@@ -137,7 +137,7 @@ def _make_control_nodes(context):
             name='state_machine_node', output='screen',
             parameters=[{
                 'wiggle_config': os.path.join(get_package_share_directory('biped_bringup'), 'config', 'wiggle.yaml'),
-                'gain_scale': LaunchConfiguration('gain_scale'),
+                'gain_scale': float(LaunchConfiguration('gain_scale').perform(context)),
             }],
         ),
     ]
@@ -151,12 +151,12 @@ def _make_control_nodes(context):
             parameters=[{
                 'robot_config': LaunchConfiguration('robot_config').perform(context),
                 'calibration_file': LaunchConfiguration('calibration_file').perform(context),
-                'onnx_model': LaunchConfiguration('onnx_model'),
-                'gain_scale': LaunchConfiguration('gain_scale'),
+                'onnx_model': LaunchConfiguration('onnx_model').perform(context),
+                'gain_scale': float(LaunchConfiguration('gain_scale').perform(context)),
                 'loop_rate': 50.0,
-                'imu_type': LaunchConfiguration('imu_type'),
-                'im10a_port': LaunchConfiguration('im10a_port'),
-                'im10a_baud': LaunchConfiguration('im10a_baud'),
+                'imu_type': LaunchConfiguration('imu_type').perform(context),
+                'im10a_port': LaunchConfiguration('im10a_port').perform(context),
+                'im10a_baud': int(LaunchConfiguration('im10a_baud').perform(context)),
                 'i2c_bus': 1,
                 'i2c_address': 75,
                 'imu_rate_hz': 200.0,
@@ -169,8 +169,8 @@ def _make_control_nodes(context):
             name='policy_node', output='screen',
             prefix=['taskset -c 2'],
             parameters=[{
-                'onnx_model': LaunchConfiguration('onnx_model'),
-                'gain_scale': LaunchConfiguration('gain_scale'),
+                'onnx_model': LaunchConfiguration('onnx_model').perform(context),
+                'gain_scale': float(LaunchConfiguration('gain_scale').perform(context)),
             }],
         ))
 
