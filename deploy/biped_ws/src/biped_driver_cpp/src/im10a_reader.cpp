@@ -272,9 +272,12 @@ ImuData Im10aReader::read() {
 
     has_new_data_ = false;
     uint8_t buf[256];
-    int n = ::read(fd_, buf, sizeof(buf));
     
-    if (n > 0) {
+    // Drain the entire serial buffer to ensure we only use the freshest data
+    while (true) {
+        int n = ::read(fd_, buf, sizeof(buf));
+        if (n <= 0) break; // Buffer empty (EAGAIN) or error
+
         for (int i = 0; i < n; ++i) {
             uint8_t b = buf[i];
             switch (state_) {
