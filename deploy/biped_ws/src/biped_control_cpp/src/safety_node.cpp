@@ -52,7 +52,7 @@ public:
             std::bind(&SafetyNodeCpp::check_loop, this)
         );
 
-        last_cmd_time_ = now().seconds();
+        last_cmd_time_ = 0.0; // Don't start watchdog until first command is received
         last_imu_time_ = now().seconds();
 
         RCLCPP_INFO(get_logger(), "Safety node started (C++) — pitch<%.0f°, roll<%.0f°, temp<%.0f°C",
