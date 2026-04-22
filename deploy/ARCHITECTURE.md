@@ -156,6 +156,16 @@ Runtime-tunable via `gain_scale` parameter (0.3→1.0 ladder).
 
 ```
 biped_ws/src/
+├── biped_unified_cpp/  C++ unified low-latency sense/control node
+├── biped_control_cpp/  C++
+│   ├── obs_builder.cpp
+│   ├── policy_node.cpp
+│   ├── state_machine_node.cpp
+│   └── safety_node.cpp
+├── biped_driver_cpp/   C++
+│   ├── can_bus_node.cpp
+│   ├── bno085_node.cpp
+│   └── im10a_node.cpp
 ├── biped_msgs/         CMake — MITCommand, MotorState, RobotState
 ├── biped_description/  CMake — URDF (light) + 35 STL meshes
 ├── biped_driver/       Python
@@ -320,14 +330,20 @@ Also saves `action_stats.csv` alongside the video for post-analysis.
 
 | Node | Package | Description |
 |------|---------|-------------|
+| `unified_node` | biped_unified_cpp | C++ single-process sense-and-control (IMU + CAN + Policy), lowest latency |
 | `can_bus_node_cpp` | biped_driver_cpp | C++ CAN driver, ~300Hz per bus, dual CAN |
 | `can_bus_node` | biped_driver | Python sync CAN driver, ~50Hz |
 | `can_bus_node_async` | biped_driver | Python async CAN driver, ~200Hz |
-| `imu_node` | biped_driver | BNO085 IMU via I2C, 50Hz (default) |
-| `im10a_imu_node` | biped_driver | IM10A IMU via USB serial, 300Hz |
-| `policy_node` | biped_control | ONNX inference at 50Hz, publishes motor cmds or viz |
-| `safety_node` | biped_control | Pitch/roll/temp monitoring, triggers ESTOP |
-| `state_machine_node` | biped_control | FSM: IDLE→STAND→WALK/SIM_WALK/WIGGLE→ESTOP |
+| `imu_node` | biped_driver_cpp | C++ BNO085 IMU via I2C, 200Hz |
+| `im10a_node` | biped_driver_cpp | C++ IM10A IMU via USB serial, 200Hz |
+| `imu_node` (py) | biped_driver | Python BNO085 IMU via I2C, 50Hz (default) |
+| `im10a_imu_node` | biped_driver | Python IM10A IMU via USB serial, 300Hz |
+| `policy_node_cpp` | biped_control_cpp | C++ ONNX inference at 50Hz |
+| `policy_node` | biped_control | Python ONNX inference at 50Hz, publishes motor cmds or viz |
+| `safety_node_cpp` | biped_control_cpp | C++ Pitch/roll/temp monitoring, triggers ESTOP |
+| `safety_node` | biped_control | Python Pitch/roll/temp monitoring, triggers ESTOP |
+| `state_machine_node_cpp` | biped_control_cpp | C++ FSM: IDLE→STAND→WALK/SIM_WALK/WIGGLE→ESTOP |
+| `state_machine_node` | biped_control | Python FSM: IDLE→STAND→WALK/SIM_WALK/WIGGLE→ESTOP |
 | `keyboard_teleop` | biped_teleop | Terminal UI: state transitions + velocity control |
 | `robot_state_publisher` | (system) | URDF → /tf from /joint_states |
 | `policy_state_publisher` | (system) | URDF → /tf policy/* from /policy_viz_joints |
