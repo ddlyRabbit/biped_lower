@@ -1,10 +1,10 @@
 # Winner Models
 
-## V124 Teacher (Apr 21, 2026) — ACTIVE TRAINING
+## V125 Teacher (Apr 22, 2026) — ACTIVE TRAINING
 
 | File | Description |
 |------|-------------|
-| *(training in progress)* | Light URDF, tanh, IMU delay, adaptive airtime |
+| *(training in progress)* | Light URDF, tanh, no IMU delay, symmetry ON |
 
 **Config:**
 - **Physics**: 500 Hz (dt=0.002), **Policy**: 50 Hz (decimation=10)
@@ -12,12 +12,14 @@
 - **Actuator**: DelayedPDActuator, delay 0-6 steps, friction 0.25-0.5
   - Kp: hip_roll/yaw=180, hip_pitch=180, knee=180, foot_pitch/roll=30
   - Kd: hip_roll/pitch=6.5, hip_yaw/knee=3.0, foot=1.0
-- **IMU delay**: 0-3 steps (0-6ms) on base_lin_vel, base_ang_vel, projected_gravity
+- **IMU delay**: None (removed)
+- **IMU noise**: 2x (lin_vel ±0.2, ang_vel ±0.4, gravity ±0.1)
+- **Symmetry**: Data augmentation enabled (adaptive 45/48 dim, correct URDF joint negation)
 - **Action scale**: 0.5 (hip/knee), 0.25 (foot_roll), tanh output
-- **Envs**: 16384, PPO [512, 256, 128] ELU
+- **Envs**: 4096, PPO [512, 256, 128] ELU
 - **Obs dim**: 48 (includes base_lin_vel)
 
-**Reward Terms (V124 — 16 terms):**
+**Reward Terms (V125 — 16 terms):**
 
 | # | Term | Function | Weight | Notes |
 |---|------|----------|--------|-------|
@@ -26,8 +28,8 @@
 | 3 | lin_vel_z_l2 | base_mdp | -2.0 | |
 | 4 | ang_vel_xy_l2 | base_mdp | -0.01 | |
 | 5 | joint_torques_l2 | base_mdp | -1e-5 | |
-| 6 | action_rate_l2 | base_mdp | -0.01 | |
-| 7 | feet_air_time | adaptive_berkeley | +20.0 | 500 iters positive_biped → impact, 0.15-0.35 |
+| 6 | action_rate_l2 | base_mdp | **-0.3** | 30x from V122 |
+| 7 | feet_air_time | adaptive_berkeley | +20.0 | immediate impact (switch_step=0), 0.15-0.35 |
 | 8 | feet_slide | berkeley | -0.25 | contact-sensor based |
 | 9 | foot_contact_force | custom l2 | -0.02 | threshold 200N (4x from V116) |
 | 10 | undesired_contacts | base_mdp | -1.0 | torso/hip links, threshold 1.0 |
@@ -39,12 +41,12 @@
 | 16 | dof_pos_limits | base_mdp | -1.0 | |
 
 **What changed from V122:**
-- IMU observation delay (0-3 steps) — sim-to-real robustness
-- Adaptive feet_air_time: positive_biped (500 iters) → berkeley impact
-- feet_air_time weight 10→20, thresholds 0.15-0.35
-- joint_deviation_hip: added hip_pitch, weight -0.5→-0.1
-- joint_deviation_foot: added foot_pitch, renamed, weight -0.3→-0.1
-- Training from scratch (not resume)
+- IMU observation delay removed (was 0-3 steps)
+- IMU noise doubled
+- action_rate penalty: -0.01 → -0.3
+- Symmetry augmentation enabled (data aug only, no mirror loss)
+- Adaptive feet_air_time: immediate impact (switch_step=0, was 500 iters)
+- Resumed from V116 model_10400 checkpoint
 
 ---
 
@@ -70,22 +72,6 @@ docker run --gpus all -v /home/ubuntu/workspace:/workspace -v /home/ubuntu/resul
 ```
 
 ---
-
-## V116 Teacher (Apr 16-20, 2026)
-
-| File | Description |
-|------|-------------|
-| `v116_44000/model_44000.pt` | 44K iters, light URDF, tanh |
-| `v116_44000/v116_isaac_41600.mp4` | Isaac Sim render |
-| `v116_44000/v116_mujoco_42200.mp4` | MuJoCo render |
-| `v116_44000/README.md` | Full details |
-| `v116_10200/model_10200.pt` | 10.2K iter checkpoint (for resume experiments) |
-
-**Metrics (iter 44000):**
-- **Reward**: 22.5 | **Timeout**: 100% | **Falls**: ~0%
-- **Velocity**: 0.89 | **sliding gait** (air_time negative)
-- Berkeley impact air_time, threshold 0.25-0.30, weight 10
-- PPO [512,256,128] ELU + tanh, 16384 envs
 
 ---
 
@@ -137,9 +123,8 @@ docker run --gpus all -v /home/ubuntu/workspace:/workspace -v /home/ubuntu/resul
 | V72 | 10 | 15 | 15 | 8 | 0-5ms | No |
 | V74 | 120 | 180 | 180 | 96/48 | 0-5ms | Yes |
 | V76 | 180 | 180 | 180 | 30 | 0-12ms | Yes |
-| V116 | 180 | 180 | 180 | 30 | 0-12ms | Yes |
 | V122 | 180 | 180 | 180 | 30 | 0-12ms | Yes |
-| V124 | 180 | 180 | 180 | 30 | 0-12ms | Yes |
+| V125 | 180 | 180 | 180 | 30 | 0-12ms | Yes |
 
 ### Obs Dimension
 
@@ -147,11 +132,11 @@ docker run --gpus all -v /home/ubuntu/workspace:/workspace -v /home/ubuntu/resul
 |---------|-----|-------|
 | V72-V76 | 48 | Includes base_lin_vel |
 | V74 student | 45 | No base_lin_vel (deployable) |
-| V116-V124 | 48 | Includes base_lin_vel |
+| V122-V125 | 48 | Includes base_lin_vel |
 
 ### URDF
 
 | Version | Mass | Battery | Forward Axis |
 |---------|------|---------|-------------|
 | V72-V74 | 30.7kg (heavy) | 0.5kg | +X |
-| V76-V124 | 15.6kg (light) | none | +X |
+| V76-V125 | 15.6kg (light) | none | +X |
