@@ -203,7 +203,6 @@ def generate_launch_description():
                               description='Serial port for IM10A'),
         DeclareLaunchArgument('im10a_baud', default_value='460800',
                               description='Baud rate for IM10A'),
-                              description='CAN driver: can_bus_node | can_bus_node_async | can_bus_node_cpp'),
         DeclareLaunchArgument('control_driver', default_value='biped_control',
                               description='Control package: biped_control | biped_control_cpp'),
         DeclareLaunchArgument('unified', default_value='false',
