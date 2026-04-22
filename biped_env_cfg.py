@@ -60,77 +60,6 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
 
-###############################################################################
-# Delayed IMU observations — history buffer with per-env random delay (0-3 steps)
-# Each physics step = 2ms (500Hz). 0-3 steps = 0-6ms IMU latency.
-###############################################################################
-_IMU_DELAY_MAX_STEPS = 0
-_imu_history_lin_vel = None
-_imu_history_ang_vel = None
-_imu_history_gravity = None
-_imu_delay_steps = None
-_imu_history_len = 0
-_imu_step_counter = 0
-
-
-def _init_imu_buffers(env: "ManagerBasedRLEnv"):
-    global _imu_history_lin_vel, _imu_history_ang_vel, _imu_history_gravity
-    global _imu_delay_steps, _imu_history_len, _imu_step_counter
-    num_envs = env.num_envs
-    _imu_history_len = _IMU_DELAY_MAX_STEPS + 1
-    _imu_history_lin_vel = torch.zeros(_imu_history_len, num_envs, 3, device=env.device)
-    _imu_history_ang_vel = torch.zeros(_imu_history_len, num_envs, 3, device=env.device)
-    _imu_history_gravity = torch.zeros(_imu_history_len, num_envs, 3, device=env.device)
-    _imu_delay_steps = torch.randint(0, _IMU_DELAY_MAX_STEPS + 1, (num_envs,), device=env.device)
-    _imu_step_counter = 0
-
-
-def _reset_imu_delay(env: "ManagerBasedRLEnv", env_ids: torch.Tensor):
-    global _imu_delay_steps
-    if _imu_delay_steps is None:
-        _init_imu_buffers(env)
-    _imu_delay_steps[env_ids] = torch.randint(
-        0, _IMU_DELAY_MAX_STEPS + 1, (len(env_ids),), device=env.device
-    )
-
-
-def _roll_imu_history(env: "ManagerBasedRLEnv") -> int:
-    global _imu_step_counter, _imu_history_lin_vel, _imu_history_ang_vel, _imu_history_gravity
-    if _imu_history_lin_vel is None:
-        _init_imu_buffers(env)
-    _imu_history_lin_vel = torch.roll(_imu_history_lin_vel, -1, dims=0)
-    _imu_history_ang_vel = torch.roll(_imu_history_ang_vel, -1, dims=0)
-    _imu_history_gravity = torch.roll(_imu_history_gravity, -1, dims=0)
-    _imu_history_lin_vel[-1] = env.scene["robot"].data.root_lin_vel_b.clone()
-    _imu_history_ang_vel[-1] = env.scene["robot"].data.root_ang_vel_b.clone()
-    _imu_history_gravity[-1] = env.scene["robot"].data.projected_gravity_b.clone()
-    _imu_step_counter += 1
-    return _imu_step_counter
-
-
-def delayed_base_lin_vel(env: "ManagerBasedRLEnv", asset_cfg=None) -> torch.Tensor:
-    if _imu_history_lin_vel is None:
-        _init_imu_buffers(env)
-    global _imu_step_counter
-    expected_step = getattr(env, "_imu_obs_step", -1)
-    if expected_step != _imu_step_counter:
-        _roll_imu_history(env)
-        env._imu_obs_step = _imu_step_counter
-    return _imu_history_lin_vel[_imu_delay_steps, torch.arange(env.num_envs, device=env.device)]
-
-
-def delayed_base_ang_vel(env: "ManagerBasedRLEnv", asset_cfg=None) -> torch.Tensor:
-    if _imu_history_ang_vel is None:
-        _init_imu_buffers(env)
-    return _imu_history_ang_vel[_imu_delay_steps, torch.arange(env.num_envs, device=env.device)]
-
-
-def delayed_projected_gravity(env: "ManagerBasedRLEnv", asset_cfg=None) -> torch.Tensor:
-    if _imu_history_gravity is None:
-        _init_imu_buffers(env)
-    return _imu_history_gravity[_imu_delay_steps, torch.arange(env.num_envs, device=env.device)]
-
-
 ALL_JOINTS = [
     "right_hip_yaw_03", "right_hip_roll_03", "right_hip_pitch_04",
     "right_knee_04", "right_foot_pitch_02", "right_foot_roll_02",
@@ -717,15 +646,15 @@ class ObservationsCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         base_lin_vel = ObsTerm(
-            func=delayed_base_lin_vel,
+            func=base_mdp.base_lin_vel,
             noise=Unoise(n_min=-0.1, n_max=0.1),
         )
         base_ang_vel = ObsTerm(
-            func=delayed_base_ang_vel,
+            func=base_mdp.base_ang_vel,
             noise=Unoise(n_min=-0.2, n_max=0.2),
         )
         projected_gravity = ObsTerm(
-            func=delayed_projected_gravity,
+            func=base_mdp.projected_gravity,
             noise=Unoise(n_min=-0.05, n_max=0.05),
         )
         velocity_commands = ObsTerm(
