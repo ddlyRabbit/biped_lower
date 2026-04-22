@@ -16,7 +16,7 @@ Im10aReader::Im10aReader() : fd_(-1), initialized_(false), state_(0), current_ty
     quat_[0] = 0.0; quat_[1] = 0.0; quat_[2] = 0.0; quat_[3] = 1.0;
     gyro_[0] = 0.0; gyro_[1] = 0.0; gyro_[2] = 0.0;
     accel_[0] = 0.0; accel_[1] = 0.0; accel_[2] = 0.0;
-    gravity_[0] = 0.0; gravity_[1] = 0.0; gravity_[2] = -9.81;
+    gravity_[0] = 0.0; gravity_[1] = 0.0; gravity_[2] = 9.81;
 }
 
 Im10aReader::~Im10aReader() {
@@ -148,16 +148,22 @@ void Im10aReader::compute_gravity() {
     double qz = quat_[2];
     double qw = quat_[3];
 
+    // Compute gravity vector pointing DOWN in world frame, expressed in body frame:
+    // R^T * [0, 0, -1] = [ 2(qx*qz - qw*qy), 2(qy*qz + qw*qx), 1 - 2(qx^2 + qy^2) ] * -1
+    // Which is: [ -2(qx*qz - qw*qy), -2(qy*qz + qw*qx), 2(qx^2 + qy^2) - 1 ]
+    // However, obs_builder.cpp expects the sensor to report UPWARD acceleration (like BNO085),
+    // which is (0, 0, +9.81) when upright. So we compute R^T * [0, 0, 1] instead:
+    
     gravity_[0] = 2.0 * (qx * qz - qw * qy);
     gravity_[1] = 2.0 * (qy * qz + qw * qx);
     gravity_[2] = (qw * qw - qx * qx - qy * qy + qz * qz);
 
-    // Normalize and scale to -9.81 (assuming downward gravity in Isaac)
+    // Normalize and scale to +9.81
     double norm = std::sqrt(gravity_[0]*gravity_[0] + gravity_[1]*gravity_[1] + gravity_[2]*gravity_[2]);
     if (norm > 0.001) {
-        gravity_[0] = (gravity_[0] / norm) * -9.81;
-        gravity_[1] = (gravity_[1] / norm) * -9.81;
-        gravity_[2] = (gravity_[2] / norm) * -9.81;
+        gravity_[0] = (gravity_[0] / norm) * 9.81;
+        gravity_[1] = (gravity_[1] / norm) * 9.81;
+        gravity_[2] = (gravity_[2] / norm) * 9.81;
     }
 }
 
