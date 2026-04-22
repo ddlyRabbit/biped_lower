@@ -153,6 +153,8 @@ public:
     }
 
 private:
+    double target_rate_hz_;
+
     void build_motor_groups() {
         std::unordered_set<std::string> seen;
         std::unordered_set<std::string> motor_set(motor_names_.begin(), motor_names_.end());
