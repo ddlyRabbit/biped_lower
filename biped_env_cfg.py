@@ -834,7 +834,7 @@ class RewardsCfg:
         func=base_mdp.joint_torques_l2,
         weight=-1e-05,
     )
-    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.3)
+    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.03)
     feet_air_time = RewTerm(
         func="biped_env_cfg:feet_air_time_adaptive_berkeley",
         weight=20.0,
