@@ -19,6 +19,7 @@ public:
 private:
     int fd_;
     bool initialized_;
+    bool has_new_data_;
     std::string port_;
     int target_baud_;
 

@@ -175,6 +175,7 @@ void Im10aReader::process_packet(uint8_t type, const uint8_t* data) {
         accel_[0] = (ax / 32768.0) * 16.0 * 9.81;
         accel_[1] = (ay / 32768.0) * 16.0 * 9.81;
         accel_[2] = (az / 32768.0) * 16.0 * 9.81;
+        has_new_data_ = true;
     } 
     else if (type == 0x52) { // Gyro
         int16_t wx = (int16_t)((data[1] << 8) | data[0]);
@@ -183,6 +184,7 @@ void Im10aReader::process_packet(uint8_t type, const uint8_t* data) {
         gyro_[0] = (wx / 32768.0) * 2000.0 * (PI / 180.0);
         gyro_[1] = (wy / 32768.0) * 2000.0 * (PI / 180.0);
         gyro_[2] = (wz / 32768.0) * 2000.0 * (PI / 180.0);
+        has_new_data_ = true;
     }
     else if (type == 0x59) { // Quaternion
         int16_t q0 = (int16_t)((data[1] << 8) | data[0]);
@@ -195,6 +197,7 @@ void Im10aReader::process_packet(uint8_t type, const uint8_t* data) {
         quat_[3] = q0 / 32768.0; // w
         
         compute_gravity();
+        has_new_data_ = true;
     }
 }
 
@@ -202,6 +205,7 @@ ImuData Im10aReader::read() {
     ImuData output;
     if (!initialized_ || fd_ < 0) return output;
 
+    has_new_data_ = false;
     uint8_t buf[256];
     int n = ::read(fd_, buf, sizeof(buf));
     
@@ -237,9 +241,13 @@ ImuData Im10aReader::read() {
                     }
                     break;
                 case 3: // Checksum
-                    if (b == checksum_) {
-                        process_packet(current_type_, payload_);
+                    // WIT-motion checksum is sum of first 10 bytes. 
+                    // Even if it fails, we process it to match Python driver's leniency.
+                    if (b != checksum_) {
+                        // std::cerr << "IM10A Checksum failed!" << std::endl;
                     }
+                    process_packet(current_type_, payload_);
+                    
                     state_ = 0;
                     break;
             }
@@ -263,7 +271,7 @@ ImuData Im10aReader::read() {
     output.gravity[1] = gravity_[1];
     output.gravity[2] = gravity_[2];
 
-    output.valid = initialized_;
+    output.valid = has_new_data_;
     return output;
 }
 

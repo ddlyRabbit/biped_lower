@@ -46,6 +46,8 @@ private:
     void timer_callback() {
         biped_driver_cpp::ImuData data = reader_.read();
 
+        if (!data.valid) return;
+
         auto now = this->now();
 
         // Publish IMU message
