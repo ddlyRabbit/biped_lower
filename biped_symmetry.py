@@ -1,18 +1,19 @@
 """Symmetry augmentation for biped — mirrors left↔right.
 
-obs_batch is a TensorDict with keys "policy" (N, 45) and "critic" (N, ...).
+obs_batch is a TensorDict with keys "policy" (N, 48) and "critic" (N, ...).
 We mirror the "policy" observations. Critic obs get duplicated without mirroring.
 
-Observation "policy" (45d):
-  [0:3]   ang_vel: negate y
-  [3:6]   proj_gravity: negate y
-  [6:9]   cmd_vel: negate vy, negate wz
-  [9:15]  hip_pos (Lr,Rr,Ly,Ry,Lp,Rp): swap+negate all (roll/yaw/pitch all flip)
-  [15:17] knee_pos (L,R): swap only
-  [17:19] foot_pitch (L,R): swap only
-  [19:21] foot_roll (L,R): swap+negate
-  [21:33] joint_vel (Isaac order): mirror per joint type
-  [33:45] last_action (12d): mirror same as actions
+Observation "policy" (48d):
+  [0:3]   base_lin_vel: negate y
+  [3:6]   ang_vel: negate y
+  [6:9]   proj_gravity: negate y
+  [9:12]  cmd_vel: negate vy, negate wz
+  [12:18] hip_pos (Lr,Rr,Ly,Ry,Lp,Rp): swap+negate all (roll/yaw/pitch all flip)
+  [18:20] knee_pos (L,R): swap only
+  [20:22] foot_pitch (L,R): swap only
+  [22:24] foot_roll (L,R): swap+negate
+  [24:36] joint_vel (Isaac order): mirror per joint type
+  [36:48] last_action (12d): mirror same as actions
 
 Actions (12d Isaac order): Lhp,Rhp,Lhr,Rhr,Lhy,Rhy,Lkn,Rkn,Lfp,Rfp,Lfr,Rfr
 """
@@ -39,54 +40,56 @@ def _mirror_actions_tensor(a):
 
 
 def _mirror_obs_flat(obs):
-    """Mirror flat policy observation (N, 45)."""
+    """Mirror flat policy observation (N, 48)."""
     m = obs.clone()
-    # [0:3] ang_vel: negate y
+    # [0:3] base_lin_vel: negate y
     m[:, 1] *= -1
-    # [3:6] proj_gravity: negate y
+    # [3:6] ang_vel: negate y
     m[:, 4] *= -1
-    # [6:9] cmd_vel: negate vy, negate wz
+    # [6:9] proj_gravity: negate y
     m[:, 7] *= -1
-    m[:, 8] *= -1
-    # [9:15] hip_pos: swap L↔R + negate all (roll, yaw, pitch all have mirrored axes)
-    m[:, 9]  = -obs[:, 10]  # Lr ← -Rr
-    m[:, 10] = -obs[:, 9]   # Rr ← -Lr
-    m[:, 11] = -obs[:, 12]  # Ly ← -Ry
-    m[:, 12] = -obs[:, 11]  # Ry ← -Ly
-    m[:, 13] = -obs[:, 14]  # Lp ← -Rp
-    m[:, 14] = -obs[:, 13]  # Rp ← -Lp
-    # [15:17] knee_pos: swap only
-    m[:, 15] = obs[:, 16]
-    m[:, 16] = obs[:, 15]
-    # [17:19] foot_pitch: swap only
-    m[:, 17] = obs[:, 18]
-    m[:, 18] = obs[:, 17]
-    # [19:21] foot_roll: swap + negate
-    m[:, 19] = -obs[:, 20]
-    m[:, 20] = -obs[:, 19]
-    # [21:33] joint_vel: mirror per Isaac order
-    v = obs[:, 21:33]
-    m[:, 21] = -v[:, 1]   # Lhp ← -Rhp
-    m[:, 22] = -v[:, 0]   # Rhp ← -Lhp
-    m[:, 23] = -v[:, 3]   # Lhr ← -Rhr
-    m[:, 24] = -v[:, 2]   # Rhr ← -Lhr
-    m[:, 25] = -v[:, 5]   # Lhy ← -Rhy
-    m[:, 26] = -v[:, 4]   # Rhy ← -Lhy
-    m[:, 27] = v[:, 7]    # Lkn ← Rkn
-    m[:, 28] = v[:, 6]    # Rkn ← Lkn
-    m[:, 29] = v[:, 9]    # Lfp ← Rfp
-    m[:, 30] = v[:, 8]    # Rfp ← Lfp
-    m[:, 31] = -v[:, 11]  # Lfr ← -Rfr
-    m[:, 32] = -v[:, 10]  # Rfr ← -Lfr
-    # [33:45] last_action: mirror
-    m[:, 33:45] = _mirror_actions_tensor(obs[:, 33:45])
+    # [9:12] cmd_vel: negate vy, negate wz
+    m[:, 10] *= -1
+    m[:, 11] *= -1
+    # [12:18] hip_pos: swap L↔R + negate all (roll, yaw, pitch all have mirrored axes)
+    m[:, 12] = -obs[:, 13]  # Lr ← -Rr
+    m[:, 13] = -obs[:, 12]  # Rr ← -Lr
+    m[:, 14] = -obs[:, 15]  # Ly ← -Ry
+    m[:, 15] = -obs[:, 14]  # Ry ← -Ly
+    m[:, 16] = -obs[:, 17]  # Lp ← -Rp
+    m[:, 17] = -obs[:, 16]  # Rp ← -Lp
+    # [18:20] knee_pos: swap only
+    m[:, 18] = obs[:, 19]
+    m[:, 19] = obs[:, 18]
+    # [20:22] foot_pitch: swap only
+    m[:, 20] = obs[:, 21]
+    m[:, 21] = obs[:, 20]
+    # [22:24] foot_roll: swap + negate
+    m[:, 22] = -obs[:, 23]
+    m[:, 23] = -obs[:, 22]
+    # [24:36] joint_vel: mirror per Isaac order
+    v = obs[:, 24:36]
+    m[:, 24] = -v[:, 1]   # Lhp ← -Rhp
+    m[:, 25] = -v[:, 0]   # Rhp ← -Lhp
+    m[:, 26] = -v[:, 3]   # Lhr ← -Rhr
+    m[:, 27] = -v[:, 2]   # Rhr ← -Lhr
+    m[:, 28] = -v[:, 5]   # Lhy ← -Rhy
+    m[:, 29] = -v[:, 4]   # Rhy ← -Lhy
+    m[:, 30] = v[:, 7]    # Lkn ← Rkn
+    m[:, 31] = v[:, 6]    # Rkn ← Lkn
+    m[:, 32] = v[:, 9]    # Lfp ← Rfp
+    m[:, 33] = v[:, 8]    # Rfp ← Lfp
+    m[:, 34] = -v[:, 11]  # Lfr ← -Rfr
+    m[:, 35] = -v[:, 10]  # Rfr ← -Lfr
+    # [36:48] last_action: mirror
+    m[:, 36:48] = _mirror_actions_tensor(obs[:, 36:48])
     return m
 
 
 def biped_symmetry_augmentation(obs, actions, env):
     """Data augmentation for rsl_rl symmetry.
     
-    obs: TensorDict with "policy" key (N, 45) and possibly "critic"
+    obs: TensorDict with "policy" key (N, 48) and possibly "critic"
     actions: tensor (N, 12) or None
     env: unused
     
