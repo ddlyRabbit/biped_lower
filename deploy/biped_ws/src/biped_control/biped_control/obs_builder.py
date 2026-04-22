@@ -65,12 +65,12 @@ ACTION_ORDER = [
 # Default PD gains (from training config, halved Berkeley values)
 # Deploy PD gains — Kp from training (V74), Kd 5× for hardware damping
 DEFAULT_GAINS = {
-    "L_hip_pitch": (120.0, 6.5), "R_hip_pitch": (120.0, 6.5),
-    "L_hip_roll":  (120.0, 6.5), "R_hip_roll":  (120.0, 6.5),
-    "L_hip_yaw":   (120.0, 3.0), "R_hip_yaw":   (120.0, 3.0),
-    "L_knee":      (120.0, 6.5), "R_knee":      (120.0, 6.5),
-    "L_foot_pitch": (20.0, 1.0), "R_foot_pitch": (20.0, 1.0),
-    "L_foot_roll":  (20.0, 1.0), "R_foot_roll":  (20.0, 1.0),
+    "L_hip_pitch": (180.0, 6.5), "R_hip_pitch": (180.0, 6.5),
+    "L_hip_roll":  (180.0, 6.5), "R_hip_roll":  (180.0, 6.5),
+    "L_hip_yaw":   (180.0, 3.0), "R_hip_yaw":   (180.0, 3.0),
+    "L_knee":      (180.0, 3.0), "R_knee":      (180.0, 3.0),
+    "L_foot_pitch": (30.0, 1.0), "R_foot_pitch": (30.0, 1.0),
+    "L_foot_roll":  (30.0, 1.0), "R_foot_roll":  (30.0, 1.0),
 }
 
 
