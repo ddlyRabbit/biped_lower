@@ -300,7 +300,7 @@ def feet_air_time_adaptive(
     threshold_min: float = 0.05,
     threshold_max: float = 0.5,
     height_threshold: float = 0.058,
-    switch_step: int = 500 * 24,  # switch from continuous to impact after 500 iters
+    switch_step: int = 0,  # immediate impact-based air time
 ) -> torch.Tensor:
     """Adaptive feet air time: continuous for first N steps, then impact-based.
 
@@ -326,7 +326,7 @@ def feet_air_time_adaptive_berkeley(
     threshold_min: float = 0.10,
     threshold_max: float = 0.40,
     height_threshold: float = 0.058,
-    switch_step: int = 500 * 24,  # 500 iters continuous positive_biped, then impact
+    switch_step: int = 0,  # immediate impact-based air time
 ) -> torch.Tensor:
     if env.common_step_counter < switch_step:
         return feet_air_time_positive_biped(
