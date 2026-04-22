@@ -8,6 +8,8 @@
 #include <errno.h>
 #include <cmath>
 
+namespace biped_driver_cpp {
+
 #define PI 3.14159265358979323846
 
 Im10aReader::Im10aReader() : fd_(-1), initialized_(false), state_(0), current_type_(0), checksum_(0), payload_idx_(0) {
@@ -91,13 +93,14 @@ bool Im10aReader::auto_baud_and_upgrade() {
         ::write(fd_, set_baud, sizeof(set_baud));
         usleep(100000);
 
+        // Switch host to target baud BEFORE sending save command
+        if (!configure_serial(fd_, target_baud_)) return false;
+        usleep(100000);
+
         uint8_t save[] = {0xFF, 0xAA, 0x00, 0x00, 0x00};
         ::write(fd_, save, sizeof(save));
         usleep(100000);
 
-        // Switch host to target baud
-        if (!configure_serial(fd_, target_baud_)) return false;
-        usleep(100000);
         return true;
     }
 
@@ -246,9 +249,16 @@ ImuData Im10aReader::read() {
     output.gyro[1] = gyro_[1];
     output.gyro[2] = gyro_[2];
 
+    output.accel[0] = accel_[0];
+    output.accel[1] = accel_[1];
+    output.accel[2] = accel_[2];
+
     output.gravity[0] = gravity_[0];
     output.gravity[1] = gravity_[1];
     output.gravity[2] = gravity_[2];
 
+    output.valid = initialized_;
     return output;
 }
+
+} // namespace biped_driver_cpp

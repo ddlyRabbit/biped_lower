@@ -53,6 +53,7 @@
 #include "biped_driver_cpp/motor_manager.hpp"
 #include "biped_driver_cpp/ankle_linkage.hpp"
 #include "biped_driver_cpp/bno085_reader.hpp"
+#include "biped_driver_cpp/im10a_reader.hpp"
 #include "biped_control_cpp/obs_builder.hpp"
 
 using namespace biped_driver_cpp;
@@ -205,7 +206,8 @@ public:
             if (im10a_imu_.init(port, baud)) {
                 RCLCPP_INFO(get_logger(), "IM10A initialized — port %s, baud %d", port.c_str(), baud);
             } else {
-                RCLCPP_ERROR(get_logger(), "IM10A init failed!");
+                RCLCPP_FATAL(get_logger(), "IM10A init failed! Aborting.");
+                throw std::runtime_error("IM10A init failed");
             }
         } else {
             int i2c_bus      = get_parameter("i2c_bus").as_int();
@@ -218,7 +220,8 @@ public:
                 RCLCPP_INFO(get_logger(), "BNO085 initialized — bus %d, addr 0x%02X, %.0fHz",
                             i2c_bus, i2c_addr, imu_rate);
             } else {
-                RCLCPP_ERROR(get_logger(), "BNO085 init failed!");
+                RCLCPP_FATAL(get_logger(), "BNO085 init failed! Aborting.");
+                throw std::runtime_error("BNO085 init failed");
             }
         }
 
@@ -287,7 +290,9 @@ public:
 private:
     // ── Members ───────────────────────────────────────────────────
     std::unique_ptr<BipedMotorManager> mgr_;
-    Bno085Reader imu_;
+    std::string imu_type_;
+    biped_driver_cpp::Bno085Reader bno085_imu_;
+    biped_driver_cpp::Im10aReader im10a_imu_;
     ObsBuilder obs_builder_;
 
     std::unordered_map<std::string, std::unique_ptr<CanReadWorker>> can_workers_;
@@ -413,7 +418,12 @@ private:
         }
 
         // Read IMU on main thread while CAN threads work
-        auto imu_data = imu_.read();
+        biped_driver_cpp::ImuData imu_data;
+        if (imu_type_ == "im10a") {
+            imu_data = im10a_imu_.read();
+        } else {
+            imu_data = bno085_imu_.read();
+        }
         if (imu_data.valid) {
             quat_[0] = imu_data.quaternion[0];
             quat_[1] = imu_data.quaternion[1];

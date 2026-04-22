@@ -17,6 +17,7 @@ namespace biped_driver_cpp {
 struct ImuData {
     double quaternion[4] = {0.0, 0.0, 0.0, 1.0};  // x, y, z, w
     double gyro[3]       = {0.0, 0.0, 0.0};         // rad/s
+    double accel[3]      = {0.0, 0.0, 0.0};         // m/s^2
     double gravity[3]    = {0.0, 0.0, -9.81};        // m/s^2
     bool valid = false;
 };

@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include "biped_driver_cpp/bno085_reader.hpp" // For ImuData struct
 
+namespace biped_driver_cpp {
+
 class Im10aReader {
 public:
     Im10aReader();
@@ -39,5 +41,7 @@ private:
     void process_packet(uint8_t type, const uint8_t* data);
     void compute_gravity();
 };
+
+} // namespace biped_driver_cpp
 
 #endif // BIPED_DRIVER_CPP_IM10A_READER_HPP_

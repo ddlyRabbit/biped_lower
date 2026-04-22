@@ -10,13 +10,13 @@ public:
     Im10aNode() : Node("im10a_node") {
         // Parameters
         this->declare_parameter<std::string>("serial_port", "/dev/ttyUSB0");
-        this->declare_parameter<int>("baud_rate", 460800);
+        this->declare_parameter<int>("baudrate", 460800);
         this->declare_parameter<std::string>("frame_id", "imu_link");
         this->declare_parameter<bool>("publish_tf", true);
         this->declare_parameter<double>("rate_hz", 200.0);
 
         std::string port = this->get_parameter("serial_port").as_string();
-        int baud = this->get_parameter("baud_rate").as_int();
+        int baud = this->get_parameter("baudrate").as_int();
         frame_id_ = this->get_parameter("frame_id").as_string();
         publish_tf_ = this->get_parameter("publish_tf").as_bool();
         double rate_hz = this->get_parameter("rate_hz").as_double();
@@ -44,7 +44,7 @@ public:
 
 private:
     void timer_callback() {
-        ImuData data = reader_.read();
+        biped_driver_cpp::ImuData data = reader_.read();
 
         auto now = this->now();
 
@@ -59,8 +59,12 @@ private:
         imu_msg.angular_velocity.x = data.gyro[0];
         imu_msg.angular_velocity.y = data.gyro[1];
         imu_msg.angular_velocity.z = data.gyro[2];
-        // Note: Raw acceleration is currently not being output by the reader for simplicity,
-        // so we don't populate linear_acceleration here.
+        
+        // Use raw acceleration from IM10A
+        imu_msg.linear_acceleration.x = data.accel[0];
+        imu_msg.linear_acceleration.y = data.accel[1];
+        imu_msg.linear_acceleration.z = data.accel[2];
+        
         imu_pub_->publish(imu_msg);
 
         // Publish Gravity message
@@ -89,7 +93,7 @@ private:
         }
     }
 
-    Im10aReader reader_;
+    biped_driver_cpp::Im10aReader reader_;
     std::string frame_id_;
     bool publish_tf_;
     rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
