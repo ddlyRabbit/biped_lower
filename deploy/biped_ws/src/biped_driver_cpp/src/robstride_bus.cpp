@@ -132,9 +132,14 @@ void RobstrideBus::transmit(uint32_t comm_type, uint16_t extra_data,
         }
         break;
     }
+    
     // Last attempt
     if (write(socket_fd_, &frame, sizeof(frame)) != sizeof(frame)) {
-        throw std::runtime_error("CAN transmit failed: " + std::string(strerror(errno)));
+        // Do not throw on ENOBUFS. A loose CAN wire causes hardware retries,
+        // which backs up the txqueue. Throwing kills the entire robot node.
+        // Instead, drop the frame and let the next 50Hz cycle try again.
+        // std::cerr << "CAN TX drop on device " << (int)device_id << ": " << strerror(errno) << std::endl;
+        return;
     }
 }
 
