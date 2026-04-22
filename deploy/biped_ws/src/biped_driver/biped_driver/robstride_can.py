@@ -263,6 +263,11 @@ class BipedMotorManager:
                         motor_cmd_lo = urdf[0]
                         motor_cmd_hi = urdf[1]
 
+                # Hardcoded 5-degree buffer for ankle motors (pulls limits inwards)
+                if is_ankle:
+                    motor_cmd_lo += 0.087266
+                    motor_cmd_hi -= 0.087266
+
                 motor_softstop_lo = motor_cmd_lo + SOFTSTOP_BUFFER_RAD
                 motor_softstop_hi = motor_cmd_hi - SOFTSTOP_BUFFER_RAD
 

@@ -150,6 +150,12 @@ BipedMotorManager build_manager_from_yaml(
                 }
             }
 
+            // Hardcoded 5-degree buffer for ankle motors (pulls limits inwards)
+            if (ankle) {
+                motor_cmd_lo += 0.087266;
+                motor_cmd_hi -= 0.087266;
+            }
+
             double motor_softstop_lo = motor_cmd_lo + SOFTSTOP_BUFFER_RAD;
             double motor_softstop_hi = motor_cmd_hi - SOFTSTOP_BUFFER_RAD;
 
