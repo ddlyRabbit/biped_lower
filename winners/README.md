@@ -4,7 +4,7 @@
 
 | File | Description |
 |------|-------------|
-| *(training in progress)* | Light URDF, tanh, no IMU delay, symmetry ON |
+| *(training in progress)* | Light URDF, tanh, no IMU delay, symmetry ON, action_rate -0.01 |
 
 **Config:**
 - **Physics**: 500 Hz (dt=0.002), **Policy**: 50 Hz (decimation=10)
@@ -28,8 +28,8 @@
 | 3 | lin_vel_z_l2 | base_mdp | -2.0 | |
 | 4 | ang_vel_xy_l2 | base_mdp | -0.01 | |
 | 5 | joint_torques_l2 | base_mdp | -1e-5 | |
-| 6 | action_rate_l2 | base_mdp | **-0.3** | 30x from V122 |
-| 7 | feet_air_time | adaptive_berkeley | +20.0 | immediate impact (switch_step=0), 0.15-0.35 |
+| 6 | action_rate_l2 | base_mdp | **-0.01** | |
+| 7 | feet_air_time | adaptive_berkeley | **+10.0** | 300 iters continuous then impact, 0.15-0.35, gated <0.1 |
 | 8 | feet_slide | berkeley | -0.25 | contact-sensor based |
 | 9 | foot_contact_force | custom l2 | -0.02 | threshold 200N (4x from V116) |
 | 10 | undesired_contacts | base_mdp | -1.0 | torso/hip links, threshold 1.0 |
@@ -43,10 +43,8 @@
 **What changed from V122:**
 - IMU observation delay removed (was 0-3 steps)
 - IMU noise doubled
-- action_rate penalty: -0.01 → -0.3
 - Symmetry augmentation enabled (data aug only, no mirror loss)
-- Adaptive feet_air_time: immediate impact (switch_step=0, was 500 iters)
-- Resumed from V116 model_10400 checkpoint
+- Resumed from V116 model_10200 checkpoint
 
 ---
 
