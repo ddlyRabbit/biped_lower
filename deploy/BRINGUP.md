@@ -169,9 +169,13 @@ ros2 launch biped_bringup bringup.launch.py \
 
 | Parameter | Description | Default | Options |
 |---|---|---|---|
-| `can_driver` | CAN driver node | `can_bus_node_cpp` | `can_bus_node_cpp` (recommended), `can_bus_node_async`, `can_bus_node` |
-| `robot_config` | Motor-to-CAN mapping | `robot.yaml` | `robot.yaml` (RPi dual-bus), `robot_jetson.yaml` (Jetson single-bus) |
-| `imu_type` | IMU driver | `bno085` | `bno085` (I2C), `im10a` (USB serial) |
+| `unified` | Use single-process C++ node for IMU, CAN, and Policy | `false` | `true` (lowest latency), `false` |
+| `can_driver` | CAN driver node (if unified:=false) | `can_bus_node` | `can_bus_node_cpp` (recommended C++), `can_bus_node` (Python) |
+| `control_driver` | Control nodes (if unified:=false) | `biped_control` | `biped_control_cpp` (C++), `biped_control` (Python) |
+| `robot_config` | Motor-to-CAN mapping | `robot.yaml` | `robot.yaml` (RPi dual-bus), `robot_jetson.yaml` (Jetson) |
+| `imu_type` | IMU driver | `bno085` | `bno085` (I2C Python), `bno085_cpp` (I2C C++), `im10a` (USB Python), `im10a_cpp` (USB C++) |
+| `im10a_port` | Serial port for IM10A | `/dev/ttyUSB0` | `/dev/ttyUSB0`, `/dev/ttyACM0`, etc. |
+| `im10a_baud` | Baud rate for IM10A | `460800` | `460800`, `921600` |
 | `calibration_file` | Motor calibration | `calibration.yaml` | Any `.yaml` in `config/` |
 | `onnx_model` | Student policy ONNX | `student_flat.onnx` | Absolute path to `.onnx` file |
 | `gain_scale` | PD gain multiplier | `1.0` | `0.1`–`1.0` (start low!) |
