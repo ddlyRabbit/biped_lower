@@ -50,9 +50,8 @@ class PolicyNode(Node):
             rcl_interfaces.msg.ParameterDescriptor(dynamic_typing=True))
 
         path = self.get_parameter('control_params_file').value
-        if path:
-            import biped_control.obs_builder as obs_builder
-            obs_builder.load_control_params(path)
+        import biped_control.obs_builder as obs_builder
+        obs_builder.load_control_params(path)
 
         model_path = str(self.get_parameter('onnx_model').value)
         self._rate = float(self.get_parameter('loop_rate').value)

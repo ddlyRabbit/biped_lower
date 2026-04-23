@@ -25,9 +25,8 @@ class StateMachineNode(Node):
         self.declare_parameter('gain_scale', 1.0)
         
         path = self.get_parameter('control_params_file').value
-        if path:
-            import biped_control.obs_builder as obs_builder
-            obs_builder.load_control_params(path)
+        import biped_control.obs_builder as obs_builder
+        obs_builder.load_control_params(path)
 
         self._ramp_time = float(self.get_parameter('stand_ramp_time').value)
         self._gain_ramp_time = float(self.get_parameter('stand_gain_ramp_time').value)
