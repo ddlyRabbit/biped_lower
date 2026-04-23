@@ -135,8 +135,8 @@ private:
                         for (auto it = w["joints"].begin(); it != w["joints"].end(); ++it) {
                             std::string name = it->first.as<std::string>();
                             auto params = it->second;
-                            double pos = params["pos"] ? params["pos"].as<double>() * M_PI / 180.0 : 0.087;
-                            double neg = params["neg"] ? params["neg"].as<double>() * M_PI / 180.0 : -0.087;
+                            double pos = params["pos"] ? params["pos"].as<double>() : 0.087;
+                            double neg = params["neg"] ? params["neg"].as<double>() : -0.087;
                             double freq = params["freq"] ? params["freq"].as<double>() : global_freq;
 
                             auto lit = JOINT_LIMITS.find(name);
@@ -182,8 +182,8 @@ private:
                     for (auto it = w["joints"].begin(); it != w["joints"].end(); ++it) {
                         std::string name = it->first.as<std::string>();
                         auto params = it->second;
-                        double smax = params["step_max"] ? params["step_max"].as<double>() * M_PI / 180.0 : 0.174;
-                        double smin = params["step_min"] ? params["step_min"].as<double>() * M_PI / 180.0 : -0.174;
+                        double smax = params["step_max"] ? params["step_max"].as<double>() : 0.174;
+                        double smin = params["step_min"] ? params["step_min"].as<double>() : -0.174;
                         double period = params["period"] ? params["period"].as<double>() : global_period;
 
                         auto lit = JOINT_LIMITS.find(name);
