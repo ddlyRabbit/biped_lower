@@ -73,7 +73,7 @@ private:
     // State — latest readings
     double last_quat_[4] = {0.0, 0.0, 0.0, 1.0}; // x, y, z, w
     double last_gyro_[3] = {0.0, 0.0, 0.0};      // rad/s
-    double last_gravity_[3] = {0.0, 0.0, -9.81}; // m/s^2
+    double last_gravity_[3] = {0.0, 0.0, -1.0}; // m/s^2
 
     // Diagnostics
     uint64_t read_count_ = 0;
@@ -236,9 +236,21 @@ private:
                             int16_t x = (buf[offset+5] << 8) | buf[offset+4];
                             int16_t y = (buf[offset+7] << 8) | buf[offset+6];
                             int16_t z = (buf[offset+9] << 8) | buf[offset+8];
-                            last_gravity_[0] = x / 256.0;
-                            last_gravity_[1] = y / 256.0;
-                            last_gravity_[2] = z / 256.0;
+                            double gx = -x / 256.0;
+                            double gy = -y / 256.0;
+                            double gz = -z / 256.0;
+                            
+                            // Normalize to unit vector to match Isaac convention
+                            double norm = std::sqrt(gx*gx + gy*gy + gz*gz);
+                            if (norm > 0.1) {
+                                last_gravity_[0] = gx / norm;
+                                last_gravity_[1] = gy / norm;
+                                last_gravity_[2] = gz / norm;
+                            } else {
+                                last_gravity_[0] = 0.0;
+                                last_gravity_[1] = 0.0;
+                                last_gravity_[2] = -1.0;
+                            }
                             offset += 10;
                         } else {
                             // Unknown report ID or unhandled data format, abort parsing to avoid endless loop

@@ -332,7 +332,7 @@ private:
     std::unordered_map<std::string, double> joint_vel_;
     std::unordered_map<std::string, MotorFB> motor_fb_raw_;  // motor-space
     float gyro_[3]     = {0.0f, 0.0f, 0.0f};
-    float gravity_[3]  = {0.0f, 0.0f, -9.81f};
+    float gravity_[3]  = {0.0f, 0.0f, -1.0f};
     float quat_[4]     = {0.0f, 0.0f, 0.0f, 1.0f};
 
     // Diagnostics

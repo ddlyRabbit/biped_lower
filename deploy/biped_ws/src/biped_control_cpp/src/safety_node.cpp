@@ -62,7 +62,7 @@ public:
 private:
     double max_pitch_, max_roll_, max_temp_, cmd_timeout_, imu_timeout_;
     
-    double gravity_[3] = {0.0, 0.0, 9.81};
+    double gravity_[3] = {0.0, 0.0, -1.0};
     bool gravity_received_ = false;
     std::unordered_map<std::string, float> motor_temps_;
     std::unordered_map<std::string, uint8_t> motor_faults_;
@@ -111,9 +111,11 @@ private:
         // 1. IMU orientation
         double g_norm = std::sqrt(gravity_[0]*gravity_[0] + gravity_[1]*gravity_[1] + gravity_[2]*gravity_[2]);
         if (gravity_received_ && g_norm > 0.1) {
-            double g_unit[3] = {gravity_[0]/g_norm, gravity_[1]/g_norm, gravity_[2]/g_norm};
+            // Our IMU nodes now strictly output downward gravity (0, 0, -1) when upright.
+            // To compute pitch=0 when upright, we negate the Z-axis for atan2.
+            double g_unit[3] = {gravity_[0]/g_norm, gravity_[1]/g_norm, -gravity_[2]/g_norm};
             double pitch = std::atan2(g_unit[0], g_unit[2]);
-            double roll = std::atan2(g_unit[1], g_unit[2]);
+            double roll = std::atan2(-g_unit[1], g_unit[2]);
 
             if (std::abs(pitch) > max_pitch_) {
                 ok = false;
