@@ -557,14 +557,14 @@ BIPED_CFG = ArticulationCfg(
         "foot_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=30.0, damping=1.0, armature=0.01,
+            stiffness=60.0, damping=2.0, armature=0.01,
             friction=0.25,
             min_delay=0, max_delay=6,
         ),
         "foot_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=30.0, damping=1.0, armature=0.01,
+            stiffness=60.0, damping=2.0, armature=0.01,
             friction=0.25,
             min_delay=0, max_delay=6,
         ),
@@ -769,7 +769,7 @@ class RewardsCfg:
         func=base_mdp.joint_torques_l2,
         weight=-1e-05,
     )
-    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.50)
+    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.5)
     feet_air_time = RewTerm(
         func="biped_env_cfg:feet_air_time_adaptive_berkeley",
         weight=10.0,
