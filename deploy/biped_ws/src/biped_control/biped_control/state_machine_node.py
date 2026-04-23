@@ -20,6 +20,7 @@ class StateMachineNode(Node):
         self.declare_parameter('stand_gain_ramp_time', 1.0)
         self.declare_parameter('stand_stable_time', 2.0)
         self.declare_parameter('wiggle_config', '')
+        self.declare_parameter('step_config', '')
         self.declare_parameter('gain_scale', 1.0)
         
         self._ramp_time = float(self.get_parameter('stand_ramp_time').value)
@@ -27,6 +28,7 @@ class StateMachineNode(Node):
         self._stable_time = float(self.get_parameter('stand_stable_time').value)
 
         self._wiggle_cfg = None
+        self._step_cfg = None
         self._wiggle_start = 0.0
         
         self._active_joint_idx = -1
@@ -98,6 +100,30 @@ class StateMachineNode(Node):
                 cfg['joints'][name] = {'pos': 5.0 * math.pi / 180.0, 'neg': -5.0 * math.pi / 180.0, 'freq': global_freq}
         self._wiggle_cfg = cfg
 
+    def _load_step_config(self):
+        path = self.get_parameter('step_config').value
+        cfg = {'joints': {}}
+        global_period = 2.0
+        if path and os.path.exists(path):
+            try:
+                with open(path, 'r') as f:
+                    raw = yaml.safe_load(f)
+                    if 'step' in raw and 'joints' in raw['step']:
+                        for name, params in raw['step']['joints'].items():
+                            cfg['joints'][name] = {
+                                'step_max': float(params.get('step_max', 10.0)) * math.pi / 180.0,
+                                'step_min': float(params.get('step_min', -10.0)) * math.pi / 180.0,
+                                'period': float(params.get('period', global_period)),
+                            }
+                self.get_logger().info('Step test config loaded (converted from degrees)')
+            except Exception as e:
+                self.get_logger().warn(f'Failed to load step test config: {e}')
+        
+        for name in JOINT_ORDER:
+            if name not in cfg['joints']:
+                cfg['joints'][name] = {'step_max': 10.0 * math.pi / 180.0, 'step_min': -10.0 * math.pi / 180.0, 'period': global_period}
+        self._step_cfg = cfg
+
     def _load_trajectory(self):
         pass # Simplified for script limit, trajectory playback works as is in cpp
 
@@ -126,14 +152,15 @@ class StateMachineNode(Node):
             self._transition("PLAY_TRAJ_SIM")
         elif cmd == "STOP" and self._state not in ("IDLE", "ESTOP"):
             self._transition("STAND")
-        elif cmd.startswith("WIGGLE_SEQ"):
+        elif cmd.startswith("WIGGLE_SEQ") or cmd.startswith("STEP_TEST"):
             parts = cmd.split(":")
+            base_cmd = parts[0]
             if len(parts) > 1:
                 try:
                     target_idx = int(parts[1])
                     if 0 <= target_idx < len(JOINT_ORDER):
-                        if self._state != "WIGGLE_SEQ":
-                            self._transition("WIGGLE_SEQ")
+                        if self._state != base_cmd:
+                            self._transition(base_cmd)
                         
                         if target_idx != getattr(self, '_active_joint_idx', -1):
                             self._target_joint_idx = target_idx
@@ -150,8 +177,8 @@ class StateMachineNode(Node):
                 except ValueError:
                     pass
             else:
-                if self._state != "WIGGLE_SEQ":
-                    self._transition("WIGGLE_SEQ")
+                if self._state != base_cmd:
+                    self._transition(base_cmd)
         elif cmd == "WIGGLE_ALL" and self._state == "STAND":
             self._transition("WIGGLE_ALL")
         elif cmd == "ESTOP":
@@ -169,6 +196,12 @@ class StateMachineNode(Node):
         elif new_state == "WIGGLE_SEQ":
             self._stand_start_positions = dict(self._current_positions)
             self._load_wiggle_config()
+            self._active_joint_idx = -1
+            self._target_joint_idx = -1
+            self._wiggle_interpolating = False
+        elif new_state == "STEP_TEST":
+            self._stand_start_positions = dict(self._current_positions)
+            self._load_step_config()
             self._active_joint_idx = -1
             self._target_joint_idx = -1
             self._wiggle_interpolating = False
@@ -199,6 +232,8 @@ class StateMachineNode(Node):
             self._handle_stand_hold()
         elif self._state == "WIGGLE_SEQ":
             self._handle_wiggle_sequential()
+        elif self._state == "STEP_TEST":
+            self._handle_step_test()
         elif self._state == "WIGGLE_ALL":
             self._handle_wiggle_all()
         elif self._state == "ESTOP":
@@ -297,6 +332,77 @@ class StateMachineNode(Node):
                     phase_t = current_time - self._wiggle_sine_start_time
                     sin_val = math.sin(2 * math.pi * jcfg['freq'] * phase_t)
                     offset = (jcfg['pos'] * sin_val) if sin_val >= 0 else (-jcfg['neg'] * sin_val)
+                    target += offset
+
+                limit = self._joint_limits.get(name)
+                if limit:
+                    target = max(limit[0], min(limit[1], target))
+
+                kp_base, kd_base = DEFAULT_GAINS[name]
+                cmd = MITCommand()
+                cmd.joint_name = name
+                cmd.position = float(target)
+                cmd.velocity = 0.0
+                cmd.kp = float(kp_base * gs)
+                cmd.kd = float(kd_base * gs)
+                cmd.torque_ff = 0.0
+                cmd_msg.commands.append(cmd)
+
+        self._pub_cmd.publish(cmd_msg)
+
+    def _handle_step_test(self):
+        """Square wave step response test."""
+        elapsed = time.time() - self._state_start_time
+        if elapsed <= self._ramp_time + self._stable_time:
+            self._handle_stand()
+            return
+
+        current_time = time.time()
+        gs = float(self.get_parameter("gain_scale").value)
+        cmd_msg = MITCommandArray()
+        cmd_msg.header.stamp = self.get_clock().now().to_msg()
+
+        if getattr(self, '_wiggle_interpolating', False):
+            alpha = min((current_time - self._interp_start_time) / 3.0, 1.0)
+            if alpha >= 1.0:
+                self._wiggle_interpolating = False
+                self._active_joint_idx = self._target_joint_idx
+                self._wiggle_sine_start_time = current_time
+            
+            for i, name in enumerate(JOINT_ORDER):
+                target = DEFAULT_POSITIONS[name]
+                if i == self._active_joint_idx:
+                    target += self._interp_start_pos * (1.0 - alpha)
+
+                limit = self._joint_limits.get(name)
+                if limit:
+                    target = max(limit[0], min(limit[1], target))
+
+                kp_base, kd_base = DEFAULT_GAINS[name]
+                cmd = MITCommand()
+                cmd.joint_name = name
+                cmd.position = float(target)
+                cmd.velocity = 0.0
+                cmd.kp = float(kp_base * gs)
+                cmd.kd = float(kd_base * gs)
+                cmd.torque_ff = 0.0
+                cmd_msg.commands.append(cmd)
+        else:
+            for i, name in enumerate(JOINT_ORDER):
+                target = DEFAULT_POSITIONS[name]
+
+                if i == getattr(self, '_active_joint_idx', -1):
+                    jcfg = self._step_cfg['joints'].get(
+                        name, {'step_max': 0.174, 'step_min': -0.174, 'period': 2.0}
+                    )
+                    phase_t = current_time - self._wiggle_sine_start_time
+                    cycle_time = math.fmod(phase_t, jcfg['period'])
+                    
+                    if cycle_time < (jcfg['period'] / 2.0):
+                        offset = jcfg['step_max']
+                    else:
+                        offset = jcfg['step_min']
+                        
                     target += offset
 
                 limit = self._joint_limits.get(name)

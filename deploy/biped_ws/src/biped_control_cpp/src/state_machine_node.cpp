@@ -28,6 +28,7 @@ public:
         declare_parameter("stand_gain_ramp_time", 1.0);
         declare_parameter("stand_stable_time", 2.0);
         declare_parameter("wiggle_config", "");
+        declare_parameter("step_config", "");
         declare_parameter("gain_scale", 1.0);
         declare_parameter("trajectory_file", "");
 
@@ -75,6 +76,11 @@ private:
     struct WiggleJoint { double pos; double neg; double freq; };
     struct WiggleCfg { double duration; std::unordered_map<std::string, WiggleJoint> joints; };
     WiggleCfg wiggle_cfg_;
+    
+    struct StepJoint { double step_max; double step_min; double period; };
+    struct StepCfg { std::unordered_map<std::string, StepJoint> joints; };
+    StepCfg step_cfg_;
+    
     double wiggle_start_ = 0.0;
     int wiggle_joint_idx_ = 0;
 
@@ -150,6 +156,46 @@ private:
         for (const auto& name : JOINT_ORDER) {
             if (wiggle_cfg_.joints.find(name) == wiggle_cfg_.joints.end()) {
                 wiggle_cfg_.joints[name] = {0.087, -0.087, global_freq};
+            }
+        }
+    }
+
+    void load_step_config() {
+        std::string path = get_parameter("step_config").as_string();
+        step_cfg_.joints.clear();
+        double global_period = 2.0;
+
+        if (!path.empty()) {
+            try {
+                YAML::Node raw = YAML::LoadFile(path);
+                if (raw["step"] && raw["step"]["joints"]) {
+                    auto w = raw["step"];
+                    for (auto it = w["joints"].begin(); it != w["joints"].end(); ++it) {
+                        std::string name = it->first.as<std::string>();
+                        auto params = it->second;
+                        double smax = params["step_max"] ? params["step_max"].as<double>() * M_PI / 180.0 : 0.174;
+                        double smin = params["step_min"] ? params["step_min"].as<double>() * M_PI / 180.0 : -0.174;
+                        double period = params["period"] ? params["period"].as<double>() : global_period;
+
+                        auto lit = JOINT_LIMITS.find(name);
+                        if (lit != JOINT_LIMITS.end()) {
+                            double lo = lit->second.first;
+                            double hi = lit->second.second;
+                            double def = DEFAULT_POSITIONS.at(name);
+                            if (def + smax > hi) smax = hi - def;
+                            if (def + smin < lo) smin = lo - def;
+                        }
+                        step_cfg_.joints[name] = {smax, smin, period};
+                    }
+                }
+                RCLCPP_INFO(get_logger(), "Step test config loaded");
+            } catch (const std::exception& e) {
+                RCLCPP_WARN(get_logger(), "Failed to load step config: %s", e.what());
+            }
+        }
+        for (const auto& name : JOINT_ORDER) {
+            if (step_cfg_.joints.find(name) == step_cfg_.joints.end()) {
+                step_cfg_.joints[name] = {0.174, -0.174, global_period};
             }
         }
     }
@@ -285,13 +331,14 @@ private:
         else if (cmd == "PLAY_TRAJ" && state_ == "STAND") transition("PLAY_TRAJ");
         else if (cmd == "PLAY_TRAJ_SIM" && state_ == "STAND") transition("PLAY_TRAJ_SIM");
         else if (cmd == "STOP" && state_ != "IDLE" && state_ != "ESTOP") transition("STAND");
-        else if (cmd.find("WIGGLE_SEQ") == 0) {
+        else if (cmd.find("WIGGLE_SEQ") == 0 || cmd.find("STEP_TEST") == 0) {
             size_t colon_pos = cmd.find(":");
+            std::string base_cmd = cmd.substr(0, colon_pos);
             if (colon_pos != std::string::npos) {
                 int target_idx = std::stoi(cmd.substr(colon_pos + 1));
                 if (target_idx >= 0 && target_idx < static_cast<int>(JOINT_ORDER.size())) {
-                    if (state_ != "WIGGLE_SEQ") {
-                        transition("WIGGLE_SEQ");
+                    if (state_ != base_cmd) {
+                        transition(base_cmd);
                     }
                     if (target_idx != active_joint_idx_) {
                         target_joint_idx_ = target_idx;
@@ -308,7 +355,7 @@ private:
                     }
                 }
             } else {
-                if (state_ != "WIGGLE_SEQ") transition("WIGGLE_SEQ");
+                if (state_ != base_cmd) transition(base_cmd);
             }
         }
         else if (cmd == "WIGGLE_ALL" && state_ == "STAND") transition("WIGGLE_ALL");
@@ -332,6 +379,12 @@ private:
             active_joint_idx_ = -1;
             target_joint_idx_ = -1;
             wiggle_interpolating_ = false;
+        } else if (new_state == "STEP_TEST") {
+            stand_start_positions_ = current_positions_;
+            load_step_config();
+            active_joint_idx_ = -1;
+            target_joint_idx_ = -1;
+            wiggle_interpolating_ = false;
         } else if (new_state == "WIGGLE_ALL") {
             stand_start_positions_ = current_positions_;
             load_wiggle_config();
@@ -347,6 +400,7 @@ private:
         else if (state_ == "WALK") {} // Policy node handles WALK
         else if (state_ == "SIM_WALK") handle_stand_hold();
         else if (state_ == "WIGGLE_SEQ") handle_wiggle_sequential();
+        else if (state_ == "STEP_TEST") handle_step_test();
         else if (state_ == "WIGGLE_ALL") handle_wiggle_all();
         else if (state_ == "PLAY_TRAJ") handle_play_traj();
         else if (state_ == "PLAY_TRAJ_SIM") { handle_stand_hold(); handle_play_traj_sim(); }
@@ -465,6 +519,95 @@ private:
                     double phase_t = current_time - wiggle_sine_start_time_;
                     double sin_val = std::sin(2 * M_PI * jcfg.freq * phase_t);
                     double offset = (sin_val >= 0) ? (jcfg.pos * sin_val) : (-jcfg.neg * sin_val);
+                    target += offset;
+                }
+
+                auto lit = JOINT_LIMITS.find(name);
+                if (lit != JOINT_LIMITS.end()) {
+                    target = std::max(lit->second.first, std::min(lit->second.second, target));
+                }
+
+                auto gains = DEFAULT_GAINS.at(name);
+                biped_msgs::msg::MITCommand cmd;
+                cmd.joint_name = name;
+                cmd.position = target;
+                cmd.velocity = 0.0;
+                cmd.kp = gains.first * gs;
+                cmd.kd = gains.second * gs;
+                cmd.torque_ff = 0.0;
+                msg.commands.push_back(cmd);
+            }
+        }
+
+        pub_cmd_->publish(msg);
+    }
+
+    void handle_step_test() {
+        double elapsed = now().seconds() - state_start_time_;
+        
+        // Initial entry ramp (same as STAND)
+        if (elapsed <= ramp_time_ + stable_time_) {
+            handle_stand();
+            return;
+        }
+
+        double gs = get_parameter("gain_scale").as_double();
+        biped_msgs::msg::MITCommandArray msg;
+        msg.header.stamp = now();
+
+        double current_time = now().seconds();
+
+        // Handle Interpolation
+        if (wiggle_interpolating_) {
+            double alpha = (current_time - interp_start_time_) / 3.0; // 3 seconds grace
+            if (alpha >= 1.0) {
+                alpha = 1.0;
+                wiggle_interpolating_ = false;
+                active_joint_idx_ = target_joint_idx_;
+                wiggle_sine_start_time_ = current_time;
+            }
+            
+            for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
+                std::string name = JOINT_ORDER[i];
+                double target = DEFAULT_POSITIONS.at(name);
+
+                if (i == active_joint_idx_) {
+                    target += interp_start_pos_ * (1.0 - alpha);
+                }
+
+                auto lit = JOINT_LIMITS.find(name);
+                if (lit != JOINT_LIMITS.end()) {
+                    target = std::max(lit->second.first, std::min(lit->second.second, target));
+                }
+
+                auto gains = DEFAULT_GAINS.at(name);
+                biped_msgs::msg::MITCommand cmd;
+                cmd.joint_name = name;
+                cmd.position = target;
+                cmd.velocity = 0.0;
+                cmd.kp = gains.first * gs;
+                cmd.kd = gains.second * gs;
+                cmd.torque_ff = 0.0;
+                msg.commands.push_back(cmd);
+            }
+        } 
+        else {
+            // Active Stepping
+            for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
+                std::string name = JOINT_ORDER[i];
+                double target = DEFAULT_POSITIONS.at(name);
+
+                if (i == active_joint_idx_) {
+                    auto& jcfg = step_cfg_.joints[name];
+                    double phase_t = current_time - wiggle_sine_start_time_;
+                    double cycle_time = std::fmod(phase_t, jcfg.period);
+                    
+                    double offset = 0.0;
+                    if (cycle_time < (jcfg.period / 2.0)) {
+                        offset = jcfg.step_max;
+                    } else {
+                        offset = jcfg.step_min;
+                    }
                     target += offset;
                 }
 

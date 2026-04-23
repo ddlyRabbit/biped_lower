@@ -115,6 +115,7 @@ class KeyboardTeleop(Node):
             'g': 'WALK',            # STAND → WALK
             'v': 'SIM_WALK',        # STAND → SIM_WALK
             't': 'WIGGLE_SEQ',      # STAND → WIGGLE_SEQ
+            'u': 'STEP_TEST',       # STAND → STEP_TEST
             'y': 'WIGGLE_ALL',      # STAND → WIGGLE_ALL
             'p': 'PLAY_TRAJ_SIM',   # STAND → PLAY_TRAJ_SIM (viz only)
             'P': 'PLAY_TRAJ',       # STAND → PLAY_TRAJ (real motors)
@@ -193,7 +194,10 @@ class KeyboardTeleop(Node):
                 elif key == 'x':
                     self._vx = self._vy = self._wz = 0.0
                 elif key in self._wiggle_keys:
-                    self._send_fsm(f"WIGGLE_SEQ:{self._wiggle_keys[key]}")
+                    if self._fsm_state == 'STEP_TEST':
+                        self._send_fsm(f"STEP_TEST:{self._wiggle_keys[key]}")
+                    else:
+                        self._send_fsm(f"WIGGLE_SEQ:{self._wiggle_keys[key]}")
                 elif key == '\x1b':  # ESC → ESTOP
                     self._send_fsm('ESTOP')
                     self._vx = self._vy = self._wz = 0.0

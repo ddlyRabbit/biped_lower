@@ -137,6 +137,7 @@ def _make_control_nodes(context):
             name='state_machine_node', output='screen',
             parameters=[{
                 'wiggle_config': os.path.join(get_package_share_directory('biped_bringup'), 'config', 'wiggle.yaml'),
+                'step_config': os.path.join(get_package_share_directory('biped_bringup'), 'config', 'step.yaml'),
                 'gain_scale': float(LaunchConfiguration('gain_scale').perform(context)),
             }],
         ),
