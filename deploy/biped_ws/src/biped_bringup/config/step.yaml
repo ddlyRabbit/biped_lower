@@ -1,50 +1,19 @@
+# Step response test configuration
+# step_min: target position in DEGREES
+# step_max: target position in DEGREES
+# period: total duration of one full cycle in seconds (e.g. 2.0s means 1s at min, 1s at max)
+
 step:
   joints:
-    R_hip_pitch:
-      step_min: -0.174
-      step_max: 0.174
-      period: 2.0
-    R_hip_roll:
-      step_min: -0.174
-      step_max: 0.174
-      period: 2.0
-    R_hip_yaw:
-      step_min: -0.174
-      step_max: 0.174
-      period: 2.0
-    R_knee:
-      step_min: -0.174
-      step_max: 0.174
-      period: 2.0
-    R_foot_pitch:
-      step_min: -0.174
-      step_max: 0.174
-      period: 2.0
-    R_foot_roll:
-      step_min: -0.174
-      step_max: 0.174
-      period: 2.0
-    L_hip_pitch:
-      step_min: -0.174
-      step_max: 0.174
-      period: 2.0
-    L_hip_roll:
-      step_min: -0.174
-      step_max: 0.174
-      period: 2.0
-    L_hip_yaw:
-      step_min: -0.174
-      step_max: 0.174
-      period: 2.0
-    L_knee:
-      step_min: -0.174
-      step_max: 0.174
-      period: 2.0
-    L_foot_pitch:
-      step_min: -0.174
-      step_max: 0.174
-      period: 2.0
-    L_foot_roll:
-      step_min: -0.174
-      step_max: 0.174
-      period: 2.0
+    R_hip_pitch:   { step_min: -15.0, step_max: 15.0, period: 2.0 }
+    R_hip_roll:    { step_min: -10.0, step_max: 10.0, period: 2.0 }
+    R_hip_yaw:     { step_min: -15.0, step_max: 15.0, period: 2.0 }
+    R_knee:        { step_min: -10.0, step_max: 20.0, period: 2.0 }
+    R_foot_pitch:  { step_min: -15.0, step_max: 15.0, period: 2.0 }
+    R_foot_roll:   { step_min: -10.0, step_max: 10.0, period: 2.0 }
+    L_hip_pitch:   { step_min: -15.0, step_max: 15.0, period: 2.0 }
+    L_hip_roll:    { step_min: -10.0, step_max: 10.0, period: 2.0 }
+    L_hip_yaw:     { step_min: -15.0, step_max: 15.0, period: 2.0 }
+    L_knee:        { step_min: -10.0, step_max: 20.0, period: 2.0 }
+    L_foot_pitch:  { step_min: -15.0, step_max: 15.0, period: 2.0 }
+    L_foot_roll:   { step_min: -10.0, step_max: 10.0, period: 2.0 }
