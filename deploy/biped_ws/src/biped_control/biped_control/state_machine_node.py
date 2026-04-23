@@ -92,17 +92,17 @@ class StateMachineNode(Node):
                     if 'wiggle' in raw and 'joints' in raw['wiggle']:
                         for name, params in raw['wiggle']['joints'].items():
                             cfg['joints'][name] = {
-                                'pos': float(params.get('pos', 5.0)),
-                                'neg': float(params.get('neg', -5.0)),
+                                'pos': float(params.get('pos', 5.0)) * math.pi / 180.0,
+                                'neg': float(params.get('neg', -5.0)) * math.pi / 180.0,
                                 'freq': float(params.get('freq', global_freq)),
                             }
-                self.get_logger().info('Wiggle config loaded (loaded)')
+                self.get_logger().info('Wiggle config loaded (converted from degrees)')
             except Exception as e:
                 self.get_logger().warn(f'Failed to load wiggle config: {e}')
         
         for name in JOINT_ORDER:
             if name not in cfg['joints']:
-                cfg['joints'][name] = {'pos': 5.0, 'neg': -5.0, 'freq': global_freq}
+                cfg['joints'][name] = {'pos': 5.0 * math.pi / 180.0, 'neg': -5.0 * math.pi / 180.0, 'freq': global_freq}
         self._wiggle_cfg = cfg
 
     def _load_step_config(self):
@@ -116,17 +116,17 @@ class StateMachineNode(Node):
                     if 'step' in raw and 'joints' in raw['step']:
                         for name, params in raw['step']['joints'].items():
                             cfg['joints'][name] = {
-                                'step_max': float(params.get('step_max', 10.0)),
-                                'step_min': float(params.get('step_min', -10.0)),
+                                'step_max': float(params.get('step_max', 10.0)) * math.pi / 180.0,
+                                'step_min': float(params.get('step_min', -10.0)) * math.pi / 180.0,
                                 'period': float(params.get('period', global_period)),
                             }
-                self.get_logger().info('Step test config loaded (loaded)')
+                self.get_logger().info('Step test config loaded (converted from degrees)')
             except Exception as e:
                 self.get_logger().warn(f'Failed to load step test config: {e}')
         
         for name in JOINT_ORDER:
             if name not in cfg['joints']:
-                cfg['joints'][name] = {'step_max': 10.0, 'step_min': -10.0, 'period': global_period}
+                cfg['joints'][name] = {'step_max': 10.0 * math.pi / 180.0, 'step_min': -10.0 * math.pi / 180.0, 'period': global_period}
         self._step_cfg = cfg
 
     def _load_trajectory(self):
