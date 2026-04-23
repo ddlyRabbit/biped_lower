@@ -216,11 +216,12 @@ void Im10aReader::compute_gravity() {
     // Compute gravity vector pointing DOWN in world frame, expressed in body frame:
     // R^T * [0, 0, -1] = [ 2(qx*qz - qw*qy), 2(qy*qz + qw*qx), 1 - 2(qx^2 + qy^2) ] * -1
     // Which is: [ -2(qx*qz - qw*qy), -2(qy*qz + qw*qx), 2(qx^2 + qy^2) - 1 ]
-    // However, obs_builder.cpp expects the sensor to report UPWARD acceleration (like BNO085),
-    // which is (0, 0, +9.81) when upright. So we compute R^T * [0, 0, 1] instead:
+    // However, obs_builder.cpp expects the sensor to report UPWARD acceleration with inverted X/Y 
+    // (a physical quirk of the BNO085). To emulate the BNO085 so obs_builder handles it correctly,
+    // we compute R^T * [0, 0, 1] but manually invert X and Y:
     
-    gravity_[0] = 2.0 * (qx * qz - qw * qy);
-    gravity_[1] = 2.0 * (qy * qz + qw * qx);
+    gravity_[0] = -2.0 * (qx * qz - qw * qy);
+    gravity_[1] = -2.0 * (qy * qz + qw * qx);
     gravity_[2] = (qw * qw - qx * qx - qy * qy + qz * qz);
 
     // Normalize and scale to +9.81
