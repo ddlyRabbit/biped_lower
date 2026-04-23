@@ -6,49 +6,49 @@ wiggle:
   joints:
     R_hip_pitch:
       freq: 0.5
-      max: 28.6
-      min: -28.6
+      max: 20.0
+      min: -20.0
     R_hip_roll:
       freq: 0.5
-      max: 11.5
-      min: -22.9
+      max: 15
+      min: -10
     R_hip_yaw:
       freq: 0.5
-      max: 11.5
-      min: -11.5
+      max: 15.0
+      min: -15.0
     R_knee:
       freq: 0.5
-      max: 40
-      min: 10
+      max: 40.0
+      min: 10.0
     R_foot_pitch:
       freq: 0.5
-      max: 28.6
-      min: -28.6
+      max: 15.0
+      min: -15.0
     R_foot_roll:
       freq: 0.5
-      max: 17.2
-      min: -17.2
+      max: 10.0
+      min: -10.0
     L_hip_pitch:
       freq: 0.5
-      max: 11.5
-      min: -11.5
+      max: 20.0
+      min: -20.0
     L_hip_roll:
       freq: 0.5
-      max: 22.9
-      min: -11.5
+      max: 15
+      min: -10
     L_hip_yaw:
       freq: 0.5
-      max: 28.6
-      min: -28.6
+      max: 15.0
+      min: -15.0
     L_knee:
       freq: 0.5
-      max: 40
-      min: 10
+      max: 40.0
+      min: 10.0
     L_foot_pitch:
       freq: 0.5
-      max: 17.2
-      min: -17.2
+      max: 15.0
+      min: -15.0
     L_foot_roll:
       freq: 0.5
-      max: 11.5
-      min: -11.5
+      max: 10.0
+      min: -10.0
