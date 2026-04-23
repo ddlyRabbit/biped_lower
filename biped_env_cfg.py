@@ -94,9 +94,9 @@ def feet_air_time_positive_biped(
     reward *= reward > threshold_min
 
     # Gate: 0 reward if commanded velocity is near zero
-    reward *= torch.norm(
-        env.command_manager.get_command(command_name)[:, :2], dim=1
-    ) > 0.1
+    # reward *= torch.norm(
+    #     env.command_manager.get_command(command_name)[:, :2], dim=1
+    # ) > 0.1
 
     return reward
 
@@ -142,9 +142,9 @@ def feet_air_time_berkeley(
     reward = torch.sum((last_air_time - threshold_min) * first_contact, dim=1)
     reward = torch.clamp(reward, min=-0.25, max=threshold_max - threshold_min)
 
-    reward *= torch.norm(
-        env.command_manager.get_command(command_name)[:, :2], dim=1
-    ) > 0.1
+    # reward *= torch.norm(
+    #     env.command_manager.get_command(command_name)[:, :2], dim=1
+    # ) > 0.1
 
     return reward
 
@@ -834,14 +834,14 @@ class RewardsCfg:
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_pitch.*", ".*foot_roll.*"]),
         },
     )
-    stand_still = RewTerm(
-        func="biped_env_cfg:stand_still",
-        weight=-0.2,
-        params={
-            "command_name": "base_velocity",
-            "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
-        },
-    )
+    # stand_still = RewTerm(
+    #     func="biped_env_cfg:stand_still",
+    #     weight=-0.2,
+    #     params={
+    #         "command_name": "base_velocity",
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
+    #     },
+    # )
     flat_orientation_l2 = RewTerm(func=base_mdp.flat_orientation_l2, weight=-0.5)
     dof_pos_limits = RewTerm(func=base_mdp.joint_pos_limits, weight=-1.0)
 
