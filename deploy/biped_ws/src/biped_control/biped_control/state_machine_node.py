@@ -340,7 +340,7 @@ class StateMachineNode(Node):
                     )
                     phase_t = current_time - self._wiggle_sine_start_time
                     sin_val = math.sin(2 * math.pi * jcfg['freq'] * phase_t)
-                    offset = (jcfg['pos'] * sin_val) if sin_val >= 0 else (-jcfg['neg'] * sin_val)
+                    offset = (jcfg['pos'] * sin_val) if sin_val >= 0 else (jcfg['neg'] * sin_val)
                     target += offset
 
                 limit = self._joint_limits.get(name)
@@ -446,7 +446,7 @@ class StateMachineNode(Node):
                 name, {'pos': 0.087, 'neg': -0.087, 'freq': 1.0}
             )
             sin_val = math.sin(2 * math.pi * jcfg['freq'] * (time.time() - self._wiggle_start))
-            offset = (jcfg['pos'] * sin_val) if sin_val >= 0 else (-jcfg['neg'] * sin_val)
+            offset = (jcfg['pos'] * sin_val) if sin_val >= 0 else (jcfg['neg'] * sin_val)
             target += offset
 
             limit = self._joint_limits.get(name)

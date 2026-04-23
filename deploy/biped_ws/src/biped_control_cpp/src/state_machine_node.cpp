@@ -534,7 +534,7 @@ private:
                     auto& jcfg = wiggle_cfg_.joints[name];
                     double phase_t = current_time - wiggle_sine_start_time_;
                     double sin_val = std::sin(2 * M_PI * jcfg.freq * phase_t);
-                    double offset = (sin_val >= 0) ? (jcfg.pos * sin_val) : (-jcfg.neg * sin_val);
+                    double offset = (sin_val >= 0) ? (jcfg.pos * sin_val) : (jcfg.neg * sin_val);
                     target += offset;
                 }
 
@@ -664,7 +664,7 @@ private:
             double target = DEFAULT_POSITIONS.at(name);
             auto& jcfg = wiggle_cfg_.joints[name];
             double sin_val = std::sin(2 * M_PI * jcfg.freq * (now().seconds() - wiggle_start_));
-            double offset = (sin_val >= 0) ? (jcfg.pos * sin_val) : (-jcfg.neg * sin_val);
+            double offset = (sin_val >= 0) ? (jcfg.pos * sin_val) : (jcfg.neg * sin_val);
             target += offset;
 
             auto lit = JOINT_LIMITS.find(name);

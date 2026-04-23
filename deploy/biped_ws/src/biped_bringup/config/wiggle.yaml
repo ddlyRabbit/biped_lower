@@ -18,7 +18,7 @@ wiggle:
       freq: 0.5
     R_knee:
       pos: 40
-      neg: 10
+      neg: -10
       freq: 0.5
     R_foot_pitch:
       pos: 28.6
@@ -42,7 +42,7 @@ wiggle:
       freq: 0.5
     L_knee:
       pos: 40
-      neg: 10
+      neg: -10
       freq: 0.5
     L_foot_pitch:
       pos: 17.2
