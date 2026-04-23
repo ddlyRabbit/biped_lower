@@ -84,7 +84,7 @@ std::array<float, 45> ObsBuilder::build(
     if (g_norm > 0.1f) {
         obs[3] = gravity[0] / g_norm;
         obs[4] = gravity[1] / g_norm;
-        obs[5] = -gravity[2] / g_norm;
+        obs[5] = gravity[2] / g_norm;
     } else {
         obs[3] = 0.0f;
         obs[4] = 0.0f;

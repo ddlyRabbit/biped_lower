@@ -59,7 +59,7 @@ class IM10ANode(Node):
         # State
         self._last_quat = (0.0, 0.0, 0.0, 1.0)  # (x, y, z, w)
         self._last_gyro = (0.0, 0.0, 0.0)
-        self._last_gravity = (0.0, 0.0, -9.81)
+        self._last_gravity = (0.0, 0.0, -1.0)
         self._read_count = 0
 
         # Reconnect state
@@ -115,9 +115,9 @@ class IM10ANode(Node):
             self._last_gyro = tuple(data.gyro)
             # Gravity from driver: already in Isaac convention (upright → [0, 0, -1])
             self._last_gravity = (
-                data.gravity[0] * 9.81,
-                data.gravity[1] * 9.81,
-                data.gravity[2] * 9.81,
+                data.gravity[0],
+                data.gravity[1],
+                data.gravity[2],
             )
             self._read_count += 1
 

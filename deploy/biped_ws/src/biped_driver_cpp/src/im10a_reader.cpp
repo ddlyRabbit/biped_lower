@@ -16,7 +16,7 @@ Im10aReader::Im10aReader() : fd_(-1), initialized_(false), state_(0), current_ty
     quat_[0] = 0.0; quat_[1] = 0.0; quat_[2] = 0.0; quat_[3] = 1.0;
     gyro_[0] = 0.0; gyro_[1] = 0.0; gyro_[2] = 0.0;
     accel_[0] = 0.0; accel_[1] = 0.0; accel_[2] = 0.0;
-    gravity_[0] = 0.0; gravity_[1] = 0.0; gravity_[2] = 9.81;
+    gravity_[0] = 0.0; gravity_[1] = 0.0; gravity_[2] = -1.0;
 }
 
 Im10aReader::~Im10aReader() {
@@ -195,41 +195,29 @@ bool Im10aReader::init(const std::string& port, int target_baud) {
 }
 
 void Im10aReader::compute_gravity() {
-    // Gravity vector from quaternion (assuming upright is Z=-1 in sensor frame)
-    // R(q) * [0, 0, -g]^T
-    // Based on Python im10a_node.py:
-    // gx = 2 * (q[0]*q[2] - q[3]*q[1]) * 9.81
-    // gy = 2 * (q[1]*q[2] + q[3]*q[0]) * 9.81
-    // gz = (q[3]*q[3] - q[0]*q[0] - q[1]*q[1] + q[2]*q[2]) * 9.81
-    // But Isaac Sim expects gravity to be what the sensor *measures* (upward force),
-    // and the python node does:
-    // q_raw = [euler_quat]
-    // gravity_msg.vector.x = 2 * (q_raw[0] * q_raw[2] - q_raw[3] * q_raw[1])
-    // gravity_msg.vector.y = 2 * (q_raw[1] * q_raw[2] + q_raw[3] * q_raw[0])
-    // gravity_msg.vector.z = (q_raw[3]**2 - q_raw[0]**2 - q_raw[1]**2 + q_raw[2]**2)
-
     double qx = quat_[0];
     double qy = quat_[1];
     double qz = quat_[2];
     double qw = quat_[3];
 
-    // Compute gravity vector pointing DOWN in world frame, expressed in body frame:
-    // R^T * [0, 0, -1] = [ 2(qx*qz - qw*qy), 2(qy*qz + qw*qx), 1 - 2(qx^2 + qy^2) ] * -1
-    // Which is: [ -2(qx*qz - qw*qy), -2(qy*qz + qw*qx), 2(qx^2 + qy^2) - 1 ]
-    // However, obs_builder.cpp expects the sensor to report UPWARD acceleration with inverted X/Y 
-    // (a physical quirk of the BNO085). To emulate the BNO085 so obs_builder handles it correctly,
-    // we compute R^T * [0, 0, 1] but manually invert X and Y:
+    // Compute normalized gravity vector pointing DOWN in world frame, expressed in body frame:
+    // R^T * [0, 0, -1] = [ -2(qx*qz - qw*qy), -2(qy*qz + qw*qx), -(qw^2 - qx^2 - qy^2 + qz^2) ]
+    // This perfectly matches Isaac Sim's `projected_gravity_b` (which is a unit vector).
     
     gravity_[0] = -2.0 * (qx * qz - qw * qy);
     gravity_[1] = -2.0 * (qy * qz + qw * qx);
-    gravity_[2] = (qw * qw - qx * qx - qy * qy + qz * qz);
+    gravity_[2] = -(qw * qw - qx * qx - qy * qy + qz * qz);
 
-    // Normalize and scale to +9.81
+    // Normalize to guarantee a unit vector (magnitude = 1.0)
     double norm = std::sqrt(gravity_[0]*gravity_[0] + gravity_[1]*gravity_[1] + gravity_[2]*gravity_[2]);
     if (norm > 0.001) {
-        gravity_[0] = (gravity_[0] / norm) * 9.81;
-        gravity_[1] = (gravity_[1] / norm) * 9.81;
-        gravity_[2] = (gravity_[2] / norm) * 9.81;
+        gravity_[0] /= norm;
+        gravity_[1] /= norm;
+        gravity_[2] /= norm;
+    } else {
+        gravity_[0] = 0.0;
+        gravity_[1] = 0.0;
+        gravity_[2] = -1.0;
     }
 }
 

@@ -12,6 +12,7 @@ Requires: adafruit-circuitpython-bno08x
 
 Hardware: BNO085 on I2C.
   Jetson Orin Nano: I2C bus 7, Pin 3 (SDA) / Pin 5 (SCL), RST on Pin 7.
+import math
   RPi 5: I2C bus 1, Pin 3 (SDA) / Pin 5 (SCL), RST on Pin 7 (GPIO4).
 """
 
@@ -78,7 +79,7 @@ class BNO085Node(Node):
         # State — latest readings
         self._last_quat = (0.0, 0.0, 0.0, 1.0)  # (x, y, z, w) ROS convention
         self._last_gyro = (0.0, 0.0, 0.0)         # rad/s body frame
-        self._last_gravity = (0.0, 0.0, -9.81)     # m/s²
+        self._last_gravity = (0.0, 0.0, -1.0)      # Normalized unit vector
 
         # TF broadcaster: odom → base_link from IMU orientation
         self._tf_broadcaster = TransformBroadcaster(self)
@@ -201,7 +202,12 @@ class BNO085Node(Node):
                 # BNO085 outputs UPWARD force (0, 0, 9.81) when upright.
                 # Isaac Sim expects DOWNWARD gravity (0, 0, -9.81).
                 # Negate all axes to map R^T * [0, 0, 1] to R^T * [0, 0, -1]
-                self._last_gravity = (-gravity[0], -gravity[1], -gravity[2])
+                # Normalize to unit vector to match Isaac convention
+                norm = math.sqrt(gravity[0]**2 + gravity[1]**2 + gravity[2]**2)
+                if norm > 0.1:
+                    self._last_gravity = (-gravity[0]/norm, -gravity[1]/norm, -gravity[2]/norm)
+                else:
+                    self._last_gravity = (0.0, 0.0, -1.0)
 
             self._read_count += 1
 

@@ -95,14 +95,12 @@ class ObsBuilder:
         obs[0:3] = gyro
 
         # [3-5] projected_gravity
-        # BNO085 SH2_GRAVITY: upright → (0, 0, +9.81) (points up)
-        # Isaac projected_gravity: upright → (0, 0, -1) (points down)
-        # BNO085 X/Y axes are inverted relative to Isaac convention,
-        # so we keep X/Y sign (no negate) and only negate Z.
+        # IMU nodes now output standardized Isaac convention:
+        # upright -> (0, 0, -9.81)
         g_norm = np.linalg.norm(gravity)
         if g_norm > 0.1:
             g_unit = gravity / g_norm
-            obs[3:6] = [g_unit[0], g_unit[1], -g_unit[2]]
+            obs[3:6] = [g_unit[0], g_unit[1], g_unit[2]]
         else:
             obs[3:6] = [0.0, 0.0, -1.0]  # fallback (Isaac convention)
 

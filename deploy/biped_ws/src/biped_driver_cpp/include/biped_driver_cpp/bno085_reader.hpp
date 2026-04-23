@@ -18,7 +18,7 @@ struct ImuData {
     double quaternion[4] = {0.0, 0.0, 0.0, 1.0};  // x, y, z, w
     double gyro[3]       = {0.0, 0.0, 0.0};         // rad/s
     double accel[3]      = {0.0, 0.0, 0.0};         // m/s^2
-    double gravity[3]    = {0.0, 0.0, -9.81};        // m/s^2
+    double gravity[3]    = {0.0, 0.0, -1.0};         // Normalized unit vector
     bool valid = false;
 };
 
@@ -45,7 +45,7 @@ private:
     // Latest state (updated by read)
     double quat_[4]   = {0.0, 0.0, 0.0, 1.0};
     double gyro_[3]   = {0.0, 0.0, 0.0};
-    double gravity_[3] = {0.0, 0.0, -9.81};
+    double gravity_[3] = {0.0, 0.0, -1.0};
 
     uint64_t read_count_  = 0;
     uint64_t error_count_ = 0;

@@ -154,9 +154,9 @@ ImuData Bno085Reader::read() {
                         int16_t x = (buf[base+1] << 8) | buf[base];
                         int16_t y = (buf[base+3] << 8) | buf[base+2];
                         int16_t z = (buf[base+5] << 8) | buf[base+4];
-                        gravity_[0] = x / 256.0;
-                        gravity_[1] = y / 256.0;
-                        gravity_[2] = z / 256.0;
+                        gravity_[0] = -x / 256.0;
+                        gravity_[1] = -y / 256.0;
+                        gravity_[2] = -z / 256.0;
                     };
                     decode_gr(offset + 4);
                     offset += 10;
