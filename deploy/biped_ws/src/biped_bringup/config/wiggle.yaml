@@ -1,21 +1,18 @@
 # Wiggle test configuration
-# pos/neg: range above/below default position (radians)
+# pos/neg: amplitude range above/below default position (in DEGREES)
 # frequency: sine wave frequency (Hz)
-# duration_per_joint: seconds per joint in sequential mode
 
 wiggle:
-  duration_per_joint: 5.0
-
   joints:
-    R_hip_pitch:   { pos: 0.5, neg: -0.5, freq: 0.5 }
-    R_hip_roll:    { pos: 0.2, neg: -0.4, freq: 0.5 }
-    R_hip_yaw:     { pos: 0.5, neg: -0.5, freq: 0.5 }
-    R_knee:        { pos: 0.4, neg: -0.1, freq: 0.5 }
-    R_foot_pitch:  { pos: 0.5, neg: -0.5, freq: 0.5 }
-    R_foot_roll:   { pos: 0.3, neg: -0.3, freq: 0.5 }
-    L_hip_pitch:   { pos: 0.5, neg: -0.5, freq: 0.5 }
-    L_hip_roll:    { pos: 0.4, neg: -0.2, freq: 0.5 }
-    L_hip_yaw:     { pos: 0.5, neg: -0.5, freq: 0.5 }
-    L_knee:        { pos: 0.4, neg: -0.1, freq: 0.5 }
-    L_foot_pitch:  { pos: 0.3, neg: -0.3, freq: 0.5 }
-    L_foot_roll:   { pos: 0.2, neg: -0.2, freq: 0.5 }
+    R_hip_pitch:   { pos: 30.0, neg: -30.0, freq: 0.5 }
+    R_hip_roll:    { pos: 15.0, neg: -20.0, freq: 0.5 }
+    R_hip_yaw:     { pos: 30.0, neg: -30.0, freq: 0.5 }
+    R_knee:        { pos: 25.0, neg: -10.0, freq: 0.5 }
+    R_foot_pitch:  { pos: 30.0, neg: -30.0, freq: 0.5 }
+    R_foot_roll:   { pos: 20.0, neg: -20.0, freq: 0.5 }
+    L_hip_pitch:   { pos: 30.0, neg: -30.0, freq: 0.5 }
+    L_hip_roll:    { pos: 20.0, neg: -15.0, freq: 0.5 }
+    L_hip_yaw:     { pos: 30.0, neg: -30.0, freq: 0.5 }
+    L_knee:        { pos: 25.0, neg: -10.0, freq: 0.5 }
+    L_foot_pitch:  { pos: 20.0, neg: -20.0, freq: 0.5 }
+    L_foot_roll:   { pos: 15.0, neg: -15.0, freq: 0.5 }

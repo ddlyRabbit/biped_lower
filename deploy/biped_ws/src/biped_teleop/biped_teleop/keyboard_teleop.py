@@ -106,8 +106,6 @@ class KeyboardTeleop(Node):
         self._wz = 0.0
         self._running = True
 
-        self._presets = {'1': 0.1, '2': 0.3, '3': 0.5, '4': 0.8, '5': 1.0}
-
         # FSM state tracking
         self.create_subscription(String, '/state_machine', self._fsm_cb, 10)
 
@@ -121,6 +119,12 @@ class KeyboardTeleop(Node):
             'p': 'PLAY_TRAJ_SIM',   # STAND → PLAY_TRAJ_SIM (viz only)
             'P': 'PLAY_TRAJ',       # STAND → PLAY_TRAJ (real motors)
             'b': 'STOP',        # any → STAND
+        }
+
+        # Wiggle joint selection keys (0-11)
+        self._wiggle_keys = {
+            '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5,
+            '7': 6, '8': 7, '9': 8, '0': 9, '-': 10, '=': 11
         }
 
     def _fsm_cb(self, msg: String):
@@ -188,15 +192,8 @@ class KeyboardTeleop(Node):
                     self._wz = self._clamp(self._wz - self._ang_step, self._max_ang)
                 elif key == 'x':
                     self._vx = self._vy = self._wz = 0.0
-                elif key in self._presets:
-                    self._vx = self._presets[key]
-                    self._vy = self._wz = 0.0
-                elif key in ('+', '='):
-                    self._lin_step = min(self._lin_step + 0.05, 0.5)
-                    self._ang_step = min(self._ang_step + 0.05, 0.5)
-                elif key == '-':
-                    self._lin_step = max(self._lin_step - 0.05, 0.01)
-                    self._ang_step = max(self._ang_step - 0.05, 0.01)
+                elif key in self._wiggle_keys:
+                    self._send_fsm(f"WIGGLE_SEQ:{self._wiggle_keys[key]}")
                 elif key == '\x1b':  # ESC → ESTOP
                     self._send_fsm('ESTOP')
                     self._vx = self._vy = self._wz = 0.0

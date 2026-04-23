@@ -78,6 +78,13 @@ private:
     double wiggle_start_ = 0.0;
     int wiggle_joint_idx_ = 0;
 
+    int active_joint_idx_ = -1;
+    int target_joint_idx_ = -1;
+    bool wiggle_interpolating_ = false;
+    double interp_start_time_ = 0.0;
+    double interp_start_pos_ = 0.0;
+    double wiggle_sine_start_time_ = 0.0;
+
     std::vector<std::vector<double>> traj_frames_;
     int traj_index_ = 0;
     bool traj_sim_only_ = false;
@@ -113,8 +120,8 @@ private:
                         for (auto it = w["joints"].begin(); it != w["joints"].end(); ++it) {
                             std::string name = it->first.as<std::string>();
                             auto params = it->second;
-                            double pos = params["pos"] ? params["pos"].as<double>() : 0.087;
-                            double neg = params["neg"] ? params["neg"].as<double>() : -0.087;
+                            double pos = params["pos"] ? params["pos"].as<double>() * M_PI / 180.0 : 0.087;
+                            double neg = params["neg"] ? params["neg"].as<double>() * M_PI / 180.0 : -0.087;
                             double freq = params["freq"] ? params["freq"].as<double>() : global_freq;
 
                             auto lit = JOINT_LIMITS.find(name);
@@ -278,7 +285,32 @@ private:
         else if (cmd == "PLAY_TRAJ" && state_ == "STAND") transition("PLAY_TRAJ");
         else if (cmd == "PLAY_TRAJ_SIM" && state_ == "STAND") transition("PLAY_TRAJ_SIM");
         else if (cmd == "STOP" && state_ != "IDLE" && state_ != "ESTOP") transition("STAND");
-        else if (cmd == "WIGGLE_SEQ" && state_ == "STAND") transition("WIGGLE_SEQ");
+        else if (cmd.find("WIGGLE_SEQ") == 0) {
+            size_t colon_pos = cmd.find(":");
+            if (colon_pos != std::string::npos) {
+                int target_idx = std::stoi(cmd.substr(colon_pos + 1));
+                if (target_idx >= 0 && target_idx < static_cast<int>(JOINT_ORDER.size())) {
+                    if (state_ != "WIGGLE_SEQ") {
+                        transition("WIGGLE_SEQ");
+                    }
+                    if (target_idx != active_joint_idx_) {
+                        target_joint_idx_ = target_idx;
+                        interp_start_time_ = now().seconds();
+                        if (active_joint_idx_ >= 0) {
+                            interp_start_pos_ = current_positions_[JOINT_ORDER[active_joint_idx_]] - DEFAULT_POSITIONS.at(JOINT_ORDER[active_joint_idx_]);
+                            wiggle_interpolating_ = true;
+                        } else {
+                            // If it's the very first joint, jump straight in
+                            active_joint_idx_ = target_joint_idx_;
+                            wiggle_sine_start_time_ = now().seconds();
+                            wiggle_interpolating_ = false;
+                        }
+                    }
+                }
+            } else {
+                if (state_ != "WIGGLE_SEQ") transition("WIGGLE_SEQ");
+            }
+        }
         else if (cmd == "WIGGLE_ALL" && state_ == "STAND") transition("WIGGLE_ALL");
         else if (cmd == "ESTOP") transition("ESTOP");
         else if (cmd == "RESET" && state_ == "ESTOP") transition("IDLE");
@@ -294,10 +326,16 @@ private:
         } else if (new_state == "PLAY_TRAJ" || new_state == "PLAY_TRAJ_SIM") {
             traj_sim_only_ = (new_state == "PLAY_TRAJ_SIM");
             load_trajectory();
-        } else if (new_state == "WIGGLE_SEQ" || new_state == "WIGGLE_ALL") {
+        } else if (new_state == "WIGGLE_SEQ") {
+            stand_start_positions_ = current_positions_;
+            load_wiggle_config();
+            active_joint_idx_ = -1;
+            target_joint_idx_ = -1;
+            wiggle_interpolating_ = false;
+        } else if (new_state == "WIGGLE_ALL") {
+            stand_start_positions_ = current_positions_;
             load_wiggle_config();
             wiggle_start_ = now().seconds();
-            wiggle_joint_idx_ = 0;
         } else if (new_state == "ESTOP") {
             send_zero_torque();
         }
@@ -367,59 +405,98 @@ private:
     }
 
     void handle_wiggle_sequential() {
-        double elapsed = now().seconds() - wiggle_start_;
-        double dur = wiggle_cfg_.duration;
-        int joint_idx = static_cast<int>(elapsed / dur);
-
-        if (joint_idx >= static_cast<int>(JOINT_ORDER.size())) {
-            RCLCPP_INFO(get_logger(), "Wiggle sequential complete");
-            transition("STAND");
+        double elapsed = now().seconds() - state_start_time_;
+        
+        // Initial entry ramp (same as STAND)
+        if (elapsed <= ramp_time_ + stable_time_) {
+            handle_stand();
             return;
-        }
-
-        std::string active_name = JOINT_ORDER[joint_idx];
-        double phase_t = elapsed - joint_idx * dur;
-
-        if (joint_idx != wiggle_joint_idx_) {
-            wiggle_joint_idx_ = joint_idx;
-            RCLCPP_INFO(get_logger(), "Wiggle: %s (%d/%zu)", active_name.c_str(), joint_idx + 1, JOINT_ORDER.size());
         }
 
         double gs = get_parameter("gain_scale").as_double();
         biped_msgs::msg::MITCommandArray msg;
         msg.header.stamp = now();
 
-        for (const auto& name : JOINT_ORDER) {
-            double default_pos = DEFAULT_POSITIONS.at(name);
-            double target = default_pos;
+        double current_time = now().seconds();
 
-            if (name == active_name) {
-                auto& jcfg = wiggle_cfg_.joints[name];
-                double sin_val = std::sin(2 * M_PI * jcfg.freq * phase_t);
-                double offset = (sin_val >= 0) ? (jcfg.pos * sin_val) : (-jcfg.neg * sin_val);
-                target += offset;
+        // Handle Interpolation
+        if (wiggle_interpolating_) {
+            double alpha = (current_time - interp_start_time_) / 3.0; // 3 seconds grace
+            if (alpha >= 1.0) {
+                alpha = 1.0;
+                wiggle_interpolating_ = false;
+                active_joint_idx_ = target_joint_idx_;
+                wiggle_sine_start_time_ = current_time;
             }
+            
+            for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
+                std::string name = JOINT_ORDER[i];
+                double target = DEFAULT_POSITIONS.at(name);
 
-            auto lit = JOINT_LIMITS.find(name);
-            if (lit != JOINT_LIMITS.end()) {
-                target = std::max(lit->second.first, std::min(lit->second.second, target));
+                if (i == active_joint_idx_) {
+                    // Pull old joint back to 0.0 relative to default
+                    target += interp_start_pos_ * (1.0 - alpha);
+                }
+
+                auto lit = JOINT_LIMITS.find(name);
+                if (lit != JOINT_LIMITS.end()) {
+                    target = std::max(lit->second.first, std::min(lit->second.second, target));
+                }
+
+                auto gains = DEFAULT_GAINS.at(name);
+                biped_msgs::msg::MITCommand cmd;
+                cmd.joint_name = name;
+                cmd.position = target;
+                cmd.velocity = 0.0;
+                cmd.kp = gains.first * gs;
+                cmd.kd = gains.second * gs;
+                cmd.torque_ff = 0.0;
+                msg.commands.push_back(cmd);
             }
+        } 
+        else {
+            // Active Wiggle
+            for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
+                std::string name = JOINT_ORDER[i];
+                double target = DEFAULT_POSITIONS.at(name);
 
-            auto gains = DEFAULT_GAINS.at(name);
-            biped_msgs::msg::MITCommand cmd;
-            cmd.joint_name = name;
-            cmd.position = target;
-            cmd.velocity = 0.0;
-            cmd.kp = gains.first * gs;
-            cmd.kd = gains.second * gs;
-            cmd.torque_ff = 0.0;
-            msg.commands.push_back(cmd);
+                if (i == active_joint_idx_) {
+                    auto& jcfg = wiggle_cfg_.joints[name];
+                    double phase_t = current_time - wiggle_sine_start_time_;
+                    double sin_val = std::sin(2 * M_PI * jcfg.freq * phase_t);
+                    double offset = (sin_val >= 0) ? (jcfg.pos * sin_val) : (-jcfg.neg * sin_val);
+                    target += offset;
+                }
+
+                auto lit = JOINT_LIMITS.find(name);
+                if (lit != JOINT_LIMITS.end()) {
+                    target = std::max(lit->second.first, std::min(lit->second.second, target));
+                }
+
+                auto gains = DEFAULT_GAINS.at(name);
+                biped_msgs::msg::MITCommand cmd;
+                cmd.joint_name = name;
+                cmd.position = target;
+                cmd.velocity = 0.0;
+                cmd.kp = gains.first * gs;
+                cmd.kd = gains.second * gs;
+                cmd.torque_ff = 0.0;
+                msg.commands.push_back(cmd);
+            }
         }
+
         pub_cmd_->publish(msg);
     }
 
     void handle_wiggle_all() {
-        double elapsed = now().seconds() - wiggle_start_;
+        double elapsed = now().seconds() - state_start_time_;
+        
+        // Initial entry ramp (same as STAND)
+        if (elapsed <= ramp_time_ + stable_time_) {
+            handle_stand();
+            return;
+        }
+        
         double gs = get_parameter("gain_scale").as_double();
         biped_msgs::msg::MITCommandArray msg;
         msg.header.stamp = now();
@@ -427,7 +504,7 @@ private:
         for (const auto& name : JOINT_ORDER) {
             double target = DEFAULT_POSITIONS.at(name);
             auto& jcfg = wiggle_cfg_.joints[name];
-            double sin_val = std::sin(2 * M_PI * jcfg.freq * elapsed);
+            double sin_val = std::sin(2 * M_PI * jcfg.freq * (now().seconds() - wiggle_start_));
             double offset = (sin_val >= 0) ? (jcfg.pos * sin_val) : (-jcfg.neg * sin_val);
             target += offset;
 
