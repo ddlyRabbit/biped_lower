@@ -6,50 +6,50 @@
 step:
   joints:
     R_hip_pitch:
-      step_min: -10.0
-      step_max: 10.0
+      step_max: 28.6
+      step_min: -28.6
       period: 2.0
     R_hip_roll:
-      step_min: -10.0
-      step_max: 10.0
+      step_max: 11.5
+      step_min: -22.9
       period: 2.0
     R_hip_yaw:
-      step_min: -10.0
-      step_max: 10.0
+      step_max: 11.5
+      step_min: -11.5
       period: 2.0
     R_knee:
-      step_min: -10.0
-      step_max: 10.0
+      step_max: 22.9
+      step_min: -5.7
       period: 2.0
     R_foot_pitch:
-      step_min: -10.0
-      step_max: 10.0
+      step_max: 28.6
+      step_min: -28.6
       period: 2.0
     R_foot_roll:
-      step_min: -10.0
-      step_max: 10.0
+      step_max: 17.2
+      step_min: -17.2
       period: 2.0
     L_hip_pitch:
-      step_min: -10.0
-      step_max: 10.0
+      step_max: 11.5
+      step_min: -11.5
       period: 2.0
     L_hip_roll:
-      step_min: -10.0
-      step_max: 10.0
+      step_max: 22.9
+      step_min: -11.5
       period: 2.0
     L_hip_yaw:
-      step_min: -10.0
-      step_max: 10.0
+      step_max: 28.6
+      step_min: -28.6
       period: 2.0
     L_knee:
-      step_min: -10.0
-      step_max: 10.0
+      step_max: 22.9
+      step_min: -5.7
       period: 2.0
     L_foot_pitch:
-      step_min: -10.0
-      step_max: 10.0
+      step_max: 17.2
+      step_min: -17.2
       period: 2.0
     L_foot_roll:
-      step_min: -10.0
-      step_max: 10.0
+      step_max: 11.5
+      step_min: -11.5
       period: 2.0

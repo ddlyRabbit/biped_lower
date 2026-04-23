@@ -5,50 +5,50 @@
 wiggle:
   joints:
     R_hip_pitch:
-      pos: 5.0
-      neg: -5.0
-      freq: 1.0
+      pos: 28.6
+      neg: -28.6
+      freq: 0.5
     R_hip_roll:
-      pos: 5.0
-      neg: -5.0
-      freq: 1.0
+      pos: 11.5
+      neg: -22.9
+      freq: 0.5
     R_hip_yaw:
-      pos: 5.0
-      neg: -5.0
-      freq: 1.0
+      pos: 11.5
+      neg: -11.5
+      freq: 0.5
     R_knee:
-      pos: 5.0
-      neg: -5.0
-      freq: 1.0
+      pos: 22.9
+      neg: -5.7
+      freq: 0.5
     R_foot_pitch:
-      pos: 5.0
-      neg: -5.0
-      freq: 1.0
+      pos: 28.6
+      neg: -28.6
+      freq: 0.5
     R_foot_roll:
-      pos: 5.0
-      neg: -5.0
-      freq: 1.0
+      pos: 17.2
+      neg: -17.2
+      freq: 0.5
     L_hip_pitch:
-      pos: 5.0
-      neg: -5.0
-      freq: 1.0
+      pos: 11.5
+      neg: -11.5
+      freq: 0.5
     L_hip_roll:
-      pos: 5.0
-      neg: -5.0
-      freq: 1.0
+      pos: 22.9
+      neg: -11.5
+      freq: 0.5
     L_hip_yaw:
-      pos: 5.0
-      neg: -5.0
-      freq: 1.0
+      pos: 28.6
+      neg: -28.6
+      freq: 0.5
     L_knee:
-      pos: 5.0
-      neg: -5.0
-      freq: 1.0
+      pos: 22.9
+      neg: -5.7
+      freq: 0.5
     L_foot_pitch:
-      pos: 5.0
-      neg: -5.0
-      freq: 1.0
+      pos: 17.2
+      neg: -17.2
+      freq: 0.5
     L_foot_roll:
-      pos: 5.0
-      neg: -5.0
-      freq: 1.0
+      pos: 11.5
+      neg: -11.5
+      freq: 0.5
