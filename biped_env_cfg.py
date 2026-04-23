@@ -732,7 +732,7 @@ class ActionsCfg:
         joint_names=ALL_JOINTS,
         scale={
             ".*hip_yaw.*": 0.5, ".*hip_roll.*": 0.5, ".*hip_pitch.*": 0.5,
-            ".*knee.*": 0.5, ".*foot_pitch.*": 0.5, ".*foot_roll.*": 0.25,
+            ".*knee.*": 0.5, ".*foot_pitch.*": 0.3, ".*foot_roll.*": 0.25,
         },
         preserve_order=True,
         use_default_offset=True,
