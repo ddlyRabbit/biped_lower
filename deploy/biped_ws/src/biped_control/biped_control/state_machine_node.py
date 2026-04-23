@@ -162,6 +162,10 @@ class StateMachineNode(Node):
             parts = cmd.split(":")
             base_cmd = parts[0]
             if len(parts) > 1:
+                if self._state == base_cmd and (time.time() - self._state_start_time <= self._ramp_time + self._stable_time):
+                    self.get_logger().warn("Ignoring joint selection during initial ramp phase.")
+                    return
+                
                 try:
                     target_idx = int(parts[1])
                     if 0 <= target_idx < len(JOINT_ORDER):

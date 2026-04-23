@@ -342,6 +342,13 @@ private:
             size_t colon_pos = cmd.find(":");
             std::string base_cmd = cmd.substr(0, colon_pos);
             if (colon_pos != std::string::npos) {
+                // Ignore joint selection if we are still in the initial entry ramp!
+                if (state_ == base_cmd && (now().seconds() - state_start_time_ <= ramp_time_ + stable_time_)) {
+                    RCLCPP_WARN(get_logger(), "Ignoring joint selection during initial ramp phase. Wait %.1fs.", 
+                                (ramp_time_ + stable_time_) - (now().seconds() - state_start_time_));
+                    return;
+                }
+
                 int target_idx = std::stoi(cmd.substr(colon_pos + 1));
                 if (target_idx >= 0 && target_idx < static_cast<int>(JOINT_ORDER.size())) {
                     if (state_ != base_cmd) {
