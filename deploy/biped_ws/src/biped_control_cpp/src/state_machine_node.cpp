@@ -205,7 +205,8 @@ private:
         }
         for (const auto& name : JOINT_ORDER) {
             if (step_cfg_.joints.find(name) == step_cfg_.joints.end()) {
-                step_cfg_.joints[name] = {0.174, -0.174, global_period};
+                double def = DEFAULT_POSITIONS.at(name);
+                step_cfg_.joints[name] = {def + 0.174, def - 0.174, global_period};
             }
         }
     }
@@ -622,13 +623,11 @@ private:
                     double phase_t = current_time - wiggle_sine_start_time_;
                     double cycle_time = std::fmod(phase_t, jcfg.period);
                     
-                    double offset = 0.0;
                     if (cycle_time < (jcfg.period / 2.0)) {
-                        offset = jcfg.step_max;
+                        target = jcfg.step_max;
                     } else {
-                        offset = jcfg.step_min;
+                        target = jcfg.step_min;
                     }
-                    target += offset;
                 }
 
                 auto lit = JOINT_LIMITS.find(name);

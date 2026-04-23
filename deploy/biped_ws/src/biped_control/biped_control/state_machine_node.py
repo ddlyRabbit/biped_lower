@@ -126,7 +126,8 @@ class StateMachineNode(Node):
         
         for name in JOINT_ORDER:
             if name not in cfg['joints']:
-                cfg['joints'][name] = {'step_max': 10.0 * math.pi / 180.0, 'step_min': -10.0 * math.pi / 180.0, 'period': global_period}
+                def_pos = DEFAULT_POSITIONS[name]
+                cfg['joints'][name] = {'step_max': def_pos + 10.0 * math.pi / 180.0, 'step_min': def_pos - 10.0 * math.pi / 180.0, 'period': global_period}
         self._step_cfg = cfg
 
     def _load_trajectory(self):
@@ -414,17 +415,15 @@ class StateMachineNode(Node):
 
                 if i == getattr(self, '_active_joint_idx', -1):
                     jcfg = self._step_cfg['joints'].get(
-                        name, {'step_max': 0.174, 'step_min': -0.174, 'period': 2.0}
+                        name, {'step_max': target + 0.174, 'step_min': target - 0.174, 'period': 2.0}
                     )
                     phase_t = current_time - self._wiggle_sine_start_time
                     cycle_time = math.fmod(phase_t, jcfg['period'])
                     
                     if cycle_time < (jcfg['period'] / 2.0):
-                        offset = jcfg['step_max']
+                        target = jcfg['step_max']
                     else:
-                        offset = jcfg['step_min']
-                        
-                    target += offset
+                        target = jcfg['step_min']
 
                 limit = self._joint_limits.get(name)
                 if limit:
