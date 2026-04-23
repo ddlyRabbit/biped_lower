@@ -80,16 +80,11 @@ std::array<float, 45> ObsBuilder::build(
     obs[2] = gyro[2];
 
     // [3-5] projected_gravity
-    float g_norm = std::sqrt(gravity[0]*gravity[0] + gravity[1]*gravity[1] + gravity[2]*gravity[2]);
-    if (g_norm > 0.1f) {
-        obs[3] = gravity[0] / g_norm;
-        obs[4] = gravity[1] / g_norm;
-        obs[5] = gravity[2] / g_norm;
-    } else {
-        obs[3] = 0.0f;
-        obs[4] = 0.0f;
-        obs[5] = -1.0f;
-    }
+    // The gravity vector from the IMU node is already a normalized unit vector
+    // pointing downwards in the body frame, perfectly matching Isaac Sim.
+    obs[3] = gravity[0];
+    obs[4] = gravity[1];
+    obs[5] = gravity[2];
 
     // [6-8] velocity_commands
     obs[6] = cmd_vel[0];

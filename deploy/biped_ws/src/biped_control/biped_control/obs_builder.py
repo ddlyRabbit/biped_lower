@@ -96,13 +96,8 @@ class ObsBuilder:
 
         # [3-5] projected_gravity
         # IMU nodes now output standardized Isaac convention:
-        # upright -> (0, 0, -9.81)
-        g_norm = np.linalg.norm(gravity)
-        if g_norm > 0.1:
-            g_unit = gravity / g_norm
-            obs[3:6] = [g_unit[0], g_unit[1], g_unit[2]]
-        else:
-            obs[3:6] = [0.0, 0.0, -1.0]  # fallback (Isaac convention)
+        # upright -> (0, 0, -1.0)
+        obs[3:6] = gravity
 
         # [6-8] velocity_commands
         obs[6:9] = cmd_vel
