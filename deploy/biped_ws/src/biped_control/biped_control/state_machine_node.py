@@ -92,8 +92,8 @@ class StateMachineNode(Node):
                     if 'wiggle' in raw and 'joints' in raw['wiggle']:
                         for name, params in raw['wiggle']['joints'].items():
                             cfg['joints'][name] = {
-                                'pos': float(params.get('pos', 5.0)) * math.pi / 180.0,
-                                'neg': float(params.get('neg', -5.0)) * math.pi / 180.0,
+                                'max': float(params.get('max', 5.0)) * math.pi / 180.0,
+                                'min': float(params.get('min', -5.0)) * math.pi / 180.0,
                                 'freq': float(params.get('freq', global_freq)),
                             }
                 self.get_logger().info('Wiggle config loaded (converted from degrees)')
@@ -102,7 +102,7 @@ class StateMachineNode(Node):
         
         for name in JOINT_ORDER:
             if name not in cfg['joints']:
-                cfg['joints'][name] = {'pos': 5.0 * math.pi / 180.0, 'neg': -5.0 * math.pi / 180.0, 'freq': global_freq}
+                cfg['joints'][name] = {'max': DEFAULT_POSITIONS[name] + 5.0 * math.pi / 180.0, 'min': DEFAULT_POSITIONS[name] - 5.0 * math.pi / 180.0, 'freq': global_freq}
         self._wiggle_cfg = cfg
 
     def _load_step_config(self):
@@ -315,8 +315,14 @@ class StateMachineNode(Node):
             
             for i, name in enumerate(JOINT_ORDER):
                 target = DEFAULT_POSITIONS[name]
-                if i == self._active_joint_idx:
+                if i == getattr(self, '_active_joint_idx', -1):
                     target += self._interp_start_pos * (1.0 - alpha)
+                elif i == getattr(self, '_target_joint_idx', -1):
+                    jcfg = self._wiggle_cfg['joints'].get(
+                        name, {'max': target + 0.087, 'min': target - 0.087, 'freq': 1.0}
+                    )
+                    mid = (jcfg['max'] + jcfg['min']) / 2.0
+                    target = target + (mid - target) * alpha
 
                 limit = self._joint_limits.get(name)
                 if limit:
@@ -336,12 +342,12 @@ class StateMachineNode(Node):
                 target = DEFAULT_POSITIONS[name]
                 if i == getattr(self, '_active_joint_idx', -1):
                     jcfg = self._wiggle_cfg['joints'].get(
-                        name, {'pos': 0.087, 'neg': -0.087, 'freq': 1.0}
+                        name, {'max': target + 0.087, 'min': target - 0.087, 'freq': 1.0}
                     )
                     phase_t = current_time - self._wiggle_sine_start_time
-                    sin_val = math.sin(2 * math.pi * jcfg['freq'] * phase_t)
-                    offset = (jcfg['pos'] * sin_val) if sin_val >= 0 else (jcfg['neg'] * sin_val)
-                    target += offset
+                    mid = (jcfg['max'] + jcfg['min']) / 2.0
+                    amp = (jcfg['max'] - jcfg['min']) / 2.0
+                    target = mid + amp * math.sin(2 * math.pi * jcfg['freq'] * phase_t)
 
                 limit = self._joint_limits.get(name)
                 if limit:
@@ -380,8 +386,14 @@ class StateMachineNode(Node):
             
             for i, name in enumerate(JOINT_ORDER):
                 target = DEFAULT_POSITIONS[name]
-                if i == self._active_joint_idx:
+                if i == getattr(self, '_active_joint_idx', -1):
                     target += self._interp_start_pos * (1.0 - alpha)
+                elif i == getattr(self, '_target_joint_idx', -1):
+                    jcfg = self._wiggle_cfg['joints'].get(
+                        name, {'max': target + 0.087, 'min': target - 0.087, 'freq': 1.0}
+                    )
+                    mid = (jcfg['max'] + jcfg['min']) / 2.0
+                    target = target + (mid - target) * alpha
 
                 limit = self._joint_limits.get(name)
                 if limit:
@@ -440,14 +452,17 @@ class StateMachineNode(Node):
         cmd_msg = MITCommandArray()
         cmd_msg.header.stamp = self.get_clock().now().to_msg()
 
+        active_t = time.time() - self._wiggle_start - self._ramp_time - self._stable_time
+        fade = min(max(0.0, active_t) / 2.0, 1.0)
         for name in JOINT_ORDER:
-            target = DEFAULT_POSITIONS[name]
+            def_pos = DEFAULT_POSITIONS[name]
             jcfg = self._wiggle_cfg['joints'].get(
-                name, {'pos': 0.087, 'neg': -0.087, 'freq': 1.0}
+                name, {'max': def_pos + 0.087, 'min': def_pos - 0.087, 'freq': 1.0}
             )
-            sin_val = math.sin(2 * math.pi * jcfg['freq'] * (time.time() - self._wiggle_start))
-            offset = (jcfg['pos'] * sin_val) if sin_val >= 0 else (jcfg['neg'] * sin_val)
-            target += offset
+            mid = (jcfg['max'] + jcfg['min']) / 2.0
+            amp = (jcfg['max'] - jcfg['min']) / 2.0
+            wave_target = mid + amp * math.sin(2 * math.pi * jcfg['freq'] * active_t)
+            target = def_pos * (1.0 - fade) + wave_target * fade
 
             limit = self._joint_limits.get(name)
             if limit:

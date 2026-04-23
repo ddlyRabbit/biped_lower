@@ -82,7 +82,7 @@ private:
     std::unordered_map<std::string, double> current_positions_;
     std::unordered_map<std::string, double> stand_start_positions_;
 
-    struct WiggleJoint { double pos; double neg; double freq; };
+    struct WiggleJoint { double max; double min; double freq; };
     struct WiggleCfg { double duration; std::unordered_map<std::string, WiggleJoint> joints; };
     WiggleCfg wiggle_cfg_;
     
@@ -135,8 +135,8 @@ private:
                         for (auto it = w["joints"].begin(); it != w["joints"].end(); ++it) {
                             std::string name = it->first.as<std::string>();
                             auto params = it->second;
-                            double pos = params["pos"] ? params["pos"].as<double>() * M_PI / 180.0 : 0.087;
-                            double neg = params["neg"] ? params["neg"].as<double>() * M_PI / 180.0 : -0.087;
+                            double max_val = params["max"] ? params["max"].as<double>() * M_PI / 180.0 : 0.087;
+                            double min_val = params["min"] ? params["min"].as<double>() * M_PI / 180.0 : -0.087;
                             double freq = params["freq"] ? params["freq"].as<double>() : global_freq;
 
                             auto lit = JOINT_LIMITS.find(name);
@@ -144,16 +144,16 @@ private:
                                 double lo = lit->second.first;
                                 double hi = lit->second.second;
                                 double def = DEFAULT_POSITIONS.at(name);
-                                if (def + pos > hi) {
-                                    pos = hi - def;
-                                    RCLCPP_WARN(get_logger(), "%s: pos clamped to %.3f", name.c_str(), pos);
+                                if (max_val > hi) {
+                                    max_val = hi;
+                                    RCLCPP_WARN(get_logger(), "%s: max clamped to %.3f", name.c_str(), max_val);
                                 }
-                                if (def + neg < lo) {
-                                    neg = lo - def;
-                                    RCLCPP_WARN(get_logger(), "%s: neg clamped to %.3f", name.c_str(), neg);
+                                if (min_val < lo) {
+                                    min_val = lo;
+                                    RCLCPP_WARN(get_logger(), "%s: min clamped to %.3f", name.c_str(), min_val);
                                 }
                             }
-                            wiggle_cfg_.joints[name] = {pos, neg, freq};
+                            wiggle_cfg_.joints[name] = {max_val, min_val, freq};
                         }
                     }
                 }
@@ -164,7 +164,8 @@ private:
         }
         for (const auto& name : JOINT_ORDER) {
             if (wiggle_cfg_.joints.find(name) == wiggle_cfg_.joints.end()) {
-                wiggle_cfg_.joints[name] = {0.087, -0.087, global_freq};
+                double def_pos = DEFAULT_POSITIONS.at(name);
+                wiggle_cfg_.joints[name] = {def_pos + 0.087, def_pos - 0.087, global_freq};
             }
         }
     }
@@ -504,8 +505,11 @@ private:
                 double target = DEFAULT_POSITIONS.at(name);
 
                 if (i == active_joint_idx_) {
-                    // Pull old joint back to 0.0 relative to default
                     target += interp_start_pos_ * (1.0 - alpha);
+                } else if (i == target_joint_idx_) {
+                    auto& jcfg = wiggle_cfg_.joints[name];
+                    double mid = (jcfg.max + jcfg.min) / 2.0;
+                    target = target + (mid - target) * alpha;
                 }
 
                 auto lit = JOINT_LIMITS.find(name);
@@ -533,9 +537,9 @@ private:
                 if (i == active_joint_idx_) {
                     auto& jcfg = wiggle_cfg_.joints[name];
                     double phase_t = current_time - wiggle_sine_start_time_;
-                    double sin_val = std::sin(2 * M_PI * jcfg.freq * phase_t);
-                    double offset = (sin_val >= 0) ? (jcfg.pos * sin_val) : (jcfg.neg * sin_val);
-                    target += offset;
+                    double mid = (jcfg.max + jcfg.min) / 2.0;
+                    double amp = (jcfg.max - jcfg.min) / 2.0;
+                    target = mid + amp * std::sin(2 * M_PI * jcfg.freq * phase_t);
                 }
 
                 auto lit = JOINT_LIMITS.find(name);
@@ -660,12 +664,18 @@ private:
         biped_msgs::msg::MITCommandArray msg;
         msg.header.stamp = now();
 
+        double active_t = now().seconds() - wiggle_start_ - ramp_time_ - stable_time_;
+        double fade = std::min(std::max(0.0, active_t) / 2.0, 1.0);
+
         for (const auto& name : JOINT_ORDER) {
-            double target = DEFAULT_POSITIONS.at(name);
+            double def_pos = DEFAULT_POSITIONS.at(name);
             auto& jcfg = wiggle_cfg_.joints[name];
-            double sin_val = std::sin(2 * M_PI * jcfg.freq * (now().seconds() - wiggle_start_));
-            double offset = (sin_val >= 0) ? (jcfg.pos * sin_val) : (jcfg.neg * sin_val);
-            target += offset;
+            double mid = (jcfg.max + jcfg.min) / 2.0;
+            double amp = (jcfg.max - jcfg.min) / 2.0;
+            double wave_target = mid + amp * std::sin(2 * M_PI * jcfg.freq * active_t);
+            
+            // Blend from default position to the wave
+            double target = def_pos * (1.0 - fade) + wave_target * fade;
 
             auto lit = JOINT_LIMITS.find(name);
             if (lit != JOINT_LIMITS.end()) {

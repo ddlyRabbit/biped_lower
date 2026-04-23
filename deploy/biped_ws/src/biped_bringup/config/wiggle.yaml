@@ -1,54 +1,54 @@
 # Wiggle test configuration
-# pos/neg: amplitude range above/below default position (in DEGREES)
+# max/min: absolute joint angles (in DEGREES, relative to URDF 0)
 # frequency: sine wave frequency (Hz)
 
 wiggle:
   joints:
     R_hip_pitch:
-      pos: 28.6
-      neg: -28.6
       freq: 0.5
+      max: 28.6
+      min: -28.6
     R_hip_roll:
-      pos: 11.5
-      neg: -22.9
       freq: 0.5
+      max: 11.5
+      min: -22.9
     R_hip_yaw:
-      pos: 11.5
-      neg: -11.5
       freq: 0.5
+      max: 11.5
+      min: -11.5
     R_knee:
-      pos: 40
-      neg: -10
       freq: 0.5
+      max: 40
+      min: 10
     R_foot_pitch:
-      pos: 28.6
-      neg: -28.6
       freq: 0.5
+      max: 28.6
+      min: -28.6
     R_foot_roll:
-      pos: 17.2
-      neg: -17.2
       freq: 0.5
+      max: 17.2
+      min: -17.2
     L_hip_pitch:
-      pos: 11.5
-      neg: -11.5
       freq: 0.5
+      max: 11.5
+      min: -11.5
     L_hip_roll:
-      pos: 22.9
-      neg: -11.5
       freq: 0.5
+      max: 22.9
+      min: -11.5
     L_hip_yaw:
-      pos: 28.6
-      neg: -28.6
       freq: 0.5
+      max: 28.6
+      min: -28.6
     L_knee:
-      pos: 40
-      neg: -10
       freq: 0.5
+      max: 40
+      min: 10
     L_foot_pitch:
-      pos: 17.2
-      neg: -17.2
       freq: 0.5
+      max: 17.2
+      min: -17.2
     L_foot_roll:
-      pos: 11.5
-      neg: -11.5
       freq: 0.5
+      max: 11.5
+      min: -11.5
