@@ -34,32 +34,35 @@ const std::vector<std::string> CSV_JOINT_ORDER = {
     "R_hip_pitch", "R_hip_roll", "R_hip_yaw", "R_knee", "R_foot_pitch", "R_foot_roll",
 };
 
-const std::unordered_map<std::string, double> DEFAULT_POSITIONS = {
-    {"L_hip_pitch", -0.08}, {"R_hip_pitch",  0.08},
-    {"L_hip_roll",   0.0},  {"R_hip_roll",   0.0},
-    {"L_hip_yaw",    0.0},  {"R_hip_yaw",    0.0},
-    {"L_knee",       0.25}, {"R_knee",       0.25},
-    {"L_foot_pitch", -0.17},{"R_foot_pitch", -0.17},
-    {"L_foot_roll",  0.0},  {"R_foot_roll",  0.0},
-};
+// Empty maps, populated at startup by `load_control_params()`
+std::unordered_map<std::string, double> DEFAULT_POSITIONS;
+std::unordered_map<std::string, std::pair<double, double>> DEFAULT_GAINS;
+std::unordered_map<std::string, std::pair<double, double>> JOINT_LIMITS;
 
-const std::unordered_map<std::string, std::pair<double, double>> DEFAULT_GAINS = {
-    {"L_hip_pitch", {180.0, 6.5}}, {"R_hip_pitch", {180.0, 6.5}},
-    {"L_hip_roll",  {180.0, 6.5}}, {"R_hip_roll",  {180.0, 6.5}},
-    {"L_hip_yaw",   {180.0, 3.0}}, {"R_hip_yaw",   {180.0, 3.0}},
-    {"L_knee",      {180.0, 3.0}}, {"R_knee",      {180.0, 3.0}},
-    {"L_foot_pitch", {30.0, 1.0}}, {"R_foot_pitch", {30.0, 1.0}},
-    {"L_foot_roll",  {30.0, 1.0}}, {"R_foot_roll",  {30.0, 1.0}},
-};
+void load_control_params(const std::string& path_in) {
+    std::string path = path_in.empty() ? "/home/roy/biped_lower/deploy/biped_ws/src/biped_bringup/config/control_params.yaml" : path_in;
+    
+    YAML::Node config;
+    try {
+        config = YAML::LoadFile(path);
+    } catch (const YAML::Exception& e) {
+        throw std::runtime_error("Fatal: Could not load control_params.yaml from " + path + " - " + e.what());
+    }
 
-const std::unordered_map<std::string, std::pair<double, double>> JOINT_LIMITS = {
-    {"L_hip_pitch", {-1.047, 2.217}},  {"R_hip_pitch", {-2.217, 1.047}},
-    {"L_hip_roll",  {-0.209, 2.269}},  {"R_hip_roll",  {-2.269, 0.209}},
-    {"L_hip_yaw",   {-1.571, 1.571}},  {"R_hip_yaw",   {-1.571, 1.571}},
-    {"L_knee",      {0.0, 2.705}},     {"R_knee",      {0.0, 2.705}},
-    {"L_foot_pitch",{-0.873, 0.524}},  {"R_foot_pitch",{-0.873, 0.524}},
-    {"L_foot_roll", {-0.262, 0.262}},  {"R_foot_roll", {-0.262, 0.262}},
-};
+    if (!config["control_params"] || !config["control_params"]["joints"]) {
+        throw std::runtime_error("Fatal: Invalid format in control_params.yaml");
+    }
+
+    auto joints = config["control_params"]["joints"];
+    for (YAML::const_iterator it = joints.begin(); it != joints.end(); ++it) {
+        std::string name = it->first.as<std::string>();
+        auto params = it->second;
+
+        DEFAULT_POSITIONS[name] = params["default_pos"].as<double>();
+        DEFAULT_GAINS[name] = {params["kp"].as<double>(), params["kd"].as<double>()};
+        JOINT_LIMITS[name] = {params["limit_min"].as<double>(), params["limit_max"].as<double>()};
+    }
+}
 
 ObsBuilder::ObsBuilder() {
     last_action_.fill(0.0f);

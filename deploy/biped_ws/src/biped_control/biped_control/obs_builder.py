@@ -14,7 +14,8 @@ Must match training observation order EXACTLY:
 
 import numpy as np
 from typing import Dict, Optional
-
+import yaml
+import os
 
 # Isaac runtime joint order (from training — verified via joint_order.txt)
 ISAAC_JOINT_ORDER = [
@@ -37,15 +38,25 @@ KNEE_POS_ORDER = ["L_knee", "R_knee"]
 FOOT_PITCH_ORDER = ["L_foot_pitch", "R_foot_pitch"]
 FOOT_ROLL_ORDER = ["L_foot_roll", "R_foot_roll"]
 
-# Default joint positions (+X forward, from biped_env_cfg.py)
-DEFAULT_POSITIONS = {
-    "L_hip_pitch": -0.08, "R_hip_pitch":  0.08,
-    "L_hip_roll":   0.0,  "R_hip_roll":   0.0,
-    "L_hip_yaw":    0.0,  "R_hip_yaw":    0.0,
-    "L_knee":       0.25, "R_knee":       0.25,
-    "L_foot_pitch": -0.17,"R_foot_pitch": -0.17,
-    "L_foot_roll":  0.0,  "R_foot_roll":  0.0,
-}
+DEFAULT_POSITIONS = {}
+DEFAULT_GAINS = {}
+JOINT_LIMITS = {}
+
+def load_control_params(path_in=""):
+    path = path_in if path_in else "/home/roy/biped_lower/deploy/biped_ws/src/biped_bringup/config/control_params.yaml"
+    if not os.path.exists(path):
+        raise RuntimeError(f"Fatal: Could not find control_params.yaml at {path}")
+    
+    with open(path, 'r') as f:
+        config = yaml.safe_load(f)
+        
+    if 'control_params' not in config or 'joints' not in config['control_params']:
+        raise RuntimeError("Fatal: Invalid format in control_params.yaml")
+        
+    for name, params in config['control_params']['joints'].items():
+        DEFAULT_POSITIONS[name] = float(params['default_pos'])
+        DEFAULT_GAINS[name] = (float(params['kp']), float(params['kd']))
+        JOINT_LIMITS[name] = (float(params['limit_min']), float(params['limit_max']))
 
 # Action scale (from training config, per-joint)
 ACTION_SCALE = 0.5
@@ -64,14 +75,6 @@ ACTION_ORDER = [
 
 # Default PD gains (from training config, halved Berkeley values)
 # Deploy PD gains — Kp from training (V74), Kd 5× for hardware damping
-DEFAULT_GAINS = {
-    "L_hip_pitch": (180.0, 6.5), "R_hip_pitch": (180.0, 6.5),
-    "L_hip_roll":  (180.0, 6.5), "R_hip_roll":  (180.0, 6.5),
-    "L_hip_yaw":   (180.0, 3.0), "R_hip_yaw":   (180.0, 3.0),
-    "L_knee":      (180.0, 3.0), "R_knee":      (180.0, 3.0),
-    "L_foot_pitch": (30.0, 1.0), "R_foot_pitch": (30.0, 1.0),
-    "L_foot_roll":  (30.0, 1.0), "R_foot_roll":  (30.0, 1.0),
-}
 
 
 class ObsBuilder:

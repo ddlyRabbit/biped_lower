@@ -16,6 +16,7 @@ from sensor_msgs.msg import Imu
 from std_msgs.msg import Bool, String
 from geometry_msgs.msg import Vector3Stamped
 from biped_msgs.msg import MITCommandArray, MotorStateArray
+import biped_control.obs_builder as obs_builder
 
 
 class SafetyNode(Node):
@@ -39,6 +40,11 @@ class SafetyNode(Node):
         self.declare_parameter('imu_timeout_ms', 200.0)
         self.declare_parameter('check_rate', 50.0)
 
+        self.declare_parameter('control_params_file', '')
+        
+        path = self.get_parameter('control_params_file').value
+        obs_builder.load_control_params(path)
+        
         self._max_pitch = np.radians(float(self.get_parameter('max_pitch_deg').value))
         self._max_roll = np.radians(float(self.get_parameter('max_roll_deg').value))
         self._max_temp = float(self.get_parameter('max_motor_temp').value)

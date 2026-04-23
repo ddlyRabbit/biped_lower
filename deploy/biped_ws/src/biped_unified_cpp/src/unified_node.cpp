@@ -177,6 +177,15 @@ public:
             catch (...) { RCLCPP_WARN(get_logger(), "No calibration loaded"); }
         }
 
+        // ── Load Control Params ──────────────────────────────────
+        declare_parameter("control_params_file", "");
+        std::string control_params_path = get_parameter("control_params_file").as_string();
+        if (!control_params_path.empty()) {
+            biped_control_cpp::load_control_params(control_params_path);
+        } else {
+            biped_control_cpp::load_control_params("");
+        }
+
         // ── Init motors ──────────────────────────────────────────
         mgr_ = std::make_unique<BipedMotorManager>(
             build_manager_from_yaml(robot_yaml, cal_yaml));

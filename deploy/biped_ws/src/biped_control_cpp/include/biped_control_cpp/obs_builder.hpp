@@ -16,9 +16,12 @@ extern const std::vector<std::string> FOOT_ROLL_ORDER;
 extern const std::vector<std::string> ACTION_ORDER;
 extern const std::vector<std::string> CSV_JOINT_ORDER;
 
-extern const std::unordered_map<std::string, double> DEFAULT_POSITIONS;
-extern const std::unordered_map<std::string, std::pair<double, double>> DEFAULT_GAINS;
-extern const std::unordered_map<std::string, std::pair<double, double>> JOINT_LIMITS;
+// C++ standard guarantees initialization order for primitives, but we must populate these at runtime
+extern std::unordered_map<std::string, double> DEFAULT_POSITIONS;
+extern std::unordered_map<std::string, std::pair<double, double>> DEFAULT_GAINS;
+extern std::unordered_map<std::string, std::pair<double, double>> JOINT_LIMITS;
+
+void load_control_params(const std::string& path_in);
 
 class ObsBuilder {
 public:

@@ -130,6 +130,7 @@ def _make_control_nodes(context):
             parameters=[{
                 'max_pitch_deg': LaunchConfiguration('max_pitch_deg'),
                 'max_roll_deg': LaunchConfiguration('max_roll_deg'),
+                'control_params_file': LaunchConfiguration('control_params_file').perform(context),
             }],
         ),
         Node(
@@ -138,6 +139,7 @@ def _make_control_nodes(context):
             parameters=[{
                 'wiggle_config': os.path.join(get_package_share_directory('biped_bringup'), 'config', 'wiggle.yaml'),
                 'step_config': os.path.join(get_package_share_directory('biped_bringup'), 'config', 'step.yaml'),
+                'control_params_file': LaunchConfiguration('control_params_file').perform(context),
                 'gain_scale': float(LaunchConfiguration('gain_scale').perform(context)),
             }],
         ),
@@ -158,6 +160,7 @@ def _make_control_nodes(context):
                 'imu_type': LaunchConfiguration('imu_type').perform(context),
                 'im10a_port': LaunchConfiguration('im10a_port').perform(context),
                 'im10a_baud': int(LaunchConfiguration('im10a_baud').perform(context)),
+                'control_params_file': LaunchConfiguration('control_params_file').perform(context),
                 'i2c_bus': 1,
                 'i2c_address': 75,
                 'imu_rate_hz': 200.0,
@@ -172,6 +175,7 @@ def _make_control_nodes(context):
             parameters=[{
                 'onnx_model': LaunchConfiguration('onnx_model').perform(context),
                 'gain_scale': float(LaunchConfiguration('gain_scale').perform(context)),
+                'control_params_file': LaunchConfiguration('control_params_file').perform(context),
             }],
         ))
 
@@ -192,6 +196,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('calibration_file', default_value=''),
+        DeclareLaunchArgument('control_params_file', default_value=os.path.join(get_package_share_directory('biped_bringup'), 'config', 'control_params.yaml')),
         DeclareLaunchArgument('robot_config', default_value=default_robot_config),
         DeclareLaunchArgument('can_driver', default_value='can_bus_node',
                               description='CAN node: can_bus_node | can_bus_node_cpp'),

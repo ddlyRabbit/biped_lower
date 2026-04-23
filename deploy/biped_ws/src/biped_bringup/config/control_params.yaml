@@ -1,0 +1,74 @@
+control_params:
+  joints:
+    L_hip_pitch:
+      default_pos: -0.2
+      kp: 180.0
+      kd: 6.5
+      limit_min: -1.047
+      limit_max: 2.217
+    R_hip_pitch:
+      default_pos: 0.2
+      kp: 180.0
+      kd: 6.5
+      limit_min: -2.217
+      limit_max: 1.047
+    L_hip_roll:
+      default_pos: 0.0
+      kp: 180.0
+      kd: 6.5
+      limit_min: -0.209
+      limit_max: 2.269
+    R_hip_roll:
+      default_pos: 0.0
+      kp: 180.0
+      kd: 6.5
+      limit_min: -2.269
+      limit_max: 0.209
+    L_hip_yaw:
+      default_pos: 0.0
+      kp: 180.0
+      kd: 3.0
+      limit_min: -1.571
+      limit_max: 1.571
+    R_hip_yaw:
+      default_pos: 0.0
+      kp: 180.0
+      kd: 3.0
+      limit_min: -1.571
+      limit_max: 1.571
+    L_knee:
+      default_pos: 0.4
+      kp: 180.0
+      kd: 3.0
+      limit_min: 0.000
+      limit_max: 2.705
+    R_knee:
+      default_pos: 0.4
+      kp: 180.0
+      kd: 3.0
+      limit_min: 0.000
+      limit_max: 2.705
+    L_foot_pitch:
+      default_pos: -0.2
+      kp: 60.0
+      kd: 2.0
+      limit_min: -0.873
+      limit_max: 0.524
+    R_foot_pitch:
+      default_pos: -0.2
+      kp: 60.0
+      kd: 2.0
+      limit_min: -0.873
+      limit_max: 0.524
+    L_foot_roll:
+      default_pos: 0.0
+      kp: 60.0
+      kd: 2.0
+      limit_min: -0.262
+      limit_max: 0.262
+    R_foot_roll:
+      default_pos: 0.0
+      kp: 60.0
+      kd: 2.0
+      limit_min: -0.262
+      limit_max: 0.262

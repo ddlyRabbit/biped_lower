@@ -32,9 +32,16 @@ public:
         declare_parameter("gain_scale", 1.0);
         declare_parameter("trajectory_file", "");
 
+        declare_parameter("control_params_file", "");
+        
+        std::string control_params_path = get_parameter("control_params_file").as_string();
+        if (!control_params_path.empty()) {
+            load_control_params(control_params_path);
+        } else {
+            load_control_params("");
+        }
+
         ramp_time_ = get_parameter("stand_ramp_time").as_double();
-        gain_ramp_time_ = get_parameter("stand_gain_ramp_time").as_double();
-        stable_time_ = get_parameter("stand_stable_time").as_double();
 
         auto sensor_qos = rclcpp::QoS(1).best_effort();
 

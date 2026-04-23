@@ -19,10 +19,16 @@ class StateMachineNode(Node):
         self.declare_parameter('stand_ramp_time', 2.0)
         self.declare_parameter('stand_gain_ramp_time', 1.0)
         self.declare_parameter('stand_stable_time', 2.0)
+        self.declare_parameter('control_params_file', '')
         self.declare_parameter('wiggle_config', '')
         self.declare_parameter('step_config', '')
         self.declare_parameter('gain_scale', 1.0)
         
+        path = self.get_parameter('control_params_file').value
+        if path:
+            import biped_control.obs_builder as obs_builder
+            obs_builder.load_control_params(path)
+
         self._ramp_time = float(self.get_parameter('stand_ramp_time').value)
         self._gain_ramp_time = float(self.get_parameter('stand_gain_ramp_time').value)
         self._stable_time = float(self.get_parameter('stand_stable_time').value)

@@ -35,10 +35,19 @@ public:
         declare_parameter("gains_file", "");
         declare_parameter("gain_scale", 1.0);
 
+        declare_parameter("control_params_file", "");
+        
         std::string model_path = get_parameter("onnx_model").as_string();
         rate_ = get_parameter("loop_rate").as_double();
         std::string gains_file = get_parameter("gains_file").as_string();
         gain_scale_ = get_parameter("gain_scale").as_double();
+
+        std::string control_params_path = get_parameter("control_params_file").as_string();
+        if (!control_params_path.empty()) {
+            load_control_params(control_params_path);
+        } else {
+            load_control_params("");
+        }
 
         gains_ = DEFAULT_GAINS;
         load_gains(gains_file);
