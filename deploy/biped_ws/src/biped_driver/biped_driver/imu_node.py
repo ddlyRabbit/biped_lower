@@ -198,7 +198,10 @@ class BNO085Node(Node):
             # Gravity (m/s²)
             gravity = self._bno.gravity  # (x, y, z) m/s²
             if gravity is not None:
-                self._last_gravity = gravity
+                # BNO085 outputs UPWARD force (0, 0, 9.81) when upright.
+                # Isaac Sim expects DOWNWARD gravity (0, 0, -9.81).
+                # Negate all axes to map R^T * [0, 0, 1] to R^T * [0, 0, -1]
+                self._last_gravity = (-gravity[0], -gravity[1], -gravity[2])
 
             self._read_count += 1
 

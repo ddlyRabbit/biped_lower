@@ -114,14 +114,10 @@ class IM10ANode(Node):
                                data.quaternion[3], data.quaternion[0])
             self._last_gyro = tuple(data.gyro)
             # Gravity from driver: already in Isaac convention (upright → [0, 0, -1])
-            # obs_builder expects raw gravity then negates+normalizes
-            # BNO085 raw: upright → (0, 0, +9.81), obs_builder negates → (0, 0, -1)
-            # IM10A driver: gravity already (0, 0, -1) normalized
-            # To match BNO085 interface: multiply by -9.81 so obs_builder negate gives correct result
             self._last_gravity = (
-                -data.gravity[0] * 9.81,
-                -data.gravity[1] * 9.81,
-                -data.gravity[2] * 9.81,
+                data.gravity[0] * 9.81,
+                data.gravity[1] * 9.81,
+                data.gravity[2] * 9.81,
             )
             self._read_count += 1
 
