@@ -179,6 +179,8 @@ class KeyboardTeleop(Node):
             while self._running and rclpy.ok():
                 key = get_key(timeout=0.1)
 
+                rclpy.spin_once(self, timeout_sec=0)
+
                 if key == '':
                     continue
 
