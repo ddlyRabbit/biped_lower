@@ -37,6 +37,7 @@ BANNER = """
 │   v     : STAND → SIM_WALK (viz only)    │
 │   t     : STAND → WIGGLE_SEQ             │
 │   y     : STAND → WIGGLE_ALL             │
+│   u     : STAND → STEP_TEST              │
 │   p     : STAND → PLAY_TRAJ_SIM (viz)    │
 │   P     : STAND → PLAY_TRAJ (motors)     │
 │   b     : any → STAND (stop)             │
@@ -47,8 +48,9 @@ BANNER = """
 │   a/d : left / right                     │
 │   q/e : yaw left / yaw right             │
 │   x   : zero all velocities              │
-│   1-5 : speed presets (0.1-1.0 m/s)      │
-│   +/- : increase/decrease step size      │
+│  ── Joint Selection (WIGGLE/STEP) ────   │
+│   1-9,0 : Select joints 0 to 9           │
+│   -, =  : Select joints 10 and 11        │
 │                                          │
 │   Ctrl+C : quit                          │
 └──────────────────────────────────────────┘
