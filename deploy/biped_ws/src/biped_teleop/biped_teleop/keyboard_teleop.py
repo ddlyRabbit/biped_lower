@@ -212,6 +212,7 @@ class KeyboardTeleop(Node):
                     break
                 elif key in self._state_keys:
                     self._send_fsm(self._state_keys[key])
+                    self._fsm_state = self._state_keys[key]
                     if key == 'b':  # STOP also zeros velocity
                         self._vx = self._vy = self._wz = 0.0
                 else:
