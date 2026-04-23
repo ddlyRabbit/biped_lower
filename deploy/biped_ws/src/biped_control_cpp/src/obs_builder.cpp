@@ -1,5 +1,7 @@
 #include "biped_control_cpp/obs_builder.hpp"
 #include <cmath>
+#include <stdexcept>
+#include <yaml-cpp/yaml.h>
 
 namespace biped_control_cpp {
 
@@ -148,6 +150,8 @@ std::unordered_map<std::string, double> ObsBuilder::action_to_positions(const st
         float scale = 0.5f;
         if (name == "R_foot_roll" || name == "L_foot_roll") {
             scale = 0.25f;
+        } else if (name == "R_foot_pitch" || name == "L_foot_pitch") {
+            scale = 0.3f;
         }
         targets[name] = DEFAULT_POSITIONS.at(name) + action[i] * scale;
     }
