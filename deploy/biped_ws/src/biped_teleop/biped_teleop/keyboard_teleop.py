@@ -129,7 +129,10 @@ class KeyboardTeleop(Node):
         }
 
     def _fsm_cb(self, msg: String):
-        self._fsm_state = msg.data.strip().upper()
+        new_state = msg.data.strip().upper()
+        if self._fsm_state != new_state:
+            self._fsm_state = new_state
+            self._print_status()
 
     def _send_fsm(self, cmd: str):
         msg = String()

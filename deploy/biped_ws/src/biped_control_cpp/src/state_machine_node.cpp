@@ -42,6 +42,8 @@ public:
         }
 
         ramp_time_ = get_parameter("stand_ramp_time").as_double();
+        gain_ramp_time_ = get_parameter("stand_gain_ramp_time").as_double();
+        stable_time_ = get_parameter("stand_stable_time").as_double();
 
         auto sensor_qos = rclcpp::QoS(1).best_effort();
 
