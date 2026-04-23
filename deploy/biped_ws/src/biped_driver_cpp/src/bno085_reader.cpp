@@ -18,6 +18,7 @@
 #include <sys/ioctl.h>
 #include <linux/i2c-dev.h>
 #include <cstdlib>
+#include <cmath>
 
 namespace biped_driver_cpp {
 
