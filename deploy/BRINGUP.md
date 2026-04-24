@@ -162,6 +162,7 @@ ros2 launch biped_bringup bringup.launch.py \
   imu_type:=<imu>              \
   calibration_file:=<cal>      \
   onnx_model:=<path>           \
+  trajectory_file:=<path>      \
   gain_scale:=<scale>
 ```
 
@@ -179,6 +180,7 @@ ros2 launch biped_bringup bringup.launch.py \
 | `calibration_file` | Motor calibration | `calibration.yaml` | Any `.yaml` in `config/` |
 | `onnx_model` | Student policy ONNX | `student_flat.onnx` | Absolute path to `.onnx` file |
 | `gain_scale` | PD gain multiplier | `1.0` | `0.1`–`1.0` (start low!) |
+| `trajectory_file` | CSV for PLAY_TRAJ | `""` (empty) | Absolute path |
 | `record` | Enable rosbag recording | `false` | `true` / `false` |
 
 ### Platform-Specific Examples
