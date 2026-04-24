@@ -158,7 +158,7 @@ class StateMachineNode(Node):
             self._transition("PLAY_TRAJ_SIM")
         elif cmd == "STOP" and self._state not in ("IDLE", "ESTOP"):
             self._transition("STAND")
-        elif cmd.startswith("WIGGLE_SEQ") or cmd.startswith("STEP_TEST"):
+        elif cmd.startswith("WIGGLE_SEQ") or cmd.startswith("STEP_TEST") or cmd.startswith("SYSID_CHIRP"):
             parts = cmd.split(":")
             base_cmd = parts[0]
             if len(parts) > 1:
@@ -244,6 +244,8 @@ class StateMachineNode(Node):
             self._handle_wiggle_sequential()
         elif self._state == "STEP_TEST":
             self._handle_step_test()
+        elif self._state == "SYSID_CHIRP":
+            self._handle_sysid_chirp()
         elif self._state == "WIGGLE_ALL":
             self._handle_wiggle_all()
         elif self._state == "ESTOP":
@@ -438,6 +440,91 @@ class StateMachineNode(Node):
                 cmd.kd = float(kd_base * gs)
                 cmd.torque_ff = 0.0
                 cmd_msg.commands.append(cmd)
+
+        self._pub_cmd.publish(cmd_msg)
+
+    def _handle_sysid_chirp(self):
+        elapsed = time.time() - self._state_start_time
+        if elapsed <= self._ramp_time + self._stable_time:
+            self._handle_stand()
+            return
+
+        current_time = time.time()
+        gs = float(self.get_parameter("gain_scale").value)
+        cmd_msg = MITCommandArray()
+        cmd_msg.header.stamp = self.get_clock().now().to_msg()
+
+        if getattr(self, '_wiggle_interpolating', False):
+            alpha = min((current_time - self._interp_start_time) / 3.0, 1.0)
+            if alpha >= 1.0:
+                self._wiggle_interpolating = False
+                self._active_joint_idx = self._target_joint_idx
+                self._wiggle_sine_start_time = current_time
+            
+            for i, name in enumerate(JOINT_ORDER):
+                target = DEFAULT_POSITIONS[name]
+                if i == getattr(self, '_active_joint_idx', -1):
+                    target += self._interp_start_pos * (1.0 - alpha)
+                elif i == getattr(self, '_target_joint_idx', -1):
+                    jcfg = self._wiggle_cfg['joints'].get(
+                        name, {'max': target + 0.087, 'min': target - 0.087, 'freq': 1.0}
+                    )
+                    mid = (jcfg['max'] + jcfg['min']) / 2.0
+                    target = target + (mid - target) * alpha
+
+                limit = self._joint_limits.get(name)
+                if limit:
+                    target = max(limit[0], min(limit[1], target))
+
+                kp_base, kd_base = DEFAULT_GAINS[name]
+                cmd = MITCommand()
+                cmd.joint_name = name
+                cmd.position = float(target)
+                cmd.velocity = 0.0
+                cmd.kp = float(kp_base * gs)
+                cmd.kd = float(kd_base * gs)
+                cmd.torque_ff = 0.0
+                cmd_msg.commands.append(cmd)
+        else:
+            duration = 10.0
+            for i, name in enumerate(JOINT_ORDER):
+                target = DEFAULT_POSITIONS[name]
+                if i == getattr(self, '_active_joint_idx', -1):
+                    jcfg = self._wiggle_cfg['joints'].get(
+                        name, {'max': target + 0.087, 'min': target - 0.087, 'freq': 1.0}
+                    )
+                    phase_t = current_time - self._wiggle_sine_start_time
+                    f0, f1 = 0.1, 10.0
+                    phi = 2.0 * math.pi * (f0 * phase_t + (f1 - f0) * phase_t * phase_t / (2.0 * duration))
+                    
+                    mid = (jcfg['max'] + jcfg['min']) / 2.0
+                    amp = (jcfg['max'] - jcfg['min']) / 2.0
+                    target = mid + amp * math.sin(phi)
+
+                limit = self._joint_limits.get(name)
+                if limit:
+                    target = max(limit[0], min(limit[1], target))
+
+                kp_base, kd_base = DEFAULT_GAINS[name]
+                cmd = MITCommand()
+                cmd.joint_name = name
+                cmd.position = float(target)
+                cmd.velocity = 0.0
+                cmd.kp = float(kp_base * gs)
+                cmd.kd = float(kd_base * gs)
+                cmd.torque_ff = 0.0
+                cmd_msg.commands.append(cmd)
+
+            if current_time - self._wiggle_sine_start_time > duration:
+                self._target_joint_idx = getattr(self, '_active_joint_idx', -1) + 1
+                if self._target_joint_idx >= len(JOINT_ORDER):
+                    self._transition("STAND")
+                else:
+                    self._interp_start_time = current_time
+                    self._interp_start_pos = self._current_positions.get(
+                        JOINT_ORDER[self._active_joint_idx], 0.0
+                    ) - DEFAULT_POSITIONS[JOINT_ORDER[self._active_joint_idx]]
+                    self._wiggle_interpolating = True
 
         self._pub_cmd.publish(cmd_msg)
 

@@ -342,7 +342,7 @@ private:
         else if (cmd == "PLAY_TRAJ" && state_ == "STAND") transition("PLAY_TRAJ");
         else if (cmd == "PLAY_TRAJ_SIM" && state_ == "STAND") transition("PLAY_TRAJ_SIM");
         else if (cmd == "STOP" && state_ != "IDLE" && state_ != "ESTOP") transition("STAND");
-        else if (cmd.find("WIGGLE_SEQ") == 0 || cmd.find("STEP_TEST") == 0) {
+        else if (cmd.find("WIGGLE_SEQ") == 0 || cmd.find("STEP_TEST") == 0 || cmd.find("SYSID_CHIRP") == 0) {
             size_t colon_pos = cmd.find(":");
             std::string base_cmd = cmd.substr(0, colon_pos);
             if (colon_pos != std::string::npos) {
@@ -403,6 +403,12 @@ private:
             active_joint_idx_ = -1;
             target_joint_idx_ = -1;
             wiggle_interpolating_ = false;
+        } else if (new_state == "SYSID_CHIRP") {
+            stand_start_positions_ = current_positions_;
+            load_wiggle_config(); // Use wiggle config for amplitudes
+            active_joint_idx_ = -1;
+            target_joint_idx_ = -1;
+            wiggle_interpolating_ = false;
         } else if (new_state == "WIGGLE_ALL") {
             stand_start_positions_ = current_positions_;
             load_wiggle_config();
@@ -419,6 +425,7 @@ private:
         else if (state_ == "SIM_WALK") handle_stand_hold();
         else if (state_ == "WIGGLE_SEQ") handle_wiggle_sequential();
         else if (state_ == "STEP_TEST") handle_step_test();
+        else if (state_ == "SYSID_CHIRP") handle_sysid_chirp();
         else if (state_ == "WIGGLE_ALL") handle_wiggle_all();
         else if (state_ == "PLAY_TRAJ") handle_play_traj();
         else if (state_ == "PLAY_TRAJ_SIM") { handle_stand_hold(); handle_play_traj_sim(); }
@@ -644,6 +651,109 @@ private:
                 cmd.kd = gains.second * gs;
                 cmd.torque_ff = 0.0;
                 msg.commands.push_back(cmd);
+            }
+        }
+
+        pub_cmd_->publish(msg);
+    }
+
+    void handle_sysid_chirp() {
+        double elapsed = now().seconds() - state_start_time_;
+        
+        if (elapsed <= ramp_time_ + stable_time_) {
+            handle_stand();
+            return;
+        }
+
+        double gs = get_parameter("gain_scale").as_double();
+        biped_msgs::msg::MITCommandArray msg;
+        msg.header.stamp = now();
+
+        double current_time = now().seconds();
+
+        if (wiggle_interpolating_) {
+            double alpha = (current_time - interp_start_time_) / 3.0;
+            if (alpha >= 1.0) {
+                alpha = 1.0;
+                wiggle_interpolating_ = false;
+                active_joint_idx_ = target_joint_idx_;
+                wiggle_sine_start_time_ = current_time;
+            }
+            
+            for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
+                std::string name = JOINT_ORDER[i];
+                double target = DEFAULT_POSITIONS.at(name);
+
+                if (i == active_joint_idx_) {
+                    target += interp_start_pos_ * (1.0 - alpha);
+                } else if (i == target_joint_idx_) {
+                    auto& jcfg = wiggle_cfg_.joints[name];
+                    double mid = (jcfg.max + jcfg.min) / 2.0;
+                    target = target + (mid - target) * alpha;
+                }
+
+                auto lit = JOINT_LIMITS.find(name);
+                if (lit != JOINT_LIMITS.end()) {
+                    target = std::max(lit->second.first, std::min(lit->second.second, target));
+                }
+
+                auto gains = DEFAULT_GAINS.at(name);
+                biped_msgs::msg::MITCommand cmd;
+                cmd.joint_name = name;
+                cmd.position = target;
+                cmd.velocity = 0.0;
+                cmd.kp = gains.first * gs;
+                cmd.kd = gains.second * gs;
+                cmd.torque_ff = 0.0;
+                msg.commands.push_back(cmd);
+            }
+        } 
+        else {
+            double duration = 10.0; // 10 seconds per joint for chirp
+            for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
+                std::string name = JOINT_ORDER[i];
+                double target = DEFAULT_POSITIONS.at(name);
+
+                if (i == active_joint_idx_) {
+                    auto& jcfg = wiggle_cfg_.joints[name];
+                    double phase_t = current_time - wiggle_sine_start_time_;
+                    
+                    // Chirp math: f0 = 0.1Hz, f1 = 10.0Hz
+                    double f0 = 0.1;
+                    double f1 = 10.0;
+                    // phi(t) = 2 * pi * (f0 * t + (f1 - f0) * t^2 / (2 * T))
+                    double phi = 2.0 * M_PI * (f0 * phase_t + (f1 - f0) * phase_t * phase_t / (2.0 * duration));
+                    
+                    double mid = (jcfg.max + jcfg.min) / 2.0;
+                    double amp = (jcfg.max - jcfg.min) / 2.0;
+                    target = mid + amp * std::sin(phi);
+                }
+
+                auto lit = JOINT_LIMITS.find(name);
+                if (lit != JOINT_LIMITS.end()) {
+                    target = std::max(lit->second.first, std::min(lit->second.second, target));
+                }
+
+                auto gains = DEFAULT_GAINS.at(name);
+                biped_msgs::msg::MITCommand cmd;
+                cmd.joint_name = name;
+                cmd.position = target;
+                cmd.velocity = 0.0;
+                cmd.kp = gains.first * gs;
+                cmd.kd = gains.second * gs;
+                cmd.torque_ff = 0.0;
+                msg.commands.push_back(cmd);
+            }
+
+            if (current_time - wiggle_sine_start_time_ > duration) {
+                target_joint_idx_ = active_joint_idx_ + 1;
+                if (target_joint_idx_ >= static_cast<int>(JOINT_ORDER.size())) {
+                    transition("STAND");
+                } else {
+                    interp_start_time_ = current_time;
+                    interp_start_pos_ = current_positions_[JOINT_ORDER[active_joint_idx_]] - DEFAULT_POSITIONS.at(JOINT_ORDER[active_joint_idx_]);
+                    wiggle_interpolating_ = true;
+                }
             }
         }
 

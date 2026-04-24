@@ -38,6 +38,7 @@ BANNER = """
 │   t     : STAND → WIGGLE_SEQ             │
 │   y     : STAND → WIGGLE_ALL             │
 │   u     : STAND → STEP_TEST              │
+│   c     : STAND → SYSID_CHIRP            │
 │   p     : STAND → PLAY_TRAJ_SIM (viz)    │
 │   P     : STAND → PLAY_TRAJ (motors)     │
 │   b     : any → STAND (stop)             │
@@ -118,6 +119,7 @@ class KeyboardTeleop(Node):
             'v': 'SIM_WALK',        # STAND → SIM_WALK
             't': 'WIGGLE_SEQ',      # STAND → WIGGLE_SEQ
             'u': 'STEP_TEST',       # STAND → STEP_TEST
+            'c': 'SYSID_CHIRP',     # STAND → SYSID_CHIRP
             'y': 'WIGGLE_ALL',      # STAND → WIGGLE_ALL
             'p': 'PLAY_TRAJ_SIM',   # STAND → PLAY_TRAJ_SIM (viz only)
             'P': 'PLAY_TRAJ',       # STAND → PLAY_TRAJ (real motors)
@@ -203,6 +205,8 @@ class KeyboardTeleop(Node):
                 elif key in self._wiggle_keys:
                     if self._fsm_state == 'STEP_TEST':
                         self._send_fsm(f"STEP_TEST:{self._wiggle_keys[key]}")
+                    elif self._fsm_state == 'SYSID_CHIRP':
+                        self._send_fsm(f"SYSID_CHIRP:{self._wiggle_keys[key]}")
                     else:
                         self._send_fsm(f"WIGGLE_SEQ:{self._wiggle_keys[key]}")
                 elif key == '\x1b':  # ESC → ESTOP
