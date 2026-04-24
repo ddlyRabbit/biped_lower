@@ -63,8 +63,8 @@ ACTION_SCALE = 0.5
 ACTION_SCALE_OVERRIDE = {
     "R_foot_roll": 0.25,
     "L_foot_roll": 0.25,
-    "R_foot_pitch": 0.3,
-    "L_foot_pitch": 0.3,
+    "R_foot_pitch": 0.5,
+    "L_foot_pitch": 0.5,
 }
 
 # Action output order from ONNX (must match training ALL_JOINTS with preserve_order=True)
