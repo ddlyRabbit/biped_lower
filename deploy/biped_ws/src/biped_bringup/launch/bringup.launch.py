@@ -140,6 +140,7 @@ def _make_control_nodes(context):
                 'wiggle_config': os.path.join(get_package_share_directory('biped_bringup'), 'config', 'wiggle.yaml'),
                 'step_config': os.path.join(get_package_share_directory('biped_bringup'), 'config', 'step.yaml'),
                 'control_params_file': LaunchConfiguration('control_params_file').perform(context),
+                'trajectory_file': LaunchConfiguration('trajectory_file').perform(context),
                 'gain_scale': float(LaunchConfiguration('gain_scale').perform(context)),
             }],
         ),
@@ -176,6 +177,7 @@ def _make_control_nodes(context):
                 'onnx_model': LaunchConfiguration('onnx_model').perform(context),
                 'gain_scale': float(LaunchConfiguration('gain_scale').perform(context)),
                 'control_params_file': LaunchConfiguration('control_params_file').perform(context),
+                'trajectory_file': LaunchConfiguration('trajectory_file').perform(context),
             }],
         ))
 
@@ -196,6 +198,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('calibration_file', default_value=''),
+        DeclareLaunchArgument('trajectory_file', default_value=''),
         DeclareLaunchArgument('control_params_file', default_value=os.path.join(get_package_share_directory('biped_bringup'), 'config', 'control_params.yaml')),
         DeclareLaunchArgument('robot_config', default_value=default_robot_config),
         DeclareLaunchArgument('can_driver', default_value='can_bus_node',
