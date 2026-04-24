@@ -5,9 +5,9 @@ from torch.utils.data import DataLoader, random_split
 from dataset import ActuatorDataset
 from model import ActuatorNet
 
-def train_model(csv_file, joint_type, epochs=100, batch_size=256, lr=1e-3, k_history=6):
-    print(f"Loading data for {joint_type} (combining L/R)...")
-    dataset = ActuatorDataset(csv_file, joint_type, k_history=k_history)
+def train_model(csv_files, joint_type, epochs=100, batch_size=256, lr=1e-3, k_history=6):
+    print(f"Loading data for {joint_type} (combining L/R across {len(csv_files) if isinstance(csv_files, list) else 1} files)...")
+    dataset = ActuatorDataset(csv_files, joint_type, k_history=k_history)
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
     train_ds, val_ds = random_split(dataset, [train_size, val_size])
@@ -55,7 +55,7 @@ def train_model(csv_file, joint_type, epochs=100, batch_size=256, lr=1e-3, k_his
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--csv", required=True, help="Path to sysid_data.csv")
+    parser.add_argument("--csv", nargs='+', required=True, help="One or more paths to CSVs (e.g. air.csv ground.csv)")
     parser.add_argument("--joint_type", required=True, help="e.g. knee, hip_pitch, foot_roll")
     parser.add_argument("--epochs", type=int, default=100)
     args = parser.parse_args()
