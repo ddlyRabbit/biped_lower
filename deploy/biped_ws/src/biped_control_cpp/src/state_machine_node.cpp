@@ -85,6 +85,7 @@ private:
     struct WiggleJoint { double max; double min; double freq; };
     struct WiggleCfg { double duration; std::unordered_map<std::string, WiggleJoint> joints; };
     WiggleCfg wiggle_cfg_;
+    WiggleCfg chirp_cfg_;
     
     struct StepJoint { double step_max; double step_min; double period; };
     struct StepCfg { std::unordered_map<std::string, StepJoint> joints; };
