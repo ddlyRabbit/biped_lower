@@ -170,6 +170,58 @@ private:
         }
     }
 
+void load_chirp_config() {
+        std::string path = get_parameter("chirp_config").as_string();
+        chirp_cfg_.joints.clear();
+        chirp_cfg_.duration = 3.0;
+        double global_freq = 1.0;
+
+        if (!path.empty()) {
+            try {
+                YAML::Node raw = YAML::LoadFile(path);
+                if (raw["chirp"]) {
+                    auto w = raw["chirp"];
+                    if (w["duration_per_joint"]) chirp_cfg_.duration = w["duration_per_joint"].as<double>();
+                    
+                    if (w["joints"]) {
+                        for (auto it = w["joints"].begin(); it != w["joints"].end(); ++it) {
+                            std::string name = it->first.as<std::string>();
+                            auto params = it->second;
+                            double max_val = params["max"] ? params["max"].as<double>() * M_PI / 180.0 : 0.087;
+                            double min_val = params["min"] ? params["min"].as<double>() * M_PI / 180.0 : -0.087;
+                            double freq = params["freq"] ? params["freq"].as<double>() : global_freq;
+
+                            auto lit = JOINT_LIMITS.find(name);
+                            if (lit != JOINT_LIMITS.end()) {
+                                double lo = lit->second.first;
+                                double hi = lit->second.second;
+                                double def = DEFAULT_POSITIONS.at(name);
+                                if (max_val > hi) {
+                                    max_val = hi;
+                                    RCLCPP_WARN(get_logger(), "%s: max clamped to %.3f", name.c_str(), max_val);
+                                }
+                                if (min_val < lo) {
+                                    min_val = lo;
+                                    RCLCPP_WARN(get_logger(), "%s: min clamped to %.3f", name.c_str(), min_val);
+                                }
+                            }
+                            chirp_cfg_.joints[name] = {max_val, min_val, freq};
+                        }
+                    }
+                }
+                RCLCPP_INFO(get_logger(), "Wiggle config loaded");
+            } catch (const std::exception& e) {
+                RCLCPP_WARN(get_logger(), "Failed to load wiggle config: %s", e.what());
+            }
+        }
+        for (const auto& name : JOINT_ORDER) {
+            if (chirp_cfg_.joints.find(name) == chirp_cfg_.joints.end()) {
+                double def_pos = DEFAULT_POSITIONS.at(name);
+                chirp_cfg_.joints[name] = {def_pos + 0.087, def_pos - 0.087, global_freq};
+            }
+        }
+    }
+
     void load_step_config() {
         std::string path = get_parameter("step_config").as_string();
         step_cfg_.joints.clear();
@@ -405,7 +457,7 @@ private:
             wiggle_interpolating_ = false;
         } else if (new_state == "SYSID_CHIRP") {
             stand_start_positions_ = current_positions_;
-            load_wiggle_config(); // Use wiggle config for amplitudes
+            load_chirp_config();
             active_joint_idx_ = -1;
             target_joint_idx_ = -1;
             wiggle_interpolating_ = false;

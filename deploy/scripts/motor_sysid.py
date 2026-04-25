@@ -63,21 +63,27 @@ ANKLE_JOINT_TO_PAIR = {
     "L_foot_roll":  ("L_foot_top", "L_foot_bottom"),
 }
 
-# Joint range limits (70% of URDF limits, in radians)
-JOINT_LIMITS_70PCT = {
-    "R_hip_pitch":  (-1.55, 0.73),
-    "R_hip_roll":   (-1.59, 0.15),
-    "R_hip_yaw":    (-1.10, 1.10),
-    "R_knee":       (0.0,   1.89),
-    "R_foot_top":   (-0.61, 0.37),
-    "R_foot_bottom":(-0.18, 0.18),
-    "L_hip_pitch":  (-0.73, 1.55),
-    "L_hip_roll":   (-0.15, 1.59),
-    "L_hip_yaw":    (-1.10, 1.10),
-    "L_knee":       (0.0,   1.89),
-    "L_foot_top":   (-0.61, 0.37),
-    "L_foot_bottom":(-0.18, 0.18),
+import os
+import yaml
+import math
+
+_this_dir = os.path.dirname(os.path.abspath(__file__))
+CHIRP_YAML = os.path.abspath(os.path.join(_this_dir, "../biped_ws/src/biped_bringup/config/chirp.yaml"))
+with open(CHIRP_YAML, 'r') as f:
+    _wcfg = yaml.safe_load(f)["chirp"]["joints"]
+
+# Dynamically loaded limits for sysid
+JOINT_LIMITS_CONFIG = {
+    j: (math.radians(data["min"]), math.radians(data["max"]))
+    for j, data in _wcfg.items()
 }
+
+# Hardware sysid needs motor-space mappings for ankle top/bottom:
+for side in ["R", "L"]:
+    if f"{side}_foot_pitch" in JOINT_LIMITS_CONFIG:
+        JOINT_LIMITS_CONFIG[f"{side}_foot_top"] = JOINT_LIMITS_CONFIG[f"{side}_foot_pitch"]
+    if f"{side}_foot_roll" in JOINT_LIMITS_CONFIG:
+        JOINT_LIMITS_CONFIG[f"{side}_foot_bottom"] = JOINT_LIMITS_CONFIG[f"{side}_foot_roll"]
 
 
 @dataclass
@@ -119,7 +125,7 @@ def build_config(joint_name: str, mgr: BipedMotorManager, kp: float = None, kd: 
     mtype = get_motor_type(joint_name, mgr)
     gains = MOTOR_TYPE_GAINS[mtype]
 
-    lo, hi = JOINT_LIMITS_70PCT.get(joint_name, (-0.5, 0.5))
+    lo, hi = JOINT_LIMITS_CONFIG.get(joint_name, (-0.5, 0.5))
     mid = (lo + hi) / 2.0
     half_range = (hi - lo) / 2.0
 

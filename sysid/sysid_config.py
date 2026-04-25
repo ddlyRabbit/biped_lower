@@ -132,21 +132,26 @@ MOTOR_TYPES = {
     "R_knee": "RS04", "R_foot_pitch": "RS02", "R_foot_roll": "RS02",
 }
 
-# 70% of URDF joint limits (matches deploy/scripts/motor_sysid.py)
-JOINT_LIMITS_70PCT = {
-    "R_hip_pitch":  (-1.55, 0.73),
-    "R_hip_roll":   (-1.59, 0.15),
-    "R_hip_yaw":    (-1.10, 1.10),
-    "R_knee":       (0.0,   1.89),
-    "R_foot_pitch": (-0.61, 0.37),
-    "R_foot_roll":  (-0.18, 0.18),
+import os
+import yaml
+import math
+
+_this_dir = os.path.dirname(os.path.abspath(__file__))
+CHIRP_YAML = os.path.abspath(os.path.join(_this_dir, "../deploy/biped_ws/src/biped_bringup/config/chirp.yaml"))
+with open(CHIRP_YAML, 'r') as f:
+    _wcfg = yaml.safe_load(f)["chirp"]["joints"]
+
+# Dynamically loaded limits for sysid (Hips 50%, Knee 50%, Ankle 70%)
+JOINT_LIMITS_CONFIG = {
+    j: (math.radians(data["min"]), math.radians(data["max"]))
+    for j, data in _wcfg.items()
 }
 
 SINE_FREQS = [0.5, 1.0, 2.0, 5.0, 10.0]
 
 
 def compute_test_params(joint_name):
-    """Compute step target and sine amplitude from 70% URDF limits.
+    """Compute step target and sine amplitude from config limits.
 
     Matches deploy/scripts/motor_sysid.py exactly:
         mid = (lo + hi) / 2
@@ -154,7 +159,7 @@ def compute_test_params(joint_name):
         step_target = mid + half_range * 0.5
         sine_amplitude = half_range * 0.5
     """
-    lo, hi = JOINT_LIMITS_70PCT.get(joint_name, (-0.5, 0.5))
+    lo, hi = JOINT_LIMITS_CONFIG.get(joint_name, (-0.5, 0.5))
     mid = (lo + hi) / 2.0
     half_range = (hi - lo) / 2.0
     return {
@@ -165,4 +170,4 @@ def compute_test_params(joint_name):
 
 
 # Pre-computed for reference
-TEST_PARAMS = {name: compute_test_params(name) for name in JOINT_LIMITS_70PCT}
+TEST_PARAMS = {name: compute_test_params(name) for name in JOINT_LIMITS_CONFIG}

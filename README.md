@@ -242,6 +242,44 @@ docker run --gpus all -d --name biped_play \
 All hip/knee stiffness halved from original Berkeley values. Foot stiffness unchanged.
 Foot: 30Nm each via parallel linkage (2 motors × 15Nm). ImplicitActuator for training.
 
+## ActuatorNet Pipeline (Sim2Real)
+
+The ActuatorNet pipeline captures real-world actuator dynamics (especially the parallel linkage in the ankles) and trains an MLP to replace the `DelayedPDActuator` in Isaac Sim. This drastically closes the Sim2Real gap.
+
+The pipeline consists of three stages:
+
+### 1. Hardware Data Collection (`SYSID_CHIRP`)
+Collects highly synchronized joint targets, positions, velocities, and raw torques from the real robot.
+
+1. **Configure the chirp limits:** Edit `deploy/biped_ws/src/biped_bringup/config/chirp.yaml`. (These limits are mathematically scaled to safely test the mechanical range without hitting end-stops. Hips/Knees at 50%, Ankles at 70%).
+2. **Run the ROS 2 Data Recorder:**
+   ```bash
+   python3 actuator_net/record_data.py
+   ```
+   *(This node perfectly syncs `/joint_commands`, `/joint_states`, and `/motor_states`, and computes virtual ankle torques using the inverse Jacobian).*
+3. **Trigger the Chirp Sequence:**
+   Using the teleop node or direct ROS 2 topics, transition the robot to the `SYSID_CHIRP` state. The robot will interpolate to the center of the chirp bounds, and then oscillate each joint from 0.1Hz to 10Hz over 10 seconds.
+4. **Save Data:** Press `Ctrl+C` in the recorder terminal to dump `sysid_data.csv`.
+
+### 2. Model Training (`actuator_net/train.py`)
+Trains a lightweight MLP (`Linear(12, 32) -> ELU -> Linear(32, 32) -> ELU -> Linear(32, 1)`) to predict the actual motor torque based on a rolling history (`k_history=6`) of position errors and velocities.
+
+```bash
+python3 actuator_net/train.py --csv sysid_data_air.csv sysid_data_ground.csv --joint_type foot_pitch --epochs 100
+```
+- **Inputs:** Rolling window of 6 `q_err` + 6 `dq` (12 dims) perfectly matched to Isaac Lab's `ActuatorNetMLP` schema.
+- **Outputs:** Best validation epoch is automatically exported as a Torch JIT script (e.g. `foot_pitch_net.pt`). Both left and right side data are automatically combined to double the dataset size.
+
+### 3. Validation in Isaac Sim (`sysid/sysid_isaac.py`)
+Verifies the trained ActuatorNet matches the real hardware response.
+
+1. The standalone Isaac testing script (`sysid/sysid_isaac.py`) and hardware CAN tester (`deploy/scripts/motor_sysid.py`) both automatically parse `chirp.yaml` to ensure the simulated sine sweeps match the exact amplitudes tested on hardware.
+2. In your Isaac environment config, replace `DelayedPDActuatorCfg` with `ActuatorNetMLPCfg` for the specific joint group, pointing it to the exported `.pt` model.
+3. Run the validation:
+   ```bash
+   /isaac-sim/python.sh sysid/sysid_isaac.py --joint R_foot_pitch --headless
+   ```
+
 ## Reward Terms (13)
 
 | Term | Weight | | Term | Weight |

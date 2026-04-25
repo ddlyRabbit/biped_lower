@@ -1,0 +1,50 @@
+chirp:
+  joints:
+    L_hip_pitch:
+      freq: 0.5
+      max: 61.22
+      min: -32.29
+    R_hip_pitch:
+      freq: 0.5
+      max: 32.29
+      min: -61.22
+    L_hip_roll:
+      freq: 0.5
+      max: 65.0
+      min: -5.99
+    R_hip_roll:
+      freq: 0.5
+      max: 5.99
+      min: -65.0
+    L_hip_yaw:
+      freq: 0.5
+      max: 45.01
+      min: -45.01
+    R_hip_yaw:
+      freq: 0.5
+      max: 45.01
+      min: -45.01
+    L_knee:
+      freq: 0.5
+      max: 84.65
+      min: 7.16
+    R_knee:
+      freq: 0.5
+      max: 84.65
+      min: 7.16
+    L_foot_pitch:
+      freq: 0.5
+      max: 18.09
+      min: -37.94
+    R_foot_pitch:
+      freq: 0.5
+      max: 18.09
+      min: -37.94
+    L_foot_roll:
+      freq: 0.5
+      max: 10.51
+      min: -10.51
+    R_foot_roll:
+      freq: 0.5
+      max: 10.51
+      min: -10.51

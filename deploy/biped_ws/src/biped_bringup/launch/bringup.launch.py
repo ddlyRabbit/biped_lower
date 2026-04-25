@@ -137,6 +137,7 @@ def _make_control_nodes(context):
             package=pkg, executable=sm_exe,
             name='state_machine_node', output='screen',
             parameters=[{
+                'chirp_config': os.path.join(get_package_share_directory('biped_bringup'), 'config', 'chirp.yaml'),
                 'wiggle_config': os.path.join(get_package_share_directory('biped_bringup'), 'config', 'wiggle.yaml'),
                 'step_config': os.path.join(get_package_share_directory('biped_bringup'), 'config', 'step.yaml'),
                 'control_params_file': LaunchConfiguration('control_params_file').perform(context),

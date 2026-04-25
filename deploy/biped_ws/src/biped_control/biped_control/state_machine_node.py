@@ -105,6 +105,30 @@ class StateMachineNode(Node):
                 cfg['joints'][name] = {'max': DEFAULT_POSITIONS[name] + 5.0 * math.pi / 180.0, 'min': DEFAULT_POSITIONS[name] - 5.0 * math.pi / 180.0, 'freq': global_freq}
         self._wiggle_cfg = cfg
 
+    def _load_chirp_config(self):
+        path = self.get_parameter('chirp_config').value
+        cfg = {'joints': {}}
+        global_freq = 1.0
+        if path and os.path.exists(path):
+            try:
+                with open(path, 'r') as f:
+                    raw = yaml.safe_load(f)
+                    if 'chirp' in raw and 'joints' in raw['chirp']:
+                        for name, params in raw['chirp']['joints'].items():
+                            cfg['joints'][name] = {
+                                'max': float(params.get('max', 5.0)) * math.pi / 180.0,
+                                'min': float(params.get('min', -5.0)) * math.pi / 180.0,
+                                'freq': float(params.get('freq', global_freq)),
+                            }
+                self.get_logger().info('Chirp config loaded (converted from degrees)')
+            except Exception as e:
+                self.get_logger().warn(f'Failed to load chirp config: {e}')
+        
+        for name in JOINT_ORDER:
+            if name not in cfg['joints']:
+                cfg['joints'][name] = {'max': DEFAULT_POSITIONS[name] + 5.0 * math.pi / 180.0, 'min': DEFAULT_POSITIONS[name] - 5.0 * math.pi / 180.0, 'freq': global_freq}
+        self._chirp_cfg = cfg
+
     def _load_step_config(self):
         path = self.get_parameter('step_config').value
         cfg = {'joints': {}}
@@ -212,6 +236,12 @@ class StateMachineNode(Node):
         elif new_state == "STEP_TEST":
             self._stand_start_positions = dict(self._current_positions)
             self._load_step_config()
+            self._active_joint_idx = -1
+            self._target_joint_idx = -1
+            self._wiggle_interpolating = False
+        elif new_state == "SYSID_CHIRP":
+            self._stand_start_positions = dict(self._current_positions)
+            self._load_chirp_config()
             self._active_joint_idx = -1
             self._target_joint_idx = -1
             self._wiggle_interpolating = False
@@ -466,7 +496,7 @@ class StateMachineNode(Node):
                 if i == getattr(self, '_active_joint_idx', -1):
                     target += self._interp_start_pos * (1.0 - alpha)
                 elif i == getattr(self, '_target_joint_idx', -1):
-                    jcfg = self._wiggle_cfg['joints'].get(
+                    jcfg = self._chirp_cfg['joints'].get(
                         name, {'max': target + 0.087, 'min': target - 0.087, 'freq': 1.0}
                     )
                     mid = (jcfg['max'] + jcfg['min']) / 2.0
@@ -490,7 +520,7 @@ class StateMachineNode(Node):
             for i, name in enumerate(JOINT_ORDER):
                 target = DEFAULT_POSITIONS[name]
                 if i == getattr(self, '_active_joint_idx', -1):
-                    jcfg = self._wiggle_cfg['joints'].get(
+                    jcfg = self._chirp_cfg['joints'].get(
                         name, {'max': target + 0.087, 'min': target - 0.087, 'freq': 1.0}
                     )
                     phase_t = current_time - self._wiggle_sine_start_time
