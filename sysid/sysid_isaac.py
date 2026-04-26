@@ -229,11 +229,11 @@ def main():
     save_csv(data, os.path.join(out_dir, "step_response.csv"))
 
     # --- Sine Sweeps ---
-    for freq in params["freqs"]:
-        print("Sine sweep %.1f Hz..." % freq)
+    amps = params.get("amps", [params["amp"]] * len(params["freqs"]))
+    for freq, amp in zip(params["freqs"], amps):
+        print("Sine sweep %.1f Hz, amp=%.3f rad..." % (freq, amp))
         data = []
         t = 0.0
-        amp = params["amp"]
         dur = 5.0 / freq  # 5 cycles
 
         # Hold 0.5s

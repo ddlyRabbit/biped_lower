@@ -525,10 +525,16 @@ class StateMachineNode(Node):
                     )
                     phase_t = current_time - self._wiggle_sine_start_time
                     f0, f1 = 0.1, 10.0
-                    phi = 2.0 * math.pi * (f0 * phase_t + (f1 - f0) * phase_t * phase_t / (2.0 * duration))
+                                        phi = 2.0 * math.pi * (f0 * phase_t + (f1 - f0) * phase_t * phase_t / (2.0 * duration))
                     
                     mid = (jcfg['max'] + jcfg['min']) / 2.0
-                    amp = (jcfg['max'] - jcfg['min']) / 2.0
+                    amp_base = (jcfg['max'] - jcfg['min']) / 2.0
+                    
+                    # Velocity envelope: max 8.0 rad/s
+                    current_f = f0 + (f1 - f0) * (phase_t / duration)
+                    max_safe_amp = 8.0 / (2.0 * math.pi * max(current_f, 0.1))
+                    amp = min(amp_base, max_safe_amp)
+                    
                     target = mid + amp * math.sin(phi)
 
                 limit = self._joint_limits.get(name)

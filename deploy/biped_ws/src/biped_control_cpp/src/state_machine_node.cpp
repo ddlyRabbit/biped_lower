@@ -775,10 +775,16 @@ void load_chirp_config() {
                     double f0 = 0.1;
                     double f1 = 10.0;
                     // phi(t) = 2 * pi * (f0 * t + (f1 - f0) * t^2 / (2 * T))
-                    double phi = 2.0 * M_PI * (f0 * phase_t + (f1 - f0) * phase_t * phase_t / (2.0 * duration));
+                                        double phi = 2.0 * M_PI * (f0 * phase_t + (f1 - f0) * phase_t * phase_t / (2.0 * duration));
                     
                     double mid = (jcfg.max + jcfg.min) / 2.0;
-                    double amp = (jcfg.max - jcfg.min) / 2.0;
+                    double amp_base = (jcfg.max - jcfg.min) / 2.0;
+                    
+                    // Velocity envelope: max 8.0 rad/s to prevent torque saturation
+                    double current_f = f0 + (f1 - f0) * (phase_t / duration);
+                    double max_safe_amp = 8.0 / (2.0 * M_PI * std::max(current_f, 0.1));
+                    double amp = std::min(amp_base, max_safe_amp);
+                    
                     target = mid + amp * std::sin(phi);
                 }
 
