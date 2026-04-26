@@ -54,6 +54,7 @@ class StateMachineNode(Node):
         self._current_positions = {name: 0.0 for name in JOINT_ORDER}
         self._stand_start_positions = {name: 0.0 for name in JOINT_ORDER}
         self._state = "IDLE"
+        self._chirp_sim_only = False
         self._state_start_time = time.time()
 
         self._joint_limits = {
@@ -182,7 +183,7 @@ class StateMachineNode(Node):
             self._transition("PLAY_TRAJ_SIM")
         elif cmd == "STOP" and self._state not in ("IDLE", "ESTOP"):
             self._transition("STAND")
-        elif cmd.startswith("WIGGLE_SEQ") or cmd.startswith("STEP_TEST") or cmd.startswith("SYSID_CHIRP"):
+        elif cmd.startswith("WIGGLE_SEQ") or cmd.startswith("STEP_TEST") or cmd.startswith("SYSID_CHIRP") or cmd.startswith("CHIRP_SIM"):
             parts = cmd.split(":")
             base_cmd = parts[0]
             if len(parts) > 1:
@@ -239,7 +240,8 @@ class StateMachineNode(Node):
             self._active_joint_idx = -1
             self._target_joint_idx = -1
             self._wiggle_interpolating = False
-        elif new_state == "SYSID_CHIRP":
+        elif new_state == "SYSID_CHIRP" or new_state == "CHIRP_SIM":
+            self._chirp_sim_only = (new_state == "CHIRP_SIM")
             self._stand_start_positions = dict(self._current_positions)
             self._load_chirp_config()
             self._active_joint_idx = -1
@@ -275,6 +277,12 @@ class StateMachineNode(Node):
         elif self._state == "STEP_TEST":
             self._handle_step_test()
         elif self._state == "SYSID_CHIRP":
+            self._handle_sysid_chirp()
+        elif self._state == "CHIRP_SIM":
+            self._handle_stand_hold()
+            self._handle_sysid_chirp()
+        elif self._state == "CHIRP_SIM":
+            self._handle_stand_hold()
             self._handle_sysid_chirp()
         elif self._state == "WIGGLE_ALL":
             self._handle_wiggle_all()
@@ -516,7 +524,7 @@ class StateMachineNode(Node):
                 cmd.torque_ff = 0.0
                 cmd_msg.commands.append(cmd)
         else:
-            duration = 10.0
+            duration = 60.0
             for i, name in enumerate(JOINT_ORDER):
                 target = DEFAULT_POSITIONS[name]
                 if i == getattr(self, '_active_joint_idx', -1):
@@ -524,15 +532,18 @@ class StateMachineNode(Node):
                         name, {'max': target + 0.087, 'min': target - 0.087, 'freq': 1.0}
                     )
                     phase_t = current_time - self._wiggle_sine_start_time
-                    f0, f1 = 0.1, 10.0
-                                        phi = 2.0 * math.pi * (f0 * phase_t + (f1 - f0) * phase_t * phase_t / (2.0 * duration))
+                    
+                    # 60-second discrete stepped-frequency sweep (1 Hz increments, 6s per step)
+                    step_idx = min(9, int(phase_t / 6.0))
+                    current_f = 1.0 + step_idx
+                    
+                    phi_start = 2.0 * math.pi * 6.0 * (step_idx + (step_idx * (step_idx - 1)) / 2.0)
+                    time_in_step = phase_t - (step_idx * 6.0)
+                    phi = phi_start + 2.0 * math.pi * current_f * time_in_step
                     
                     mid = (jcfg['max'] + jcfg['min']) / 2.0
                     amp_base = (jcfg['max'] - jcfg['min']) / 2.0
-                    
-                    # Scale down amplitude as frequency rises
-                    current_f = f0 + (f1 - f0) * (phase_t / duration)
-                    amp = amp_base / max(1.0, current_f)
+                    amp = amp_base / current_f
                     
                     target = mid + amp * math.sin(phi)
 
@@ -561,7 +572,29 @@ class StateMachineNode(Node):
                     ) - DEFAULT_POSITIONS[JOINT_ORDER[self._active_joint_idx]]
                     self._wiggle_interpolating = True
 
-        self._pub_cmd.publish(cmd_msg)
+        if getattr(self, '_chirp_sim_only', False):
+            from sensor_msgs.msg import JointState
+            viz_msg = JointState()
+            viz_msg.header.stamp = self.get_clock().now().to_msg()
+            for cmd in cmd_msg.commands:
+                viz_msg.name.append(cmd.joint_name)
+                viz_msg.position.append(cmd.position)
+                viz_msg.velocity.append(0.0)
+                viz_msg.effort.append(0.0)
+            self._pub_viz_js.publish(viz_msg)
+        else:
+            if getattr(self, '_chirp_sim_only', False):
+            from sensor_msgs.msg import JointState
+            viz_msg = JointState()
+            viz_msg.header.stamp = self.get_clock().now().to_msg()
+            for cmd in cmd_msg.commands:
+                viz_msg.name.append(cmd.joint_name)
+                viz_msg.position.append(cmd.position)
+                viz_msg.velocity.append(0.0)
+                viz_msg.effort.append(0.0)
+            self._pub_viz_js.publish(viz_msg)
+        else:
+            self._pub_cmd.publish(cmd_msg)
 
     def _handle_wiggle_all(self):
         elapsed = time.time() - self._state_start_time

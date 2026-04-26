@@ -86,6 +86,7 @@ private:
     struct WiggleCfg { double duration; std::unordered_map<std::string, WiggleJoint> joints; };
     WiggleCfg wiggle_cfg_;
     WiggleCfg chirp_cfg_;
+    WiggleCfg chirp_cfg_;
     
     struct StepJoint { double step_max; double step_min; double period; };
     struct StepCfg { std::unordered_map<std::string, StepJoint> joints; };
@@ -104,6 +105,7 @@ private:
     std::vector<std::vector<double>> traj_frames_;
     int traj_index_ = 0;
     bool traj_sim_only_ = false;
+    bool chirp_sim_only_ = false;
     double traj_gain_ramp_secs_ = 3.0;
 
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr sub_safety_;
@@ -395,7 +397,7 @@ void load_chirp_config() {
         else if (cmd == "PLAY_TRAJ" && state_ == "STAND") transition("PLAY_TRAJ");
         else if (cmd == "PLAY_TRAJ_SIM" && state_ == "STAND") transition("PLAY_TRAJ_SIM");
         else if (cmd == "STOP" && state_ != "IDLE" && state_ != "ESTOP") transition("STAND");
-        else if (cmd.find("WIGGLE_SEQ") == 0 || cmd.find("STEP_TEST") == 0 || cmd.find("SYSID_CHIRP") == 0) {
+        else if (cmd.find("WIGGLE_SEQ") == 0 || cmd.find("STEP_TEST") == 0 || cmd.find("SYSID_CHIRP") == 0 || cmd.find("CHIRP_SIM") == 0) {
             size_t colon_pos = cmd.find(":");
             std::string base_cmd = cmd.substr(0, colon_pos);
             if (colon_pos != std::string::npos) {
@@ -456,7 +458,8 @@ void load_chirp_config() {
             active_joint_idx_ = -1;
             target_joint_idx_ = -1;
             wiggle_interpolating_ = false;
-        } else if (new_state == "SYSID_CHIRP") {
+        } else if (new_state == "SYSID_CHIRP" || new_state == "CHIRP_SIM") {
+            chirp_sim_only_ = (new_state == "CHIRP_SIM");
             stand_start_positions_ = current_positions_;
             load_chirp_config();
             active_joint_idx_ = -1;
@@ -479,6 +482,8 @@ void load_chirp_config() {
         else if (state_ == "WIGGLE_SEQ") handle_wiggle_sequential();
         else if (state_ == "STEP_TEST") handle_step_test();
         else if (state_ == "SYSID_CHIRP") handle_sysid_chirp();
+        else if (state_ == "CHIRP_SIM") { handle_stand_hold(); handle_sysid_chirp(); }
+        else if (state_ == "CHIRP_SIM") { handle_stand_hold(); handle_sysid_chirp(); }
         else if (state_ == "WIGGLE_ALL") handle_wiggle_all();
         else if (state_ == "PLAY_TRAJ") handle_play_traj();
         else if (state_ == "PLAY_TRAJ_SIM") { handle_stand_hold(); handle_play_traj_sim(); }
@@ -762,7 +767,7 @@ void load_chirp_config() {
             }
         } 
         else {
-            double duration = 10.0; // 10 seconds per joint for chirp
+            double duration = 60.0; // 60 seconds per joint for chirp
             for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
                 std::string name = JOINT_ORDER[i];
                 double target = DEFAULT_POSITIONS.at(name);
@@ -771,18 +776,17 @@ void load_chirp_config() {
                     auto& jcfg = wiggle_cfg_.joints[name];
                     double phase_t = current_time - wiggle_sine_start_time_;
                     
-                    // Chirp math: f0 = 0.1Hz, f1 = 10.0Hz
-                    double f0 = 0.1;
-                    double f1 = 10.0;
-                    // phi(t) = 2 * pi * (f0 * t + (f1 - f0) * t^2 / (2 * T))
-                                        double phi = 2.0 * M_PI * (f0 * phase_t + (f1 - f0) * phase_t * phase_t / (2.0 * duration));
+                    // 60-second discrete stepped-frequency sweep (1 Hz increments, 6s per step)
+                    int step_idx = std::min(9, static_cast<int>(phase_t / 6.0));
+                    double current_f = 1.0 + step_idx; // 1Hz to 10Hz
+                    
+                    double phi_start = 2.0 * M_PI * 6.0 * (step_idx + (step_idx * (step_idx - 1)) / 2.0);
+                    double time_in_step = phase_t - (step_idx * 6.0);
+                    double phi = phi_start + 2.0 * M_PI * current_f * time_in_step;
                     
                     double mid = (jcfg.max + jcfg.min) / 2.0;
                     double amp_base = (jcfg.max - jcfg.min) / 2.0;
-                    
-                    // Scale down amplitude as frequency rises
-                    double current_f = f0 + (f1 - f0) * (phase_t / duration);
-                    double amp = amp_base / std::max(1.0, current_f);
+                    double amp = amp_base / current_f;
                     
                     target = mid + amp * std::sin(phi);
                 }
@@ -815,7 +819,19 @@ void load_chirp_config() {
             }
         }
 
-        pub_cmd_->publish(msg);
+        if (chirp_sim_only_) {
+            sensor_msgs::msg::JointState viz_msg;
+            viz_msg.header.stamp = now();
+            for (const auto& cmd : msg.commands) {
+                viz_msg.name.push_back(cmd.joint_name);
+                viz_msg.position.push_back(cmd.position);
+                viz_msg.velocity.push_back(0.0);
+                viz_msg.effort.push_back(0.0);
+            }
+            pub_viz_js_->publish(viz_msg);
+        } else {
+            pub_cmd_->publish(msg);
+        }
     }
 
     void handle_wiggle_all() {

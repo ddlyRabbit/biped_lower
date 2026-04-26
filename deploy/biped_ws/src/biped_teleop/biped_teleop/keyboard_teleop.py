@@ -120,6 +120,8 @@ class KeyboardTeleop(Node):
             't': 'WIGGLE_SEQ',      # STAND → WIGGLE_SEQ
             'u': 'STEP_TEST',       # STAND → STEP_TEST
             'c': 'SYSID_CHIRP',     # STAND → SYSID_CHIRP
+            'C': 'CHIRP_SIM',       # STAND → CHIRP_SIM
+            'C': 'CHIRP_SIM',       # STAND → CHIRP_SIM
             'y': 'WIGGLE_ALL',      # STAND → WIGGLE_ALL
             'p': 'PLAY_TRAJ_SIM',   # STAND → PLAY_TRAJ_SIM (viz only)
             'P': 'PLAY_TRAJ',       # STAND → PLAY_TRAJ (real motors)
@@ -207,6 +209,10 @@ class KeyboardTeleop(Node):
                         self._send_fsm(f"STEP_TEST:{self._wiggle_keys[key]}")
                     elif self._fsm_state == 'SYSID_CHIRP':
                         self._send_fsm(f"SYSID_CHIRP:{self._wiggle_keys[key]}")
+                    elif self._fsm_state == 'CHIRP_SIM':
+                        self._send_fsm(f"CHIRP_SIM:{self._wiggle_keys[key]}")
+                    elif self._fsm_state == 'CHIRP_SIM':
+                        self._send_fsm(f"CHIRP_SIM:{self._wiggle_keys[key]}")
                     else:
                         self._send_fsm(f"WIGGLE_SEQ:{self._wiggle_keys[key]}")
                 elif key == '\x1b':  # ESC → ESTOP
