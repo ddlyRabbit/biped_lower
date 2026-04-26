@@ -780,10 +780,9 @@ void load_chirp_config() {
                     double mid = (jcfg.max + jcfg.min) / 2.0;
                     double amp_base = (jcfg.max - jcfg.min) / 2.0;
                     
-                    // Velocity envelope: max 8.0 rad/s to prevent torque saturation
+                    // Scale down amplitude as frequency rises
                     double current_f = f0 + (f1 - f0) * (phase_t / duration);
-                    double max_safe_amp = 8.0 / (2.0 * M_PI * std::max(current_f, 0.1));
-                    double amp = std::min(amp_base, max_safe_amp);
+                    double amp = amp_base / std::max(1.0, current_f);
                     
                     target = mid + amp * std::sin(phi);
                 }

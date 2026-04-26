@@ -530,10 +530,9 @@ class StateMachineNode(Node):
                     mid = (jcfg['max'] + jcfg['min']) / 2.0
                     amp_base = (jcfg['max'] - jcfg['min']) / 2.0
                     
-                    # Velocity envelope: max 8.0 rad/s
+                    # Scale down amplitude as frequency rises
                     current_f = f0 + (f1 - f0) * (phase_t / duration)
-                    max_safe_amp = 8.0 / (2.0 * math.pi * max(current_f, 0.1))
-                    amp = min(amp_base, max_safe_amp)
+                    amp = amp_base / max(1.0, current_f)
                     
                     target = mid + amp * math.sin(phi)
 

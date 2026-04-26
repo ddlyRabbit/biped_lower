@@ -290,9 +290,8 @@ class SysIdRecorder:
     def run_sine_sweep(self, freq: float, amplitude: float = None, n_cycles: int = None):
         """Sine sweep at given frequency."""
         if amplitude is None:
-            # Velocity envelope to prevent saturation at high frequencies
-            import math
-            amplitude = min(self.cfg.sine_amplitude, 8.0 / (2 * math.pi * freq))
+            # Scale down amplitude as frequency rises
+            amplitude = self.cfg.sine_amplitude / max(1.0, freq)
         if n_cycles is None:
             n_cycles = self.cfg.sine_cycles
 

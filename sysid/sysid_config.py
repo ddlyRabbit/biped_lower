@@ -166,7 +166,7 @@ def compute_test_params(joint_name):
         "step": mid + half_range * 0.5,
         "amp": half_range * 0.5,  # Base amplitude
         "freqs": SINE_FREQS,
-        "amps": [min(half_range * 0.5, 8.0 / (2 * math.pi * f)) for f in SINE_FREQS],
+        "amps": [half_range * 0.5 / max(1.0, f) for f in SINE_FREQS],
     }
 
 
