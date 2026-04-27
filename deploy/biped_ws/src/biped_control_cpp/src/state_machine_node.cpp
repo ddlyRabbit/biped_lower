@@ -29,6 +29,7 @@ public:
         declare_parameter("stand_stable_time", 2.0);
         declare_parameter("wiggle_config", "");
         declare_parameter("step_config", "");
+        declare_parameter("chirp_config", "");
         declare_parameter("gain_scale", 1.0);
         declare_parameter("trajectory_file", "");
 
