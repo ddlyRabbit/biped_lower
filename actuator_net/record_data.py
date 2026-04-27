@@ -14,9 +14,10 @@ class DataRecorder(Node):
     def __init__(self):
         super().__init__('sysid_data_recorder')
         
-        self.cmd_sub = message_filters.Subscriber(self, MITCommandArray, '/joint_commands')
-        self.js_sub = message_filters.Subscriber(self, JointState, '/joint_states')
-        self.ms_sub = message_filters.Subscriber(self, MotorStateArray, '/motor_states')
+        sensor_qos = rclpy.qos.QoSProfile(depth=10, reliability=rclpy.qos.ReliabilityPolicy.BEST_EFFORT)
+        self.cmd_sub = message_filters.Subscriber(self, MITCommandArray, '/joint_commands', qos_profile=sensor_qos)
+        self.js_sub = message_filters.Subscriber(self, JointState, '/joint_states', qos_profile=sensor_qos)
+        self.ms_sub = message_filters.Subscriber(self, MotorStateArray, '/motor_states', qos_profile=sensor_qos)
         
         # Sync the 3 topics perfectly using timestamps (slop = 20ms tolerance)
         self.ts = message_filters.ApproximateTimeSynchronizer(
@@ -84,11 +85,14 @@ def main(args=None):
     node = DataRecorder()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
         node.save()
     finally:
-        node.destroy_node()
-        rclpy.shutdown()
+        try:
+            node.destroy_node()
+            rclpy.shutdown()
+        except Exception:
+            pass
 
 if __name__ == '__main__':
     main()
