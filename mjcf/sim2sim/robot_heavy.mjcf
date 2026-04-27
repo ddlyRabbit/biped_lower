@@ -4,7 +4,7 @@
   <compiler angle="radian" meshdir="meshes" eulerseq="zyx" autolimits="true" />
 
   <default>
-    <joint limited="true" armature="0.01" frictionloss="0.01" damping="0.01" />
+    <joint limited="true" armature="0.015" frictionloss="0.375" damping="0.5" />
     <geom condim="4" contype="1" conaffinity="15" solref="0.001 2" />
     <motor ctrllimited="true" />
     <equality solref="0.001 2" />

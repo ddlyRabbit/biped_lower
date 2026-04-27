@@ -96,16 +96,23 @@ ACTION_SCALE = np.array([
 ], dtype=np.float32)
 
 # ─── PD gains (from training config) ────────────────────────────────────────
+# PD gains must match biped_env_cfg.py DelayedPDActuatorCfg exactly
 KP_ISAAC = {"L_hip_pitch": 180, "R_hip_pitch": 180, "L_hip_roll": 180, "R_hip_roll": 180,
             "L_hip_yaw": 180, "R_hip_yaw": 180, "L_knee": 180, "R_knee": 180,
-            "L_foot_pitch": 30, "R_foot_pitch": 30, "L_foot_roll": 30, "R_foot_roll": 30}
+            "L_foot_pitch": 60, "R_foot_pitch": 60, "L_foot_roll": 60, "R_foot_roll": 60}
 KD_ISAAC = {"L_hip_pitch": 6.5, "R_hip_pitch": 6.5, "L_hip_roll": 6.5, "R_hip_roll": 6.5,
             "L_hip_yaw": 3.0, "R_hip_yaw": 3.0, "L_knee": 3.0, "R_knee": 3.0,
-            "L_foot_pitch": 1.0, "R_foot_pitch": 1.0, "L_foot_roll": 1.0, "R_foot_roll": 1.0}
+            "L_foot_pitch": 2.0, "R_foot_pitch": 2.0, "L_foot_roll": 2.0, "R_foot_roll": 2.0}
 
 KP_MJ = np.array([KP_ISAAC[MJ_TO_ISAAC_NAME[mj]] for mj in MJ_JOINTS], dtype=np.float32)
 KD_MJ = np.array([KD_ISAAC[MJ_TO_ISAAC_NAME[mj]] for mj in MJ_JOINTS], dtype=np.float32)
 EFFORT_MJ = np.array([100, 50, 50, 100, 30, 30, 100, 50, 50, 100, 30, 30], dtype=np.float32)
+
+# Per-joint friction from DelayedPDActuatorCfg (Nm)
+FRICTION_ISAAC = {"L_hip_pitch": 0.5, "R_hip_pitch": 0.5, "L_hip_roll": 0.375, "R_hip_roll": 0.375,
+                  "L_hip_yaw": 0.375, "R_hip_yaw": 0.375, "L_knee": 0.5, "R_knee": 0.5,
+                  "L_foot_pitch": 0.25, "R_foot_pitch": 0.25, "L_foot_roll": 0.25, "R_foot_roll": 0.25}
+FRICTION_MJ = np.array([FRICTION_ISAAC[MJ_TO_ISAAC_NAME[mj]] for mj in MJ_JOINTS], dtype=np.float32)
 
 BASE_HEIGHT = 0.802
 
@@ -269,7 +276,7 @@ def main():
     frames = []
     if args.video:
         pass
-        renderer = mujoco.Renderer(model, 480, 640)
+        print("Starting renderer"); renderer = mujoco.Renderer(model, 480, 640); print("Renderer started")
         camera = mujoco.MjvCamera()
         camera.type = mujoco.mjtCamera.mjCAMERA_TRACKING
         camera.trackbodyid = 0
@@ -287,7 +294,14 @@ def main():
     if args.duration is None:
         args.duration = 10.0 if args.video else float('inf')
 
-    latency_steps = int(args.latency_ms / 1000.0 / PHYSICS_DT)
+    # Action delay: match training DelayedPDActuator min_delay=0, max_delay=6 steps (at 50Hz)
+    # 6 policy steps = 6 * 40 physics steps = 240 physics steps max
+    # Use default 3 policy steps of delay (midpoint)
+    if args.latency_ms > 0:
+        latency_steps = int(args.latency_ms / 1000.0 / PHYSICS_DT)
+    else:
+        # Default: 3 policy steps of delay (matches midpoint of training 0-6)
+        latency_steps = 3 * SUBSTEPS
     target_buffer = collections.deque([DEFAULT_POS_MJ.copy() for _ in range(latency_steps + 1)], maxlen=latency_steps + 1)
 
     csv_writer = None
@@ -336,6 +350,9 @@ def main():
                 jp = data.qpos[qp_idx]
                 jv = data.qvel[qv_idx]
                 torques = KP_MJ * (delayed_targets_mj - jp) + KD_MJ * (0.0 - jv)
+                # Apply friction (Coulomb-like, opposing velocity)
+                friction_torque = -FRICTION_MJ * np.sign(jv)
+                torques = torques + friction_torque
                 torques = np.clip(torques, -EFFORT_MJ, EFFORT_MJ)
                 data.ctrl[actuator_idx] = torques
                 mujoco.mj_step(model, data)
