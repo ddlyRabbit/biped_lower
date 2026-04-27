@@ -176,7 +176,7 @@ private:
 void load_chirp_config() {
         std::string path = get_parameter("chirp_config").as_string();
         chirp_cfg_.joints.clear();
-        chirp_cfg_.duration = 3.0;
+        chirp_cfg_.duration = 60.0;
         double global_freq = 1.0;
 
         if (!path.empty()) {
@@ -840,14 +840,8 @@ void load_chirp_config() {
             }
 
             if (current_time - wiggle_sine_start_time_ > duration) {
-                target_joint_idx_ = active_joint_idx_ + 1;
-                if (target_joint_idx_ >= static_cast<int>(JOINT_ORDER.size())) {
-                    transition("STAND");
-                } else {
-                    interp_start_time_ = current_time;
-                    interp_start_pos_ = current_positions_[JOINT_ORDER[active_joint_idx_]] - DEFAULT_POSITIONS.at(JOINT_ORDER[active_joint_idx_]);
-                    wiggle_interpolating_ = true;
-                }
+                // Sweep complete — go back to idle (publish defaults, wait for next key)
+                active_joint_idx_ = -1;
             }
         }
 
