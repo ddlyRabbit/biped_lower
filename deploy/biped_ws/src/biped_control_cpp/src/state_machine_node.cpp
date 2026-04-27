@@ -483,7 +483,6 @@ void load_chirp_config() {
         else if (state_ == "STEP_TEST") handle_step_test();
         else if (state_ == "SYSID_CHIRP") handle_sysid_chirp();
         else if (state_ == "CHIRP_SIM") { handle_stand_hold(); handle_sysid_chirp(); }
-        else if (state_ == "CHIRP_SIM") { handle_stand_hold(); handle_sysid_chirp(); }
         else if (state_ == "WIGGLE_ALL") handle_wiggle_all();
         else if (state_ == "PLAY_TRAJ") handle_play_traj();
         else if (state_ == "PLAY_TRAJ_SIM") { handle_stand_hold(); handle_play_traj_sim(); }
@@ -729,7 +728,39 @@ void load_chirp_config() {
 
         double current_time = now().seconds();
 
+        // No joint selected yet — publish defaults (waiting for teleop key)
+        if (active_joint_idx_ < 0 && !wiggle_interpolating_) {
+            for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
+                std::string name = JOINT_ORDER[i];
+                double target = DEFAULT_POSITIONS.at(name);
+                auto gains = DEFAULT_GAINS.at(name);
+                biped_msgs::msg::MITCommand cmd;
+                cmd.joint_name = name;
+                cmd.position = target;
+                cmd.velocity = 0.0;
+                cmd.kp = gains.first * gs;
+                cmd.kd = gains.second * gs;
+                cmd.torque_ff = 0.0;
+                msg.commands.push_back(cmd);
+            }
+            if (chirp_sim_only_) {
+                sensor_msgs::msg::JointState viz_msg;
+                viz_msg.header.stamp = now();
+                for (const auto& cmd : msg.commands) {
+                    viz_msg.name.push_back(cmd.joint_name);
+                    viz_msg.position.push_back(cmd.position);
+                    viz_msg.velocity.push_back(0.0);
+                    viz_msg.effort.push_back(0.0);
+                }
+                pub_viz_js_->publish(viz_msg);
+            } else {
+                pub_cmd_->publish(msg);
+            }
+            return;
+        }
+
         if (wiggle_interpolating_) {
+            // Smooth interpolation from old joint position to new chirp center
             double alpha = (current_time - interp_start_time_) / 3.0;
             if (alpha >= 1.0) {
                 alpha = 1.0;
@@ -745,7 +776,7 @@ void load_chirp_config() {
                 if (i == active_joint_idx_) {
                     target += interp_start_pos_ * (1.0 - alpha);
                 } else if (i == target_joint_idx_) {
-                    auto& jcfg = wiggle_cfg_.joints[name];
+                    auto& jcfg = chirp_cfg_.joints[name];
                     double mid = (jcfg.max + jcfg.min) / 2.0;
                     target = target + (mid - target) * alpha;
                 }
@@ -767,13 +798,14 @@ void load_chirp_config() {
             }
         } 
         else {
-            double duration = 60.0; // 60 seconds per joint for chirp
+            // Active chirp sweep on selected joint
+            double duration = chirp_cfg_.duration > 0 ? chirp_cfg_.duration : 60.0;
             for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
                 std::string name = JOINT_ORDER[i];
                 double target = DEFAULT_POSITIONS.at(name);
 
                 if (i == active_joint_idx_) {
-                    auto& jcfg = wiggle_cfg_.joints[name];
+                    auto& jcfg = chirp_cfg_.joints[name];
                     double phase_t = current_time - wiggle_sine_start_time_;
                     
                     // 60-second discrete stepped-frequency sweep (1 Hz increments, 6s per step)
