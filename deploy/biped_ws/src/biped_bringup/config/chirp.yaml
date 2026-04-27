@@ -2,36 +2,36 @@ chirp:
   joints:
     L_hip_pitch:
       freq: 0.5
-      max: 61.22
-      min: -32.29
+      max: 28.32
+      min: -18.44
     R_hip_pitch:
       freq: 0.5
-      max: 32.29
-      min: -61.22
+      max: 18.44
+      min: -28.32
     L_hip_roll:
       freq: 0.5
-      max: 65.0
-      min: -5.99
+      max: 32.50
+      min: -3.00
     R_hip_roll:
       freq: 0.5
-      max: 5.99
-      min: -65.0
+      max: 3.00
+      min: -32.50
     L_hip_yaw:
       freq: 0.5
-      max: 45.01
-      min: -45.01
+      max: 22.50
+      min: -22.50
     R_hip_yaw:
       freq: 0.5
-      max: 45.01
-      min: -45.01
+      max: 22.50
+      min: -22.50
     L_knee:
       freq: 0.5
-      max: 84.65
-      min: 7.16
+      max: 49.49
+      min: 10.75
     R_knee:
       freq: 0.5
-      max: 84.65
-      min: 7.16
+      max: 49.49
+      min: 10.75
     L_foot_pitch:
       freq: 0.5
       max: 18.09
