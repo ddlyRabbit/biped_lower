@@ -47,6 +47,14 @@ from sysid_config import (
     JOINT_INDEX, DEFAULT_POS, MOTOR_TYPES, TEST_PARAMS,
 )
 
+# File-based debug logger (stdout gets swallowed by Isaac Sim)
+_DEBUG_LOG = None
+def dprint(msg):
+    print(msg, flush=True)
+    if _DEBUG_LOG:
+        _DEBUG_LOG.write(msg + '\n')
+        _DEBUG_LOG.flush()
+
 # --- Helpers ---
 
 def save_csv(data, path):
@@ -118,11 +126,15 @@ def main():
     default = DEFAULT_POS.get(joint_name, 0.0)
     out_dir = os.path.join(args.output, "%s_%s" % (joint_name, mtype))
 
-    print("=" * 60)
-    print("SysID: %s (%s) idx=%d default=%.3f" % (joint_name, mtype, jidx, default))
-    print("  step_target=%.3f sine_amp=%.3f" % (params["step"], params["amp"]))
-    print("  Kp from config, DelayedPD with friction")
-    print("=" * 60)
+    global _DEBUG_LOG
+    os.makedirs(args.output, exist_ok=True)
+    _DEBUG_LOG = open(os.path.join(args.output, "sysid_debug.log"), "w")
+
+    dprint("=" * 60)
+    dprint("SysID: %s (%s) idx=%d default=%.3f" % (joint_name, mtype, jidx, default))
+    dprint("  step_target=%.3f sine_amp=%.3f" % (params["step"], params["amp"]))
+    dprint("  Kp from config, DelayedPD with friction")
+    dprint("=" * 60)
 
     # Create sim
     sim_cfg = SimulationCfg(
@@ -168,13 +180,13 @@ def main():
         print("Render product + RGB annotator created")
 
     # Print joint names for verification
-    print("Joint names:", robot.data.joint_names)
-    print("Num joints:", robot.num_joints)
-    print("Test joint: [%d] = %s" % (jidx, robot.data.joint_names[jidx]))
+    dprint("Joint names: %s" % robot.data.joint_names)
+    dprint("Num joints: %d" % robot.num_joints)
+    dprint("Test joint: [%d] = %s" % (jidx, robot.data.joint_names[jidx]))
 
     # Verify defaults loaded
     defaults = robot.data.default_joint_pos[0]
-    print("Default positions:", defaults.cpu().numpy())
+    dprint("Default positions: %s" % defaults.cpu().numpy())
 
     # Choose step function based on video flag
     if args.video:
@@ -184,16 +196,16 @@ def main():
         do_step = step_control
 
     # --- Warmup: let robot settle at defaults for 1s ---
-    print("Warmup: settling at defaults...")
+    dprint("Warmup: settling at defaults...")
     targets = build_default_targets(robot)
     for _ in range(int(1.0 / CONTROL_DT)):
         do_step(robot, sim, targets)
 
     pos0, vel0 = read_joint(robot, jidx)
-    print("After warmup: pos=%.4f vel=%.4f" % (pos0, vel0))
+    dprint("After warmup: pos=%.4f vel=%.4f" % (pos0, vel0))
 
     # --- Step Response ---
-    print("\nStep response...")
+    dprint("\nStep response...")
     data = []
     t = 0.0
     step_target = params["step"]
@@ -231,7 +243,7 @@ def main():
     # --- Sine Sweeps ---
     amps = params.get("amps", [params["amp"]] * len(params["freqs"]))
     for freq, amp in zip(params["freqs"], amps):
-        print("Sine sweep %.1f Hz, amp=%.3f rad..." % (freq, amp))
+        dprint("Sine sweep %.1f Hz, amp=%.3f rad..." % (freq, amp))
         data = []
         t = 0.0
         dur = 5.0 / freq  # 5 cycles
@@ -291,7 +303,9 @@ def main():
         video_writer.close()
         print("Video saved: %s" % os.path.join(out_dir, "sysid_video.mp4"))
 
-    print("\nDone! Output: %s" % out_dir)
+    dprint("\nDone! Output: %s" % out_dir)
+    if _DEBUG_LOG:
+        _DEBUG_LOG.close()
     simulation_app.close()
 
 
