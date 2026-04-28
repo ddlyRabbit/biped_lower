@@ -102,19 +102,23 @@ CONTROL_DT = SIM_DT * DECIMATION  # 0.02s (50Hz control, 2kHz PD)
 
 # Joint index in the articulation (Isaac joint order from URDF)
 # Verified from robot.data.joint_names after spawning
+# Joint index in the articulation (from robot.data.joint_names after spawning)
+# Order: left_hip_pitch_04(0), right_hip_pitch_04(1), left_hip_roll_03(2), right_hip_roll_03(3),
+#        left_hip_yaw_03(4), right_hip_yaw_03(5), left_knee_04(6), right_knee_04(7),
+#        left_foot_pitch_02(8), right_foot_pitch_02(9), left_foot_roll_02(10), right_foot_roll_02(11)
 JOINT_INDEX = {
-    "R_hip_pitch": 5,
-    "R_hip_roll": 1,
-    "R_hip_yaw": 3,
-    "R_knee": 7,
-    "R_foot_pitch": 9,
-    "R_foot_roll": 11,
-    "L_hip_pitch": 4,
-    "L_hip_roll": 0,
-    "L_hip_yaw": 2,
+    "L_hip_pitch": 0,
+    "R_hip_pitch": 1,
+    "L_hip_roll": 2,
+    "R_hip_roll": 3,
+    "L_hip_yaw": 4,
+    "R_hip_yaw": 5,
     "L_knee": 6,
+    "R_knee": 7,
     "L_foot_pitch": 8,
+    "R_foot_pitch": 9,
     "L_foot_roll": 10,
+    "R_foot_roll": 11,
 }
 
 # Default positions (same as init_state, in joint index order)
