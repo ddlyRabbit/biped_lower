@@ -49,48 +49,41 @@ SYSID_ROBOT_CFG = ArticulationCfg(
     ),
     soft_joint_pos_limit_factor=0.9,
     actuators={
-        # V74 gains (current training: 10/10/15/15/16/16)
-        "hip_roll": DelayedPDActuatorCfg(
+        "hip_roll": ActuatorNetMLPCfg(
             joint_names_expr=[".*hip_roll.*"],
-            effort_limit=50.0, velocity_limit=21.0,
-            stiffness=180.0, damping=6.5, armature=0.0112,
-            friction=0.375,
-            min_delay=0, max_delay=1,
+            network_file="/home/ubuntu/workspace/biped_locomotion/actuator_net/hip_roll_net.pt",
+            pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
+            input_idx=[0, 1, 2],
         ),
-        "hip_yaw": DelayedPDActuatorCfg(
+        "hip_yaw": ActuatorNetMLPCfg(
             joint_names_expr=[".*hip_yaw.*"],
-            effort_limit=50.0, velocity_limit=21.0,
-            stiffness=180.0, damping=3.0, armature=0.0112,
-            friction=0.375,
-            min_delay=0, max_delay=1,
+            network_file="/home/ubuntu/workspace/biped_locomotion/actuator_net/hip_yaw_net.pt",
+            pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
+            input_idx=[0, 1, 2],
         ),
-        "hip_pitch": DelayedPDActuatorCfg(
+        "hip_pitch": ActuatorNetMLPCfg(
             joint_names_expr=[".*hip_pitch.*"],
-            effort_limit=100.0, velocity_limit=21.0,
-            stiffness=180.0, damping=6.5, armature=0.0152,
-            friction=0.5,
-            min_delay=0, max_delay=1,
+            network_file="/home/ubuntu/workspace/biped_locomotion/actuator_net/hip_pitch_net.pt",
+            pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
+            input_idx=[0, 1, 2],
         ),
-        "knee": DelayedPDActuatorCfg(
+        "knee": ActuatorNetMLPCfg(
             joint_names_expr=[".*knee.*"],
-            effort_limit=100.0, velocity_limit=21.0,
-            stiffness=180.0, damping=3.0, armature=0.024,
-            friction=0.5,
-            min_delay=0, max_delay=1,
+            network_file="/home/ubuntu/workspace/biped_locomotion/actuator_net/knee_net.pt",
+            pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
+            input_idx=[0, 1, 2],
         ),
-        "foot_pitch": DelayedPDActuatorCfg(
+        "foot_pitch": ActuatorNetMLPCfg(
             joint_names_expr=[".*foot_pitch.*"],
-            effort_limit=30.0, velocity_limit=30.0,
-            stiffness=30.0, damping=1.0, armature=0.0112,
-            friction=0.25,
-            min_delay=0, max_delay=1,
+            network_file="/home/ubuntu/workspace/biped_locomotion/actuator_net/foot_pitch_net.pt",
+            pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
+            input_idx=[0, 1, 2],
         ),
-        "foot_roll": DelayedPDActuatorCfg(
+        "foot_roll": ActuatorNetMLPCfg(
             joint_names_expr=[".*foot_roll.*"],
-            effort_limit=30.0, velocity_limit=30.0,
-            stiffness=30.0, damping=1.0, armature=0.001,
-            friction=0.25,
-            min_delay=0, max_delay=1,
+            network_file="/home/ubuntu/workspace/biped_locomotion/actuator_net/foot_roll_net.pt",
+            pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
+            input_idx=[0, 1, 2],
         ),
     },
 )
