@@ -51,37 +51,37 @@ SYSID_ROBOT_CFG = ArticulationCfg(
     actuators={
         "hip_roll": ActuatorNetMLPCfg(
             joint_names_expr=[".*hip_roll.*"],
-            network_file="/home/ubuntu/workspace/biped_locomotion/actuator_net/hip_roll_net.pt",
+            network_file="/workspace/biped_locomotion/actuator_net/hip_roll_net.pt",
             pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
             input_idx=[0, 1, 2], effort_limit=100.0, velocity_limit=21.0, saturation_effort=100.0, input_order="pos_vel",
         ),
         "hip_yaw": ActuatorNetMLPCfg(
             joint_names_expr=[".*hip_yaw.*"],
-            network_file="/home/ubuntu/workspace/biped_locomotion/actuator_net/hip_yaw_net.pt",
+            network_file="/workspace/biped_locomotion/actuator_net/hip_yaw_net.pt",
             pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
             input_idx=[0, 1, 2], effort_limit=100.0, velocity_limit=21.0, saturation_effort=100.0, input_order="pos_vel",
         ),
         "hip_pitch": ActuatorNetMLPCfg(
             joint_names_expr=[".*hip_pitch.*"],
-            network_file="/home/ubuntu/workspace/biped_locomotion/actuator_net/hip_pitch_net.pt",
+            network_file="/workspace/biped_locomotion/actuator_net/hip_pitch_net.pt",
             pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
             input_idx=[0, 1, 2], effort_limit=100.0, velocity_limit=21.0, saturation_effort=100.0, input_order="pos_vel",
         ),
         "knee": ActuatorNetMLPCfg(
             joint_names_expr=[".*knee.*"],
-            network_file="/home/ubuntu/workspace/biped_locomotion/actuator_net/knee_net.pt",
+            network_file="/workspace/biped_locomotion/actuator_net/knee_net.pt",
             pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
             input_idx=[0, 1, 2], effort_limit=100.0, velocity_limit=21.0, saturation_effort=100.0, input_order="pos_vel",
         ),
         "foot_pitch": ActuatorNetMLPCfg(
             joint_names_expr=[".*foot_pitch.*"],
-            network_file="/home/ubuntu/workspace/biped_locomotion/actuator_net/foot_pitch_net.pt",
+            network_file="/workspace/biped_locomotion/actuator_net/foot_pitch_net.pt",
             pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
             input_idx=[0, 1, 2], effort_limit=100.0, velocity_limit=21.0, saturation_effort=100.0, input_order="pos_vel",
         ),
         "foot_roll": ActuatorNetMLPCfg(
             joint_names_expr=[".*foot_roll.*"],
-            network_file="/home/ubuntu/workspace/biped_locomotion/actuator_net/foot_roll_net.pt",
+            network_file="/workspace/biped_locomotion/actuator_net/foot_roll_net.pt",
             pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
             input_idx=[0, 1, 2], effort_limit=100.0, velocity_limit=21.0, saturation_effort=100.0, input_order="pos_vel",
         ),
