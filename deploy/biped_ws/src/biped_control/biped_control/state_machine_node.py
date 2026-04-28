@@ -571,19 +571,7 @@ class StateMachineNode(Node):
                         JOINT_ORDER[self._active_joint_idx], 0.0
                     ) - DEFAULT_POSITIONS[JOINT_ORDER[self._active_joint_idx]]
                     self._wiggle_interpolating = True
-
         if getattr(self, '_chirp_sim_only', False):
-            from sensor_msgs.msg import JointState
-            viz_msg = JointState()
-            viz_msg.header.stamp = self.get_clock().now().to_msg()
-            for cmd in cmd_msg.commands:
-                viz_msg.name.append(cmd.joint_name)
-                viz_msg.position.append(cmd.position)
-                viz_msg.velocity.append(0.0)
-                viz_msg.effort.append(0.0)
-            self._pub_viz_js.publish(viz_msg)
-        else:
-            if getattr(self, '_chirp_sim_only', False):
             from sensor_msgs.msg import JointState
             viz_msg = JointState()
             viz_msg.header.stamp = self.get_clock().now().to_msg()
