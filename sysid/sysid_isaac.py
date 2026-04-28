@@ -202,7 +202,7 @@ def main():
     for _ in range(int(1.0 / CONTROL_DT)):
         do_step(robot, sim, targets)
 
-    pos0, vel0 = read_joint(robot, jidx)
+    pos0, vel0, _ = read_joint(robot, jidx)
     dprint("After warmup: pos=%.4f vel=%.4f" % (pos0, vel0))
 
     # --- Step Response ---
