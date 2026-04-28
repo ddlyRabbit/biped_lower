@@ -2,7 +2,7 @@
 
 import isaaclab.sim as sim_utils
 from isaaclab.assets import ArticulationCfg
-from isaaclab.actuators import DelayedPDActuatorCfg
+from isaaclab.actuators import DelayedPDActuatorCfg, ActuatorNetMLPCfg
 
 URDF_LIGHT = "/uploads/light/robot.urdf"
 
