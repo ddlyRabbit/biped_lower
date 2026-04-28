@@ -92,10 +92,11 @@ def step_control_render(robot, sim, targets, decimation=DECIMATION, rgb_annotato
 
 
 def read_joint(robot, jidx):
-    """Read position and velocity for a single joint."""
+    """Read position, velocity, and applied torque for a single joint."""
     pos = robot.data.joint_pos[0, jidx].item()
     vel = robot.data.joint_vel[0, jidx].item()
-    return pos, vel
+    torque = robot.data.applied_torque[0, jidx].item() if hasattr(robot.data, 'applied_torque') else 0.0
+    return pos, vel, torque
 
 
 def capture_frame(rgb_annotator, video_writer):
@@ -214,9 +215,9 @@ def main():
     targets = build_default_targets(robot)
     for _ in range(int(0.5 / CONTROL_DT)):
         do_step(robot, sim, targets)
-        pos, vel = read_joint(robot, jidx)
+        pos, vel, torque = read_joint(robot, jidx)
         data.append({"time": round(t, 5), "cmd_pos": round(default, 6),
-                      "pos": round(pos, 6), "vel": round(vel, 6), "torque": 0})
+                      "pos": round(pos, 6), "vel": round(vel, 6), "torque": round(torque, 6)})
         t += CONTROL_DT
 
     # Step to absolute target (2s)
@@ -224,18 +225,18 @@ def main():
     targets[jidx] = step_target
     for _ in range(int(2.0 / CONTROL_DT)):
         do_step(robot, sim, targets)
-        pos, vel = read_joint(robot, jidx)
+        pos, vel, torque = read_joint(robot, jidx)
         data.append({"time": round(t, 5), "cmd_pos": round(step_target, 6),
-                      "pos": round(pos, 6), "vel": round(vel, 6), "torque": 0})
+                      "pos": round(pos, 6), "vel": round(vel, 6), "torque": round(torque, 6)})
         t += CONTROL_DT
 
     # Return to default (1s)
     targets = build_default_targets(robot)
     for _ in range(int(1.0 / CONTROL_DT)):
         do_step(robot, sim, targets)
-        pos, vel = read_joint(robot, jidx)
+        pos, vel, torque = read_joint(robot, jidx)
         data.append({"time": round(t, 5), "cmd_pos": round(default, 6),
-                      "pos": round(pos, 6), "vel": round(vel, 6), "torque": 0})
+                      "pos": round(pos, 6), "vel": round(vel, 6), "torque": round(torque, 6)})
         t += CONTROL_DT
 
     save_csv(data, os.path.join(out_dir, "step_response.csv"))
@@ -252,9 +253,9 @@ def main():
         targets = build_default_targets(robot)
         for _ in range(int(0.5 / CONTROL_DT)):
             do_step(robot, sim, targets)
-            pos, vel = read_joint(robot, jidx)
+            pos, vel, torque = read_joint(robot, jidx)
             data.append({"time": round(t, 5), "cmd_pos": round(default, 6),
-                          "pos": round(pos, 6), "vel": round(vel, 6), "torque": 0})
+                          "pos": round(pos, 6), "vel": round(vel, 6), "torque": round(torque, 6)})
             t += CONTROL_DT
 
         # Sine around default
@@ -264,18 +265,18 @@ def main():
             targets = build_default_targets(robot)
             targets[jidx] = desired
             do_step(robot, sim, targets)
-            pos, vel = read_joint(robot, jidx)
+            pos, vel, torque = read_joint(robot, jidx)
             data.append({"time": round(t, 5), "cmd_pos": round(desired, 6),
-                          "pos": round(pos, 6), "vel": round(vel, 6), "torque": 0})
+                          "pos": round(pos, 6), "vel": round(vel, 6), "torque": round(torque, 6)})
             t += CONTROL_DT
 
         # Hold 0.5s
         targets = build_default_targets(robot)
         for _ in range(int(0.5 / CONTROL_DT)):
             do_step(robot, sim, targets)
-            pos, vel = read_joint(robot, jidx)
+            pos, vel, torque = read_joint(robot, jidx)
             data.append({"time": round(t, 5), "cmd_pos": round(default, 6),
-                          "pos": round(pos, 6), "vel": round(vel, 6), "torque": 0})
+                          "pos": round(pos, 6), "vel": round(vel, 6), "torque": round(torque, 6)})
             t += CONTROL_DT
 
         save_csv(data, os.path.join(out_dir, "sine_%.1fhz.csv" % freq))
