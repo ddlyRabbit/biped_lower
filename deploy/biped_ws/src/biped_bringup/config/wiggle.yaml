@@ -10,8 +10,8 @@ wiggle:
       min: -20.0
     R_hip_roll:
       freq: 0.5
-      max: 15
-      min: -10
+      max: 10
+      min: -15
     R_hip_yaw:
       freq: 0.5
       max: 15.0

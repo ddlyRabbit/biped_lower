@@ -84,9 +84,9 @@ class SafetyNode(Node):
         )
 
     def _gravity_cb(self, msg: Vector3Stamped):
-        self._gravity[0] = msg.vector.x
-        self._gravity[1] = msg.vector.y
-        self._gravity[2] = msg.vector.z
+        self._gravity[0] = -msg.vector.x
+        self._gravity[1] = -msg.vector.y
+        self._gravity[2] = -msg.vector.z
         self._gravity_received = True
 
     def _imu_alive_cb(self, msg: Imu):

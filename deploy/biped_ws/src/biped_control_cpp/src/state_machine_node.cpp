@@ -31,7 +31,7 @@ public:
         declare_parameter("step_config", "");
         declare_parameter("chirp_config", "");
         declare_parameter("gain_scale", 1.0);
-        declare_parameter("trajectory_file", "");
+        declare_parameter("trajectory_file", "/home/roy/biped_lower/deploy/biped_ws/src/biped_bringup/config/trajectory.csv");
 
         declare_parameter("control_params_file", "");
         

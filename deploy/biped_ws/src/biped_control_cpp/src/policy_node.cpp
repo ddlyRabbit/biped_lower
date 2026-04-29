@@ -204,7 +204,18 @@ private:
         if (joint_positions_.empty()) return;
 
         auto obs_array = obs_builder_.build(gyro_, gravity_, cmd_vel_, joint_positions_, joint_velocities_);
-
+        // RCLCPP_INFO(get_logger(), "[RAW] cmd_vel=%.2f,%.2f,%.2f", cmd_vel_[0], cmd_vel_[1], cmd_vel_[2]);
+        // RCLCPP_INFO(get_logger(), "[RAW] gyro=%.2f,%.2f,%.2f", gyro_[0], gyro_[1], gyro_[2]);
+        // RCLCPP_INFO(get_logger(), "[RAW] gravity=%.2f,%.2f,%.2f", gravity_[0], gravity_[1], gravity_[2]);
+        // RCLCPP_INFO(get_logger(), "[RAW] gravity=%.2f,%.2f,%.2f", gravity_[0], gravity_[1], gravity_[2]);
+        RCLCPP_INFO(get_logger(), "[RAW] obs_array=%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,", obs_array[0],obs_array[1],obs_array[2],obs_array[3],
+        obs_array[4],obs_array[5],obs_array[6],obs_array[7],obs_array[8],obs_array[9]*57.3,
+        obs_array[10]*57.3,obs_array[11]*57.3,obs_array[12]*57.3,obs_array[13]*57.3,obs_array[14]*57.3,obs_array[15]*57.3,
+        obs_array[16]*57.3,obs_array[17]*57.3,obs_array[18]*57.3,obs_array[19]*57.3,obs_array[20]*57.3,obs_array[21],
+        obs_array[22],obs_array[23],obs_array[24],obs_array[25],obs_array[26],obs_array[27],
+        obs_array[28],obs_array[29],obs_array[30],obs_array[31],obs_array[32],obs_array[33],
+        obs_array[34],obs_array[35],obs_array[36],obs_array[37],obs_array[38],obs_array[39],
+        obs_array[40],obs_array[41],obs_array[42],obs_array[43],obs_array[44]);
         // Run ONNX Inference
         Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
         std::vector<int64_t> input_shape = {1, 45};
@@ -223,7 +234,7 @@ private:
         for (int i = 0; i < 12; i++) {
             actions[i] = std::max(-1.0f, std::min(1.0f, out_arr[i]));
         }
-
+        RCLCPP_INFO(get_logger(), "[RAW] actions=%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f", actions[0], actions[1], actions[2], actions[3], actions[4], actions[5], actions[6], actions[7], actions[8], actions[9], actions[10], actions[11]);
         obs_builder_.update_last_action(actions);
 
         debug_timer_++;
