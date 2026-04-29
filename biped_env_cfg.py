@@ -665,11 +665,11 @@ class ObservationsCfg:
         # Per-joint-group noise — Berkeley exact
         joint_pos = ObsTerm(
             func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST)},
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST, preserve_order=True)},
             noise=Unoise(n_min=-0.05, n_max=0.05),
         )
         joint_vel = ObsTerm(
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST)},
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST, preserve_order=True)},
             func=base_mdp.joint_vel_rel,
             noise=Unoise(n_min=-1.5, n_max=1.5),
         )
