@@ -515,8 +515,8 @@ BIPED_CFG = ArticulationCfg(
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.0, 0.0, 0.80),
         joint_pos={
-            "R_hip_pitch.*": 0.08,
-            "L_hip_pitch.*": -0.08,
+            "right_hip_pitch.*": 0.08,
+            "left_hip_pitch.*": -0.08,
             ".*hip_roll.*": 0.0,
             ".*hip_yaw.*": 0.0,
             ".*knee.*": 0.25,
