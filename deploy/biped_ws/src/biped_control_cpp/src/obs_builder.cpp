@@ -17,7 +17,7 @@ const std::vector<std::string> ISAAC_JOINT_ORDER = {
 const std::vector<std::string> JOINT_ORDER = ISAAC_JOINT_ORDER;
 
 const std::vector<std::string> HIP_POS_ORDER = {
-    "L_hip_roll", "R_hip_roll", "L_hip_yaw", "R_hip_yaw", "L_hip_pitch", "R_hip_pitch"
+    "L_hip_pitch", "R_hip_pitch", "L_hip_roll", "R_hip_roll", "L_hip_yaw", "R_hip_yaw"
 };
 
 const std::vector<std::string> KNEE_POS_ORDER = {"L_knee", "R_knee"};
@@ -100,28 +100,28 @@ std::array<float, 45> ObsBuilder::build(
     for (size_t i = 0; i < HIP_POS_ORDER.size(); ++i) {
         auto it = joint_positions.find(HIP_POS_ORDER[i]);
         double pos = (it != joint_positions.end()) ? it->second : 0.0;
-        obs[9 + i] = static_cast<float>(pos - DEFAULT_POSITIONS.at(HIP_POS_ORDER[i]));
+        obs[9 + i] = static_cast<float>(pos);
     }
 
     // [15-16] knee_pos
     for (size_t i = 0; i < KNEE_POS_ORDER.size(); ++i) {
         auto it = joint_positions.find(KNEE_POS_ORDER[i]);
         double pos = (it != joint_positions.end()) ? it->second : 0.0;
-        obs[15 + i] = static_cast<float>(pos - DEFAULT_POSITIONS.at(KNEE_POS_ORDER[i]));
+        obs[15 + i] = static_cast<float>(pos);
     }
 
     // [17-18] foot_pitch_pos
     for (size_t i = 0; i < FOOT_PITCH_ORDER.size(); ++i) {
         auto it = joint_positions.find(FOOT_PITCH_ORDER[i]);
         double pos = (it != joint_positions.end()) ? it->second : 0.0;
-        obs[17 + i] = static_cast<float>(pos - DEFAULT_POSITIONS.at(FOOT_PITCH_ORDER[i]));
+        obs[17 + i] = static_cast<float>(pos);
     }
 
     // [19-20] foot_roll_pos
     for (size_t i = 0; i < FOOT_ROLL_ORDER.size(); ++i) {
         auto it = joint_positions.find(FOOT_ROLL_ORDER[i]);
         double pos = (it != joint_positions.end()) ? it->second : 0.0;
-        obs[19 + i] = static_cast<float>(pos - DEFAULT_POSITIONS.at(FOOT_ROLL_ORDER[i]));
+        obs[19 + i] = static_cast<float>(pos);
     }
 
     // [21-32] joint_vel (Isaac runtime order)
@@ -151,7 +151,7 @@ std::unordered_map<std::string, double> ObsBuilder::action_to_positions(const st
         if (name == "R_foot_roll" || name == "L_foot_roll") {
             scale = 0.25f;
         } else if (name == "R_foot_pitch" || name == "L_foot_pitch") {
-            scale = 0.3f;
+            scale = 0.5f;
         }
         targets[name] = DEFAULT_POSITIONS.at(name) + action[i] * scale;
     }

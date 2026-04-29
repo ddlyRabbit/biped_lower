@@ -91,7 +91,7 @@ DEFAULT_POS_MJ = np.array([DEFAULT_POS_ISAAC[MJ_TO_ISAAC_NAME[mj]] for mj in MJ_
 
 # ─── Action scaling ──────────────────────────────────────────────────────────
 ACTION_SCALE = np.array([
-    0.25 if ij.endswith("foot_roll") else (0.3 if ij.endswith("foot_pitch") else 0.5)
+    0.5 if ij != "L_foot_roll" and ij != "R_foot_roll" else 0.25
     for ij in ISAAC_JOINTS
 ], dtype=np.float32)
 
