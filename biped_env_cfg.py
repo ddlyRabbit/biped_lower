@@ -60,12 +60,13 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
 
-ALL_JOINTS = [
-    "right_hip_yaw_03", "right_hip_roll_03", "right_hip_pitch_04",
-    "right_knee_04", "right_foot_pitch_02", "right_foot_roll_02",
-    "left_hip_yaw_03", "left_hip_roll_03", "left_hip_pitch_04",
-    "left_knee_04", "left_foot_pitch_02", "left_foot_roll_02",
+MASTER_JOINT_ORDER = [
+    "L_hip_pitch", "R_hip_pitch", "L_hip_roll", "R_hip_roll",
+    "L_hip_yaw", "R_hip_yaw", "L_knee", "R_knee",
+    "L_foot_pitch", "R_foot_pitch", "L_foot_roll", "R_foot_roll"
 ]
+
+ISAAC_REGEX_LIST = [f".*{name.replace('L_', 'left_').replace('R_', 'right_')}.*" for name in MASTER_JOINT_ORDER]
 
 
 ###############################################################################
@@ -514,8 +515,8 @@ BIPED_CFG = ArticulationCfg(
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.0, 0.0, 0.80),
         joint_pos={
-            "right_hip_pitch.*": 0.08,
-            "left_hip_pitch.*": -0.08,
+            "R_hip_pitch.*": 0.08,
+            "L_hip_pitch.*": -0.08,
             ".*hip_roll.*": 0.0,
             ".*hip_yaw.*": 0.0,
             ".*knee.*": 0.25,
@@ -662,46 +663,13 @@ class ObservationsCfg:
             params={"command_name": "base_velocity"},
         )
         # Per-joint-group noise — Berkeley exact
-        hip_pos = ObsTerm(
+        joint_pos = ObsTerm(
             func=base_mdp.joint_pos_rel,
-            params={
-                "asset_cfg": SceneEntityCfg(
-                    "robot",
-                    joint_names=[
-                        ".*hip_roll.*", ".*hip_yaw.*", ".*hip_pitch.*",
-                    ],
-                ),
-            },
-            noise=Unoise(n_min=-0.03, n_max=0.03),
-        )
-        knee_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={
-                "asset_cfg": SceneEntityCfg(
-                    "robot", joint_names=[".*knee.*"],
-                ),
-            },
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST)},
             noise=Unoise(n_min=-0.05, n_max=0.05),
         )
-        foot_pitch_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={
-                "asset_cfg": SceneEntityCfg(
-                    "robot", joint_names=[".*foot_pitch.*"],
-                ),
-            },
-            noise=Unoise(n_min=-0.08, n_max=0.08),
-        )
-        foot_roll_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={
-                "asset_cfg": SceneEntityCfg(
-                    "robot", joint_names=[".*foot_roll.*"],
-                ),
-            },
-            noise=Unoise(n_min=-0.03, n_max=0.03),
-        )
         joint_vel = ObsTerm(
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST)},
             func=base_mdp.joint_vel_rel,
             noise=Unoise(n_min=-1.5, n_max=1.5),
         )
@@ -729,7 +697,7 @@ class ObservationsCfg:
 class ActionsCfg:
     joint_pos = base_mdp.JointPositionActionCfg(
         asset_name="robot",
-        joint_names=ALL_JOINTS,
+        joint_names=ISAAC_REGEX_LIST,
         scale={
             ".*hip_yaw.*": 0.5, ".*hip_roll.*": 0.5, ".*hip_pitch.*": 0.5,
             ".*knee.*": 0.5, ".*foot_pitch.*": 0.3, ".*foot_roll.*": 0.25,

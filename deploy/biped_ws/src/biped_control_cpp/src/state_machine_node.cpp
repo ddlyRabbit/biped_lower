@@ -67,7 +67,7 @@ public:
         state_ = "IDLE";
         state_start_time_ = now().seconds();
         
-        for (const auto& name : JOINT_ORDER) {
+        for (const auto& name : MASTER_JOINT_ORDER) {
             current_positions_[name] = 0.0;
         }
 
@@ -165,7 +165,7 @@ private:
                 RCLCPP_WARN(get_logger(), "Failed to load wiggle config: %s", e.what());
             }
         }
-        for (const auto& name : JOINT_ORDER) {
+        for (const auto& name : MASTER_JOINT_ORDER) {
             if (wiggle_cfg_.joints.find(name) == wiggle_cfg_.joints.end()) {
                 double def_pos = DEFAULT_POSITIONS.at(name);
                 wiggle_cfg_.joints[name] = {def_pos + 0.087, def_pos - 0.087, global_freq};
@@ -217,7 +217,7 @@ void load_chirp_config() {
                 RCLCPP_WARN(get_logger(), "Failed to load wiggle config: %s", e.what());
             }
         }
-        for (const auto& name : JOINT_ORDER) {
+        for (const auto& name : MASTER_JOINT_ORDER) {
             if (chirp_cfg_.joints.find(name) == chirp_cfg_.joints.end()) {
                 double def_pos = DEFAULT_POSITIONS.at(name);
                 chirp_cfg_.joints[name] = {def_pos + 0.087, def_pos - 0.087, global_freq};
@@ -258,7 +258,7 @@ void load_chirp_config() {
                 RCLCPP_WARN(get_logger(), "Failed to load step config: %s", e.what());
             }
         }
-        for (const auto& name : JOINT_ORDER) {
+        for (const auto& name : MASTER_JOINT_ORDER) {
             if (step_cfg_.joints.find(name) == step_cfg_.joints.end()) {
                 double def = DEFAULT_POSITIONS.at(name);
                 step_cfg_.joints[name] = {def + 0.174, def - 0.174, global_period};
@@ -341,7 +341,7 @@ void load_chirp_config() {
         }
 
         std::vector<int> csv_to_deploy;
-        for (const auto& name : JOINT_ORDER) {
+        for (const auto& name : MASTER_JOINT_ORDER) {
             auto it = std::find(CSV_JOINT_ORDER.begin(), CSV_JOINT_ORDER.end(), name);
             csv_to_deploy.push_back(std::distance(CSV_JOINT_ORDER.begin(), it));
         }
@@ -352,7 +352,7 @@ void load_chirp_config() {
             double alpha = static_cast<double>(i + 1) / ramp_frames;
             alpha = 0.5 * (1.0 - std::cos(M_PI * alpha));
             for (int j = 0; j < 12; j++) {
-                std::string name = JOINT_ORDER[j];
+                std::string name = MASTER_JOINT_ORDER[j];
                 double start = current_positions_.at(name);
                 double end = joints_resampled[csv_to_deploy[j]][0];
                 frame[j] = start + alpha * (end - start);
@@ -409,7 +409,7 @@ void load_chirp_config() {
                 }
 
                 int target_idx = std::stoi(cmd.substr(colon_pos + 1));
-                if (target_idx >= 0 && target_idx < static_cast<int>(JOINT_ORDER.size())) {
+                if (target_idx >= 0 && target_idx < static_cast<int>(MASTER_JOINT_ORDER.size())) {
                     if (state_ != base_cmd) {
                         transition(base_cmd);
                     }
@@ -417,7 +417,7 @@ void load_chirp_config() {
                         target_joint_idx_ = target_idx;
                         interp_start_time_ = now().seconds();
                         if (active_joint_idx_ >= 0) {
-                            interp_start_pos_ = current_positions_[JOINT_ORDER[active_joint_idx_]] - DEFAULT_POSITIONS.at(JOINT_ORDER[active_joint_idx_]);
+                            interp_start_pos_ = current_positions_[MASTER_JOINT_ORDER[active_joint_idx_]] - DEFAULT_POSITIONS.at(MASTER_JOINT_ORDER[active_joint_idx_]);
                             wiggle_interpolating_ = true;
                         } else {
                             // If it's the very first joint, jump straight in
@@ -502,7 +502,7 @@ void load_chirp_config() {
         biped_msgs::msg::MITCommandArray msg;
         msg.header.stamp = now();
 
-        for (const auto& name : JOINT_ORDER) {
+        for (const auto& name : MASTER_JOINT_ORDER) {
             double start_pos = stand_start_positions_.count(name) ? stand_start_positions_[name] : DEFAULT_POSITIONS.at(name);
             double target_pos = DEFAULT_POSITIONS.at(name);
             double current_target = start_pos + (target_pos - start_pos) * pos_alpha;
@@ -526,7 +526,7 @@ void load_chirp_config() {
         biped_msgs::msg::MITCommandArray msg;
         msg.header.stamp = now();
 
-        for (const auto& name : JOINT_ORDER) {
+        for (const auto& name : MASTER_JOINT_ORDER) {
             auto gains = DEFAULT_GAINS.at(name);
             biped_msgs::msg::MITCommand cmd;
             cmd.joint_name = name;
@@ -565,8 +565,8 @@ void load_chirp_config() {
                 wiggle_sine_start_time_ = current_time;
             }
             
-            for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
-                std::string name = JOINT_ORDER[i];
+            for (int i = 0; i < static_cast<int>(MASTER_JOINT_ORDER.size()); ++i) {
+                std::string name = MASTER_JOINT_ORDER[i];
                 double target = DEFAULT_POSITIONS.at(name);
 
                 if (i == active_joint_idx_) {
@@ -595,8 +595,8 @@ void load_chirp_config() {
         } 
         else {
             // Active Wiggle
-            for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
-                std::string name = JOINT_ORDER[i];
+            for (int i = 0; i < static_cast<int>(MASTER_JOINT_ORDER.size()); ++i) {
+                std::string name = MASTER_JOINT_ORDER[i];
                 double target = DEFAULT_POSITIONS.at(name);
 
                 if (i == active_joint_idx_) {
@@ -652,8 +652,8 @@ void load_chirp_config() {
                 wiggle_sine_start_time_ = current_time;
             }
             
-            for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
-                std::string name = JOINT_ORDER[i];
+            for (int i = 0; i < static_cast<int>(MASTER_JOINT_ORDER.size()); ++i) {
+                std::string name = MASTER_JOINT_ORDER[i];
                 double target = DEFAULT_POSITIONS.at(name);
 
                 if (i == active_joint_idx_) {
@@ -678,8 +678,8 @@ void load_chirp_config() {
         } 
         else {
             // Active Stepping
-            for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
-                std::string name = JOINT_ORDER[i];
+            for (int i = 0; i < static_cast<int>(MASTER_JOINT_ORDER.size()); ++i) {
+                std::string name = MASTER_JOINT_ORDER[i];
                 double target = DEFAULT_POSITIONS.at(name);
 
                 if (i == active_joint_idx_) {
@@ -730,8 +730,8 @@ void load_chirp_config() {
 
         // No joint selected yet — publish defaults (waiting for teleop key)
         if (active_joint_idx_ < 0 && !wiggle_interpolating_) {
-            for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
-                std::string name = JOINT_ORDER[i];
+            for (int i = 0; i < static_cast<int>(MASTER_JOINT_ORDER.size()); ++i) {
+                std::string name = MASTER_JOINT_ORDER[i];
                 double target = DEFAULT_POSITIONS.at(name);
                 auto gains = DEFAULT_GAINS.at(name);
                 biped_msgs::msg::MITCommand cmd;
@@ -769,8 +769,8 @@ void load_chirp_config() {
                 wiggle_sine_start_time_ = current_time;
             }
             
-            for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
-                std::string name = JOINT_ORDER[i];
+            for (int i = 0; i < static_cast<int>(MASTER_JOINT_ORDER.size()); ++i) {
+                std::string name = MASTER_JOINT_ORDER[i];
                 double target = DEFAULT_POSITIONS.at(name);
 
                 if (i == active_joint_idx_) {
@@ -800,8 +800,8 @@ void load_chirp_config() {
         else {
             // Active chirp sweep on selected joint
             double duration = chirp_cfg_.duration > 0 ? chirp_cfg_.duration : 60.0;
-            for (int i = 0; i < static_cast<int>(JOINT_ORDER.size()); ++i) {
-                std::string name = JOINT_ORDER[i];
+            for (int i = 0; i < static_cast<int>(MASTER_JOINT_ORDER.size()); ++i) {
+                std::string name = MASTER_JOINT_ORDER[i];
                 double target = DEFAULT_POSITIONS.at(name);
 
                 if (i == active_joint_idx_) {
@@ -876,7 +876,7 @@ void load_chirp_config() {
         double active_t = now().seconds() - wiggle_start_ - ramp_time_ - stable_time_;
         double fade = std::min(std::max(0.0, active_t) / 2.0, 1.0);
 
-        for (const auto& name : JOINT_ORDER) {
+        for (const auto& name : MASTER_JOINT_ORDER) {
             double def_pos = DEFAULT_POSITIONS.at(name);
             auto& jcfg = wiggle_cfg_.joints[name];
             double mid = (jcfg.max + jcfg.min) / 2.0;
@@ -921,7 +921,7 @@ void load_chirp_config() {
         msg.header.stamp = now();
 
         for (int j = 0; j < 12; j++) {
-            std::string name = JOINT_ORDER[j];
+            std::string name = MASTER_JOINT_ORDER[j];
             auto gains = DEFAULT_GAINS.at(name);
             biped_msgs::msg::MITCommand cmd;
             cmd.joint_name = name;
@@ -953,7 +953,7 @@ void load_chirp_config() {
         js.header.stamp = now();
         
         for (int j = 0; j < 12; j++) {
-            js.name.push_back(JOINT_ORDER[j]);
+            js.name.push_back(MASTER_JOINT_ORDER[j]);
             js.position.push_back(frame[j]);
             js.velocity.push_back(0.0);
             js.effort.push_back(0.0);
@@ -969,7 +969,7 @@ void load_chirp_config() {
     void send_zero_torque() {
         biped_msgs::msg::MITCommandArray msg;
         msg.header.stamp = now();
-        for (const auto& name : JOINT_ORDER) {
+        for (const auto& name : MASTER_JOINT_ORDER) {
             biped_msgs::msg::MITCommand cmd;
             cmd.joint_name = name;
             cmd.position = 0.0;

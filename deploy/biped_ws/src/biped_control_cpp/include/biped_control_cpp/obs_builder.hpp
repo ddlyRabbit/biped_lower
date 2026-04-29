@@ -7,13 +7,13 @@
 
 namespace biped_control_cpp {
 
-extern const std::vector<std::string> ISAAC_JOINT_ORDER;
-extern const std::vector<std::string> JOINT_ORDER;
-extern const std::vector<std::string> HIP_POS_ORDER;
-extern const std::vector<std::string> KNEE_POS_ORDER;
-extern const std::vector<std::string> FOOT_PITCH_ORDER;
-extern const std::vector<std::string> FOOT_ROLL_ORDER;
-extern const std::vector<std::string> ACTION_ORDER;
+extern const std::vector<std::string> MASTER_JOINT_ORDER;
+// Replaced by MASTER_JOINT_ORDER
+// Removed fragmented arrays
+
+
+
+// Replaced by MASTER_JOINT_ORDER
 extern const std::vector<std::string> CSV_JOINT_ORDER;
 
 // C++ standard guarantees initialization order for primitives, but we must populate these at runtime

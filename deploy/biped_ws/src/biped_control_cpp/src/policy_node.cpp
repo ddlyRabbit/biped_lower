@@ -147,7 +147,7 @@ private:
         if (path.empty()) return;
         try {
             YAML::Node data = YAML::LoadFile(path);
-            for (const auto& name : JOINT_ORDER) {
+            for (const auto& name : MASTER_JOINT_ORDER) {
                 if (data[name]) {
                     double kp = data[name]["kp"] ? data[name]["kp"].as<double>() : gains_[name].first;
                     double kd = data[name]["kd"] ? data[name]["kd"].as<double>() : gains_[name].second;
@@ -256,7 +256,7 @@ private:
 
         double gs = get_parameter("gain_scale").as_double();
 
-        for (const auto& name : JOINT_ORDER) {
+        for (const auto& name : MASTER_JOINT_ORDER) {
             auto kp_kd = gains_.at(name);
             biped_msgs::msg::MITCommand cmd;
             cmd.joint_name = name;

@@ -5,30 +5,10 @@
 
 namespace biped_control_cpp {
 
-const std::vector<std::string> ISAAC_JOINT_ORDER = {
-    "L_hip_pitch", "R_hip_pitch",
-    "L_hip_roll", "R_hip_roll",
-    "L_hip_yaw", "R_hip_yaw",
-    "L_knee", "R_knee",
-    "L_foot_pitch", "R_foot_pitch",
-    "L_foot_roll", "R_foot_roll",
-};
-
-const std::vector<std::string> JOINT_ORDER = ISAAC_JOINT_ORDER;
-
-const std::vector<std::string> HIP_POS_ORDER = {
-    "L_hip_pitch", "R_hip_pitch", "L_hip_roll", "R_hip_roll", "L_hip_yaw", "R_hip_yaw"
-};
-
-const std::vector<std::string> KNEE_POS_ORDER = {"L_knee", "R_knee"};
-const std::vector<std::string> FOOT_PITCH_ORDER = {"L_foot_pitch", "R_foot_pitch"};
-const std::vector<std::string> FOOT_ROLL_ORDER = {"L_foot_roll", "R_foot_roll"};
-
-const std::vector<std::string> ACTION_ORDER = {
-    "R_hip_yaw", "R_hip_roll", "R_hip_pitch",
-    "R_knee", "R_foot_pitch", "R_foot_roll",
-    "L_hip_yaw", "L_hip_roll", "L_hip_pitch",
-    "L_knee", "L_foot_pitch", "L_foot_roll",
+const std::vector<std::string> MASTER_JOINT_ORDER = {
+    "L_hip_pitch", "R_hip_pitch", "L_hip_roll", "R_hip_roll",
+    "L_hip_yaw", "R_hip_yaw", "L_knee", "R_knee",
+    "L_foot_pitch", "R_foot_pitch", "L_foot_roll", "R_foot_roll"
 };
 
 const std::vector<std::string> CSV_JOINT_ORDER = {
@@ -96,37 +76,16 @@ std::array<float, 45> ObsBuilder::build(
     obs[7] = cmd_vel[1];
     obs[8] = cmd_vel[2];
 
-    // [9-14] hip_pos (relative to default)
-    for (size_t i = 0; i < HIP_POS_ORDER.size(); ++i) {
-        auto it = joint_positions.find(HIP_POS_ORDER[i]);
+    // [9-20] joint_pos (relative to default)
+    for (size_t i = 0; i < MASTER_JOINT_ORDER.size(); ++i) {
+        auto it = joint_positions.find(MASTER_JOINT_ORDER[i]);
         double pos = (it != joint_positions.end()) ? it->second : 0.0;
-        obs[9 + i] = static_cast<float>(pos);
+        obs[9 + i] = static_cast<float>(pos - DEFAULT_POSITIONS.at(MASTER_JOINT_ORDER[i]));
     }
 
-    // [15-16] knee_pos
-    for (size_t i = 0; i < KNEE_POS_ORDER.size(); ++i) {
-        auto it = joint_positions.find(KNEE_POS_ORDER[i]);
-        double pos = (it != joint_positions.end()) ? it->second : 0.0;
-        obs[15 + i] = static_cast<float>(pos);
-    }
-
-    // [17-18] foot_pitch_pos
-    for (size_t i = 0; i < FOOT_PITCH_ORDER.size(); ++i) {
-        auto it = joint_positions.find(FOOT_PITCH_ORDER[i]);
-        double pos = (it != joint_positions.end()) ? it->second : 0.0;
-        obs[17 + i] = static_cast<float>(pos);
-    }
-
-    // [19-20] foot_roll_pos
-    for (size_t i = 0; i < FOOT_ROLL_ORDER.size(); ++i) {
-        auto it = joint_positions.find(FOOT_ROLL_ORDER[i]);
-        double pos = (it != joint_positions.end()) ? it->second : 0.0;
-        obs[19 + i] = static_cast<float>(pos);
-    }
-
-    // [21-32] joint_vel (Isaac runtime order)
-    for (size_t i = 0; i < ISAAC_JOINT_ORDER.size(); ++i) {
-        auto it = joint_velocities.find(ISAAC_JOINT_ORDER[i]);
+    // [21-32] joint_vel
+    for (size_t i = 0; i < MASTER_JOINT_ORDER.size(); ++i) {
+        auto it = joint_velocities.find(MASTER_JOINT_ORDER[i]);
         double vel = (it != joint_velocities.end()) ? it->second : 0.0;
         obs[21 + i] = static_cast<float>(vel);
     }
@@ -145,13 +104,13 @@ void ObsBuilder::update_last_action(const std::array<float, 12>& action) {
 
 std::unordered_map<std::string, double> ObsBuilder::action_to_positions(const std::array<float, 12>& action) {
     std::unordered_map<std::string, double> targets;
-    for (size_t i = 0; i < ACTION_ORDER.size(); ++i) {
-        const std::string& name = ACTION_ORDER[i];
+    for (size_t i = 0; i < MASTER_JOINT_ORDER.size(); ++i) {
+        const std::string& name = MASTER_JOINT_ORDER[i];
         float scale = 0.5f;
-        if (name == "R_foot_roll" || name == "L_foot_roll") {
+        if (name.find("foot_roll") != std::string::npos) {
             scale = 0.25f;
-        } else if (name == "R_foot_pitch" || name == "L_foot_pitch") {
-            scale = 0.5f;
+        } else if (name.find("foot_pitch") != std::string::npos) {
+            scale = 0.3f;
         }
         targets[name] = DEFAULT_POSITIONS.at(name) + action[i] * scale;
     }
