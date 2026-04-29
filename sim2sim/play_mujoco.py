@@ -47,13 +47,13 @@ def get_default_pos_mj():
 
 # ─── Action scaling ──────────────────────────────────────────────────────────
 ACTION_SCALE = np.array([
-    0.25 if name.endswith("foot_roll") else (0.3 if name.endswith("foot_pitch") else 0.5)
+    0.25 if name.endswith("foot_roll") else 0.5
     for name in MASTER_JOINT_ORDER
 ], dtype=np.float32)
 
 # ─── PD gains (from training config) ────────────────────────────────────────
 def get_kp_mj():
-    return np.array([180.0 if "foot" not in name else 60.0 for name in mj_actuator_names], dtype=np.float32)
+    return np.array([180.0 if "foot" not in name else 100.0 for name in mj_actuator_names], dtype=np.float32)
 def get_kd_mj():
     return np.array([6.5 if "hip_pitch" in name or "hip_roll" in name else (3.0 if "hip_yaw" in name or "knee" in name else 2.0) for name in mj_actuator_names], dtype=np.float32)
 def get_friction_mj():

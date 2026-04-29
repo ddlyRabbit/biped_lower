@@ -109,8 +109,6 @@ std::unordered_map<std::string, double> ObsBuilder::action_to_positions(const st
         float scale = 0.5f;
         if (name.find("foot_roll") != std::string::npos) {
             scale = 0.25f;
-        } else if (name.find("foot_pitch") != std::string::npos) {
-            scale = 0.3f;
         }
         targets[name] = DEFAULT_POSITIONS.at(name) + action[i] * scale;
     }

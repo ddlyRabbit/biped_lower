@@ -262,7 +262,7 @@ def feet_air_time_adaptive_berkeley(
     threshold_min: float = 0.10,
     threshold_max: float = 0.40,
     height_threshold: float = 0.058,
-    switch_step: int = 1 * 24,  # 300 iters continuous positive_biped, then impact
+    switch_step: int = 200 * 24,  # 200 iters continuous positive_biped, then impact
 ) -> torch.Tensor:
     if env.common_step_counter < switch_step:
         return feet_air_time_positive_biped(
@@ -558,14 +558,14 @@ BIPED_CFG = ArticulationCfg(
         "foot_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=60.0, damping=2.0, armature=0.01,
+            stiffness=100.0, damping=2.0, armature=0.01,
             friction=0.25,
             min_delay=25, max_delay=30,
         ),
         "foot_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=60.0, damping=2.0, armature=0.01,
+            stiffness=100.0, damping=2.0, armature=0.01,
             friction=0.25,
             min_delay=25, max_delay=30,
         ),
@@ -700,7 +700,7 @@ class ActionsCfg:
         joint_names=ISAAC_REGEX_LIST,
         scale={
             ".*hip_yaw.*": 0.5, ".*hip_roll.*": 0.5, ".*hip_pitch.*": 0.5,
-            ".*knee.*": 0.5, ".*foot_pitch.*": 0.3, ".*foot_roll.*": 0.25,
+            ".*knee.*": 0.5, ".*foot_pitch.*": 0.5, ".*foot_roll.*": 0.25,
         },
         preserve_order=True,
         use_default_offset=True,
