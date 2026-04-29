@@ -15,18 +15,18 @@ from scipy.linalg import solve_discrete_are
 import pinocchio as pin
 
 PIN_JOINT_TO_DEPLOY = {
-    "left_hip_pitch_04": "L_hip_pitch",
-    "left_hip_roll_03": "L_hip_roll",
-    "left_hip_yaw_03": "L_hip_yaw",
-    "left_knee_04": "L_knee",
-    "left_foot_pitch_02": "L_foot_pitch",
-    "left_foot_roll_02": "L_foot_roll",
-    "right_hip_pitch_04": "R_hip_pitch",
-    "right_hip_roll_03": "R_hip_roll",
-    "right_hip_yaw_03": "R_hip_yaw",
-    "right_knee_04": "R_knee",
-    "right_foot_pitch_02": "R_foot_pitch",
-    "right_foot_roll_02": "R_foot_roll",
+    "L_hip_pitch_04": "L_hip_pitch",
+    "L_hip_roll_03": "L_hip_roll",
+    "L_hip_yaw_03": "L_hip_yaw",
+    "L_knee_04": "L_knee",
+    "L_foot_pitch_02": "L_foot_pitch",
+    "L_foot_roll_02": "L_foot_roll",
+    "R_hip_pitch_04": "R_hip_pitch",
+    "R_hip_roll_03": "R_hip_roll",
+    "R_hip_yaw_03": "R_hip_yaw",
+    "R_knee_04": "R_knee",
+    "R_foot_pitch_02": "R_foot_pitch",
+    "R_foot_roll_02": "R_foot_roll",
 }
 
 class BipedIK:
