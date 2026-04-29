@@ -35,11 +35,11 @@ POLICY_DT = 0.02           # 50 Hz
 
 # ─── Default positions (V58 deployed, matching training) ─────────────────────
 DEFAULT_POS_ISAAC = {
-    "L_hip_pitch": 0.2, "R_hip_pitch": -0.2,
+    "L_hip_pitch": -0.08, "R_hip_pitch": 0.08,
     "L_hip_roll": 0.0, "R_hip_roll": 0.0,
     "L_hip_yaw": 0.0, "R_hip_yaw": 0.0,
-    "L_knee": 0.4, "R_knee": 0.4,
-    "L_foot_pitch": -0.2, "R_foot_pitch": -0.2,
+    "L_knee": 0.25, "R_knee": 0.25,
+    "L_foot_pitch": -0.17, "R_foot_pitch": -0.17,
     "L_foot_roll": 0.0, "R_foot_roll": 0.0,
 }
 def get_default_pos_mj():
