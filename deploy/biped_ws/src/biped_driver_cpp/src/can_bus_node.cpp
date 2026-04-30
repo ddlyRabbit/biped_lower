@@ -27,6 +27,9 @@
 #include <biped_msgs/msg/motor_state_array.hpp>
 
 #include <yaml-cpp/yaml.h>
+#include <fstream>
+#include <iomanip>
+#include <std_msgs/msg/string.hpp>
 
 #include "biped_driver_cpp/motor_manager.hpp"
 #include "biped_driver_cpp/ankle_linkage.hpp"
@@ -154,6 +157,41 @@ public:
 
 private:
     double target_rate_hz_;
+
+    
+    void save_recording() {
+        if (recording_buffer_.empty()) return;
+        
+        std::ofstream file("sysid_data_400hz.csv");
+        if (!file.is_open()) {
+            RCLCPP_ERROR(get_logger(), "Failed to open sysid_data_400hz.csv for writing!");
+            return;
+        }
+        
+        // Write header
+        file << "time";
+        std::vector<std::string> joint_names;
+        for (const auto& [name, _] : recording_buffer_[0].pos) {
+            joint_names.push_back(name);
+            file << "," << name << "_target," << name << "_pos," << name << "_vel," << name << "_tau";
+        }
+        file << "\n";
+        
+        // Write data
+        for (const auto& row : recording_buffer_) {
+            file << std::fixed << std::setprecision(6) << row.time;
+            for (const auto& name : joint_names) {
+                file << "," << (row.cmd_pos.count(name) ? row.cmd_pos.at(name) : 0.0)
+                     << "," << (row.pos.count(name) ? row.pos.at(name) : 0.0)
+                     << "," << (row.vel.count(name) ? row.vel.at(name) : 0.0)
+                     << "," << (row.tau.count(name) ? row.tau.at(name) : 0.0);
+            }
+            file << "\n";
+        }
+        file.close();
+        RCLCPP_INFO(get_logger(), "Saved sysid_data_400hz.csv successfully.");
+        recording_buffer_.clear();
+    }
 
     void build_motor_groups() {
         std::unordered_set<std::string> seen;
@@ -319,7 +357,7 @@ public:
         // ── Parameters ───────────────────────────────────────────
         declare_parameter("robot_config", "");
         declare_parameter("calibration_file", "");
-        declare_parameter("publish_rate", 200.0);
+        declare_parameter("publish_rate", 400.0);
 
         std::string robot_config_path = get_parameter("robot_config").as_string();
         std::string cal_file = get_parameter("calibration_file").as_string();
