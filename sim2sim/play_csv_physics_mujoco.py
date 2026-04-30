@@ -21,11 +21,10 @@ POLICY_DT = 0.02           # 50 Hz control rate from CSV
 SUBSTEPS = int(POLICY_DT / 0.0005)  # 40 substeps at 2000Hz physics
 
 def get_kp_mj():
-    # Ankle kp bumped to 150 for this script
-    return np.array([180.0 if "foot" not in name else 150.0 for name in mj_actuator_names], dtype=np.float32)
+    return np.array([250.0 if "hip_pitch" in name else (1000.0 if "hip_roll" in name else (144.0 if "hip_yaw" in name or "knee" in name else 100.0)) for name in mj_actuator_names], dtype=np.float32)
 
 def get_kd_mj():
-    return np.array([6.5 if "hip_pitch" in name or "hip_roll" in name else (3.0 if "hip_yaw" in name or "knee" in name else 2.0) for name in mj_actuator_names], dtype=np.float32)
+    return np.array([6.5 if "hip_pitch" in name else (40.0 if "hip_roll" in name else (5.0 if "knee" in name else 3.0)) for name in mj_actuator_names], dtype=np.float32)
 
 def get_friction_mj():
     return np.array([0.5 if "pitch" in name or "knee" in name else (0.375 if "roll" in name or "yaw" in name else 0.25) for name in mj_actuator_names], dtype=np.float32)
