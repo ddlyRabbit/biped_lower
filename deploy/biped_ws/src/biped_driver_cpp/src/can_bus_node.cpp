@@ -162,9 +162,9 @@ private:
     void save_recording() {
         if (recording_buffer_.empty()) return;
         
-        std::ofstream file("sysid_data_400hz.csv");
+        std::ofstream file("sysid_data.csv");
         if (!file.is_open()) {
-            RCLCPP_ERROR(get_logger(), "Failed to open sysid_data_400hz.csv for writing!");
+            RCLCPP_ERROR(get_logger(), "Failed to open sysid_data.csv for writing!");
             return;
         }
         
@@ -189,7 +189,7 @@ private:
             file << "\n";
         }
         file.close();
-        RCLCPP_INFO(get_logger(), "Saved sysid_data_400hz.csv successfully.");
+        RCLCPP_INFO(get_logger(), "Saved sysid_data.csv successfully.");
         recording_buffer_.clear();
     }
 
@@ -357,7 +357,7 @@ public:
         // ── Parameters ───────────────────────────────────────────
         declare_parameter("robot_config", "");
         declare_parameter("calibration_file", "");
-        declare_parameter("publish_rate", 400.0);
+        declare_parameter("publish_rate", 200.0);
 
         std::string robot_config_path = get_parameter("robot_config").as_string();
         std::string cal_file = get_parameter("calibration_file").as_string();
