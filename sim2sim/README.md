@@ -66,6 +66,23 @@ xvfb-run -a python sim2sim/play_traj_mujoco.py \
 python sim2sim/play_traj_mujoco.py --csv trajectory.csv --mjcf mjcf/sim2sim/robot_pos.mjcf --speed 2.0 --loop
 ```
 
+### `play_csv_physics_mujoco.py` — ZMP Trajectory Physics Playback
+
+Renders a CSV joint trajectory using full MuJoCo physics (gravity, contacts, friction). 
+Unlike `play_traj_mujoco.py` which teleports kinematic links, this script computes PD torques at 2000Hz (using hardware Kp/Kd parameters) to trace the ZMP trajectory dynamically.
+
+```bash
+# Render headless (auto-skips the 8.5s idle phase in ZMP trajectories)
+xvfb-run -a python sim2sim/play_csv_physics_mujoco.py \
+    --csv deploy/biped_ws/src/biped_bringup/config/trajectory.csv \
+    --video trajectory_physics.mp4
+```
+
+**Key settings:**
+- Skips first 8.5 seconds of simulation instantly to bypass static holding phases.
+- Renders the next 5.0 seconds at 50fps.
+- Applies Kp=150 to ankle pitch/roll to maintain contact rigidity during the ZMP test.
+
 **CSV format:**
 - Row 0: timestamps (seconds)
 - Rows 1–12: joint angles (rad) in order: `L_hip_pitch, L_hip_roll, L_hip_yaw, L_knee, L_foot_pitch, L_foot_roll, R_hip_pitch, R_hip_roll, R_hip_yaw, R_knee, R_foot_pitch, R_foot_roll`
