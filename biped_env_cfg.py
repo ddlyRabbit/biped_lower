@@ -740,7 +740,7 @@ class RewardsCfg:
     action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.1)
     feet_air_time = RewTerm(
         func="biped_env_cfg:feet_air_time_adaptive_berkeley",
-        weight=5.0,
+        weight=20.0,
         params={
             "command_name": "base_velocity",
             "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
