@@ -95,9 +95,13 @@ def feet_air_time_positive_biped(
     reward *= reward > threshold_min
 
     # Gate: 0 reward if commanded velocity is near zero
-    reward *= torch.norm(
+    # Gate: require both actual velocity and target velocity > 0.05
+    cmd_vel = torch.norm(
         env.command_manager.get_command(command_name)[:, :2], dim=1
-    ) > 0.1
+    )
+    asset = env.scene["robot"]
+    actual_vel = torch.norm(asset.data.root_lin_vel_w[:, :2], dim=1)
+    reward *= (cmd_vel > 0.05) & (actual_vel > 0.05)
 
     return reward
 
@@ -143,9 +147,13 @@ def feet_air_time_berkeley(
     reward = torch.sum((last_air_time - threshold_min) * first_contact, dim=1)
     reward = torch.clamp(reward, min=-0.25, max=threshold_max - threshold_min)
 
-    reward *= torch.norm(
+    # Gate: require both actual velocity and target velocity > 0.05
+    cmd_vel = torch.norm(
         env.command_manager.get_command(command_name)[:, :2], dim=1
-    ) > 0.1
+    )
+    asset = env.scene["robot"]
+    actual_vel = torch.norm(asset.data.root_lin_vel_w[:, :2], dim=1)
+    reward *= (cmd_vel > 0.05) & (actual_vel > 0.05)
 
     return reward
 
@@ -262,7 +270,7 @@ def feet_air_time_adaptive_berkeley(
     threshold_min: float = 0.10,
     threshold_max: float = 0.40,
     height_threshold: float = 0.058,
-    switch_step: int = 200 * 24,  # 200 iters continuous positive_biped, then impact
+    switch_step: int = 1,  # immediate impact mode
 ) -> torch.Tensor:
     if env.common_step_counter < switch_step:
         return feet_air_time_positive_biped(
@@ -740,13 +748,13 @@ class RewardsCfg:
     action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.1)
     feet_air_time = RewTerm(
         func="biped_env_cfg:feet_air_time_adaptive_berkeley",
-        weight=20.0,
+        weight=10.0,
         params={
             "command_name": "base_velocity",
             "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
-            "threshold_min": 0.1,
-            "threshold_max": 0.2,
+            "threshold_min": 0.15,
+            "threshold_max": 0.25,
         },
     )
     feet_slide = RewTerm(
