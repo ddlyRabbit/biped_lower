@@ -1003,7 +1003,7 @@ class CurriculumsCfg:
 
 @configclass
 class BipedFlatEnvCfg(ManagerBasedRLEnvCfg):
-    scene: BipedSceneCfg = BipedSceneCfg(num_envs=16384, env_spacing=2.5)
+    scene: BipedSceneCfg = BipedSceneCfg(num_envs=8192, env_spacing=2.5)
     commands: CommandsCfg = CommandsCfg()
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
