@@ -95,13 +95,13 @@ def feet_air_time_positive_biped(
     reward *= reward > threshold_min
 
     # Gate: 0 reward if commanded velocity is near zero
-    # Gate: require both actual velocity and target velocity > 0.05
-    cmd_vel = torch.norm(
-        env.command_manager.get_command(command_name)[:, :2], dim=1
-    )
-    asset = env.scene["robot"]
-    actual_vel = torch.norm(asset.data.root_lin_vel_w[:, :2], dim=1)
-    reward *= (cmd_vel > 0.05) & (actual_vel > 0.05)
+    # Gate disabled — always reward air time
+    # cmd_vel = torch.norm(
+    #     env.command_manager.get_command(command_name)[:, :2], dim=1
+    # )
+    # asset = env.scene["robot"]
+    # actual_vel = torch.norm(asset.data.root_lin_vel_w[:, :2], dim=1)
+    # reward *= (cmd_vel > 0.05) & (actual_vel > 0.05)
 
     return reward
 
@@ -147,13 +147,13 @@ def feet_air_time_berkeley(
     reward = torch.sum((last_air_time - threshold_min) * first_contact, dim=1)
     reward = torch.clamp(reward, min=-0.25, max=threshold_max - threshold_min)
 
-    # Gate: require both actual velocity and target velocity > 0.05
-    cmd_vel = torch.norm(
-        env.command_manager.get_command(command_name)[:, :2], dim=1
-    )
-    asset = env.scene["robot"]
-    actual_vel = torch.norm(asset.data.root_lin_vel_w[:, :2], dim=1)
-    reward *= (cmd_vel > 0.05) & (actual_vel > 0.05)
+    # Gate disabled — always reward air time
+    # cmd_vel = torch.norm(
+    #     env.command_manager.get_command(command_name)[:, :2], dim=1
+    # )
+    # asset = env.scene["robot"]
+    # actual_vel = torch.norm(asset.data.root_lin_vel_w[:, :2], dim=1)
+    # reward *= (cmd_vel > 0.05) & (actual_vel > 0.05)
 
     return reward
 
@@ -735,7 +735,7 @@ class RewardsCfg:
     )
     track_ang_vel_z_exp = RewTerm(
         func=base_mdp.track_ang_vel_z_exp,
-        weight=1.0,
+        weight=0.5,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     # -- penalties
@@ -810,14 +810,15 @@ class RewardsCfg:
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_pitch.*", ".*foot_roll.*"]),
         },
     )
-    stand_still = RewTerm(
-        func="biped_env_cfg:stand_still",
-        weight=-0.2,
-        params={
-            "command_name": "base_velocity",
-            "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
-        },
-    )
+    # stand_still DISABLED
+    # stand_still = RewTerm(
+    #     func="biped_env_cfg:stand_still",
+    #     weight=-0.2,
+    #     params={
+    #         "command_name": "base_velocity",
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
+    #     },
+    # )
     flat_orientation_l2 = RewTerm(func=base_mdp.flat_orientation_l2, weight=-0.5)
     dof_pos_limits = RewTerm(func=base_mdp.joint_pos_limits, weight=-1.0)
 
