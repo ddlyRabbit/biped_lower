@@ -27,6 +27,24 @@ MASTER_JOINT_ORDER = [
     'L_foot_pitch', 'R_foot_pitch', 'L_foot_roll', 'R_foot_roll'
 ]
 
+# Mapping from Isaac joint names (L_/R_) to MuJoCo actuator names (left_/right_)
+# Built dynamically after model load. Key: Isaac name, Value: MuJoCo actuator index.
+ISAAC_TO_MJ_MAP = {}  # populated in main() after mj_actuator_names is set
+
+def build_isaac_to_mj_mapping():
+    """Build bidirectional mapping between Isaac and MuJoCo joint names."""
+    mapping = {}
+    for isaac_name in MASTER_JOINT_ORDER:
+        # L_hip_pitch -> left_hip_pitch_04
+        side = 'left' if isaac_name.startswith('L_') else 'right'
+        joint = isaac_name[2:]  # hip_pitch, hip_roll, etc.
+        for mj_i, mj_name in enumerate(mj_actuator_names):
+            # Match: left_hip_pitch_04 contains 'left' and 'hip_pitch'
+            if mj_name.startswith(side) and joint in mj_name:
+                mapping[isaac_name] = mj_i
+                break
+    return mapping
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MJCF_PATH = os.path.join(REPO_ROOT, "mjcf", "sim2sim", "robot.mjcf")
 
@@ -43,7 +61,11 @@ DEFAULT_POS_ISAAC = {
     "L_foot_roll": 0.0, "R_foot_roll": 0.0,
 }
 def get_default_pos_mj():
-    return np.array([DEFAULT_POS_ISAAC.get(mj_name.rsplit('_', 1)[0], 0.0) for mj_name in mj_actuator_names], dtype=np.float32)
+    """Return default positions in MuJoCo actuator order."""
+    result = np.zeros(len(mj_actuator_names), dtype=np.float32)
+    for isaac_name, mj_i in ISAAC_TO_MJ_MAP.items():
+        result[mj_i] = DEFAULT_POS_ISAAC[isaac_name]
+    return result
 
 # ─── Action scaling ──────────────────────────────────────────────────────────
 ACTION_SCALE = np.array([
@@ -53,9 +75,11 @@ ACTION_SCALE = np.array([
 
 # ─── PD gains (from training config) ────────────────────────────────────────
 def get_kp_mj():
-    return np.array([180.0 if "foot" not in name else 100.0 for name in mj_actuator_names], dtype=np.float32)
+    # V138: hip/knee Kp=100, foot Kp=30
+    return np.array([100.0 if "foot" not in name else 30.0 for name in mj_actuator_names], dtype=np.float32)
 def get_kd_mj():
-    return np.array([6.5 if "hip_pitch" in name or "hip_roll" in name else (3.0 if "hip_yaw" in name or "knee" in name else 2.0) for name in mj_actuator_names], dtype=np.float32)
+    # V138: hip/knee Kd=3.0, foot Kd=1.0
+    return np.array([3.0 if "foot" not in name else 1.0 for name in mj_actuator_names], dtype=np.float32)
 def get_friction_mj():
     return np.array([0.5 if "pitch" in name or "knee" in name else (0.375 if "roll" in name or "yaw" in name else 0.25) for name in mj_actuator_names], dtype=np.float32)
 
@@ -113,8 +137,8 @@ def build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, obs_dim
 
     # Build name→value dicts
     # Build pos and vel mapping by dropping Mujoco CAD suffixes
-    pos_dict = {mj_name.rsplit('_', 1)[0]: pos for mj_name, pos in zip(mj_actuator_names, joint_pos_mj)}
-    vel_dict = {mj_name.rsplit('_', 1)[0]: vel for mj_name, vel in zip(mj_actuator_names, joint_vel_mj)}
+    pos_dict = {isaac_name: joint_pos_mj[mj_i] for isaac_name, mj_i in ISAAC_TO_MJ_MAP.items()}
+    vel_dict = {isaac_name: joint_vel_mj[mj_i] for isaac_name, mj_i in ISAAC_TO_MJ_MAP.items()}
 
     # [9-20] Joint pos
     for i, name in enumerate(MASTER_JOINT_ORDER):
@@ -156,6 +180,17 @@ def main():
     print(f"[INFO] Using MJCF: {mjcf}")
     model = mujoco.MjModel.from_xml_path(mjcf)
     data = mujoco.MjData(model)
+
+    global mj_actuator_names, ISAAC_TO_MJ_MAP
+    mj_actuator_names = [mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, i) for i in range(model.nu)]
+    print(f"[INFO] Actuators: {mj_actuator_names}")
+    ISAAC_TO_MJ_MAP = build_isaac_to_mj_mapping()
+    print(f"[INFO] Isaac->MuJoCo mapping:")
+    for isaac_name, mj_i in sorted(ISAAC_TO_MJ_MAP.items(), key=lambda x: x[1]):
+        print(f"  {isaac_name:16s} -> [{mj_i:2d}] {mj_actuator_names[mj_i]}")
+    assert len(ISAAC_TO_MJ_MAP) == 12, f"Mapping incomplete: only {len(ISAAC_TO_MJ_MAP)}/12 joints mapped"
+
+    DEFAULT_POS_MJ = get_default_pos_mj()
 
     PHYSICS_DT = model.opt.timestep
     SUBSTEPS = int(round(POLICY_DT / PHYSICS_DT))
@@ -262,27 +297,17 @@ def main():
 
             # Convert to joint targets (Isaac order)
             # Network outputs action directly in MASTER_JOINT_ORDER
-            actions_isaac = action
             
             # Map action directly to MuJoCo targets using default position and scale
             targets_isaac = np.zeros(12, dtype=np.float32)
             for i, name in enumerate(MASTER_JOINT_ORDER):
                 targets_isaac[i] = DEFAULT_POS_ISAAC[name] + actions_isaac[i] * ACTION_SCALE[i]
                 
-            # Reorder to MuJoCo order dynamically
-            ISAAC_TO_MJ_IDX = []
-            for name in MASTER_JOINT_ORDER:
-                for i, mj_name in enumerate(mj_actuator_names):
-                    if mj_name.startswith(name):
-                        ISAAC_TO_MJ_IDX.append(i)
-                        break
-                        
-            # Map the 12 targets to their respective MuJoCo actuator indices
-            # Targets is size 12. ISAAC_TO_MJ_IDX maps from master order idx to mujoco actuator index.
-            # Wait, targets_mj needs to be in MuJoCo actuator order.
-            targets_mj = np.zeros(12, dtype=np.float32)
-            for master_i, mj_i in enumerate(ISAAC_TO_MJ_IDX):
-                targets_mj[mj_i] = targets_isaac[master_i]
+            # Reorder to MuJoCo actuator order using mapping
+            targets_mj = np.zeros(len(mj_actuator_names), dtype=np.float32)
+            for isaac_name, mj_i in ISAAC_TO_MJ_MAP.items():
+                isaac_i = MASTER_JOINT_ORDER.index(isaac_name)
+                targets_mj[mj_i] = targets_isaac[isaac_i]
             
             # Step physics at 2000Hz
             for _ in range(SUBSTEPS):
@@ -299,7 +324,8 @@ def main():
                 mujoco.mj_step(model, data)
 
             if csv_writer is not None:
-                row = [step * POLICY_DT] + targets_isaac.tolist() + [data.qpos[qp_idx][i] for i in ISAAC_TO_MJ_IDX] + actions_isaac.tolist()
+                mj_pos_by_isaac = [data.qpos[qp_idx][ISAAC_TO_MJ_MAP[name]] for name in MASTER_JOINT_ORDER]
+                row = [step * POLICY_DT] + targets_isaac.tolist() + mj_pos_by_isaac + actions_isaac.tolist()
                 csv_writer.writerow(row)
 
             if renderer is not None:
@@ -313,9 +339,7 @@ def main():
 
             dt = time.perf_counter() - t0
             step += 1
-            if POLICY_DT - dt > 0:
-                time.sleep(POLICY_DT - dt)
-            time.sleep(random.uniform(0,40)/10000.0)
+            # No sleep for headless recording
 
             if step % 50 == 0:
                 print(f"[{step * POLICY_DT:.1f}s] z={data.qpos[2]:.3f} qw={data.qpos[3]:.3f} "
