@@ -69,6 +69,7 @@ ament_target_dependencies(single_motor_node_cpp
   sensor_msgs
   std_msgs
   biped_msgs
+  ament_index_cpp
 )
 
 # ── Executable: imu_node ──────────────────────────────────────────

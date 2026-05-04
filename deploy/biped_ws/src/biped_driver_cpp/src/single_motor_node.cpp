@@ -3,6 +3,7 @@
 #include "biped_msgs/msg/mit_command.hpp"
 #include "biped_driver_cpp/robstride_bus.hpp"
 #include <yaml-cpp/yaml.h>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 
 #include <iostream>
 #include <string>
@@ -161,14 +162,20 @@ void input_thread() {
 class SingleMotorNode : public rclcpp::Node {
 public:
     SingleMotorNode() : Node("single_motor_node") {
-        this->declare_parameter("robot_yaml", "");
         this->declare_parameter("target_motor", "");
-
-        std::string yaml_path = this->get_parameter("robot_yaml").as_string();
         motor_name = this->get_parameter("target_motor").as_string();
 
-        if (yaml_path.empty() || motor_name.empty()) {
-            RCLCPP_FATAL(this->get_logger(), "Must provide robot_yaml and target_motor parameters");
+        if (motor_name.empty()) {
+            RCLCPP_FATAL(this->get_logger(), "Must provide target_motor parameter (e.g. right_hip_pitch_04)");
+            exit(1);
+        }
+
+        std::string yaml_path;
+        try {
+            std::string pkg_share = ament_index_cpp::get_package_share_directory("biped_bringup");
+            yaml_path = pkg_share + "/config/robot.yaml";
+        } catch (const std::exception& e) {
+            RCLCPP_FATAL(this->get_logger(), "Failed to find biped_bringup package: %s", e.what());
             exit(1);
         }
 
