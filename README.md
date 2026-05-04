@@ -127,6 +127,17 @@ docker run --gpus all -d --name <NAME> \
   isaaclab:latest /isaac-sim/python.sh /workspace/biped_locomotion/<SCRIPT> <ARGS> --headless
 ```
 
+### Symmetry Augmentation
+To force the policy to learn a perfectly symmetric gait without tweaking rewards, enable **Symmetry Augmentation** in `biped_train_rsl.py`:
+```python
+        "symmetry_cfg": {
+            "use_data_augmentation": True,
+            "use_mirror_loss": False,
+            "data_augmentation_func": "biped_symmetry:biped_symmetry_augmentation",
+        },
+```
+This automatically doubles the PPO rollout batch size by duplicating every transition with its mirrored counterpart (swapping left/right legs, negating lateral velocities, and respecting URDF-specific axis flips for `hip_pitch` and `hip_roll`). **Must be enabled from iteration 0** — applying it to a pre-trained asymmetric checkpoint will cause policy collapse.
+
 ### Step 1: Train Teacher (Phase 1)
 
 ```bash
@@ -324,3 +335,4 @@ No checkpoints yet — training with +X forward URDFs in progress. Old -Y checkp
 7. **Phase 3 needs conservative PPO**: Random critic + high LR destroys pre-trained actor. Use LR 3e-4, clip 0.1
 8. **Distillation plateaus at ~60% teacher**: This is normal. Phase 3 closes the gap to 100%+
 9. **Pick distill checkpoint by loss, not reward**: Lowest MSE loss = best initialization for Phase 3
+10. **Symmetry limits**: `hip_pitch` and `hip_roll` URDF limits/axes are inverted Left vs Right. When mirroring joints, they must be both swapped and negated. Knee/Yaw/Foot limits are identical L/R and only need swapping.
