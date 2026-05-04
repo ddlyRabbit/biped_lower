@@ -158,41 +158,6 @@ public:
 private:
     double target_rate_hz_;
 
-    
-    void save_recording() {
-        if (recording_buffer_.empty()) return;
-        
-        std::ofstream file("sysid_data.csv");
-        if (!file.is_open()) {
-            RCLCPP_ERROR(get_logger(), "Failed to open sysid_data.csv for writing!");
-            return;
-        }
-        
-        // Write header
-        file << "time";
-        std::vector<std::string> joint_names;
-        for (const auto& [name, _] : recording_buffer_[0].pos) {
-            joint_names.push_back(name);
-            file << "," << name << "_target," << name << "_pos," << name << "_vel," << name << "_tau";
-        }
-        file << "\n";
-        
-        // Write data
-        for (const auto& row : recording_buffer_) {
-            file << std::fixed << std::setprecision(6) << row.time;
-            for (const auto& name : joint_names) {
-                file << "," << (row.cmd_pos.count(name) ? row.cmd_pos.at(name) : 0.0)
-                     << "," << (row.pos.count(name) ? row.pos.at(name) : 0.0)
-                     << "," << (row.vel.count(name) ? row.vel.at(name) : 0.0)
-                     << "," << (row.tau.count(name) ? row.tau.at(name) : 0.0);
-            }
-            file << "\n";
-        }
-        file.close();
-        RCLCPP_INFO(get_logger(), "Saved sysid_data.csv successfully.");
-        recording_buffer_.clear();
-    }
-
     void build_motor_groups() {
         std::unordered_set<std::string> seen;
         std::unordered_set<std::string> motor_set(motor_names_.begin(), motor_names_.end());

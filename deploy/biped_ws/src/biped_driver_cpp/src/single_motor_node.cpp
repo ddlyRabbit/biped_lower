@@ -13,6 +13,7 @@
 #include <chrono>
 
 using namespace std::chrono_literals;
+using namespace biped_driver_cpp;
 
 struct MotorConfig {
     std::string interface;
@@ -237,7 +238,7 @@ private:
             double kp = active_kp.load();
             double kd = active_kd.load();
             double t = active_torque.load();
-            bus_->send_control(motor_name, p, kp, kd, 0.0, t);
+            bus_->write_operation_frame(motor_name, p, kp, kd, 0.0, t);
 
             biped_msgs::msg::MITCommand cmd_msg;
             cmd_msg.joint_name = motor_name;
