@@ -53,6 +53,24 @@ ament_target_dependencies(can_bus_node_cpp
   biped_msgs
 )
 
+# ── Executable: single_motor_node_cpp ─────────────────────────────
+add_executable(single_motor_node_cpp
+  src/single_motor_node.cpp
+)
+
+target_link_libraries(single_motor_node_cpp
+  biped_driver_cpp_lib
+  yaml-cpp
+  pthread
+)
+
+ament_target_dependencies(single_motor_node_cpp
+  rclcpp
+  sensor_msgs
+  std_msgs
+  biped_msgs
+)
+
 # ── Executable: imu_node ──────────────────────────────────────────
 add_executable(imu_node
   src/bno085_node.cpp
@@ -87,7 +105,7 @@ ament_target_dependencies(im10a_node
 )
 
 # ── Install ───────────────────────────────────────────────────────
-install(TARGETS can_bus_node_cpp imu_node im10a_node
+install(TARGETS can_bus_node_cpp single_motor_node_cpp imu_node im10a_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

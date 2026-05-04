@@ -1,0 +1,308 @@
+VERSION ""
+
+NS_ :
+BS_:
+
+BU_: Host Motor
+
+BO_ 2172649217 MIT_Control_M1: 8 Host
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kp_U16 : 39|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kd_U16 : 55|16@0+ (1,0) [0|65535] "" Motor
+
+BO_ 2189427197 MIT_Status_M1: 8 Motor
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Host
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Host
+ SG_ Trq_U16 : 39|16@0+ (1,0) [0|65535] "" Host
+ SG_ Temp_U16 : 55|16@0+ (1,0) [0|65535] "" Host
+
+BO_ 2197880065 Enable_M1: 0 Host
+
+BO_ 2214657281 Disable_M1: 8 Host
+ SG_ ClearFault : 7|8@0+ (1,0) [0|1] "" Motor
+
+BO_ 2248211713 SetZero_M1: 8 Host
+ SG_ Confirm : 7|8@0+ (1,0) [1|1] "" Motor
+
+BO_ 2172649218 MIT_Control_M2: 8 Host
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kp_U16 : 39|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kd_U16 : 55|16@0+ (1,0) [0|65535] "" Motor
+
+BO_ 2189427453 MIT_Status_M2: 8 Motor
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Host
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Host
+ SG_ Trq_U16 : 39|16@0+ (1,0) [0|65535] "" Host
+ SG_ Temp_U16 : 55|16@0+ (1,0) [0|65535] "" Host
+
+BO_ 2197880066 Enable_M2: 0 Host
+
+BO_ 2214657282 Disable_M2: 8 Host
+ SG_ ClearFault : 7|8@0+ (1,0) [0|1] "" Motor
+
+BO_ 2248211714 SetZero_M2: 8 Host
+ SG_ Confirm : 7|8@0+ (1,0) [1|1] "" Motor
+
+BO_ 2172649219 MIT_Control_M3: 8 Host
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kp_U16 : 39|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kd_U16 : 55|16@0+ (1,0) [0|65535] "" Motor
+
+BO_ 2189427709 MIT_Status_M3: 8 Motor
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Host
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Host
+ SG_ Trq_U16 : 39|16@0+ (1,0) [0|65535] "" Host
+ SG_ Temp_U16 : 55|16@0+ (1,0) [0|65535] "" Host
+
+BO_ 2197880067 Enable_M3: 0 Host
+
+BO_ 2214657283 Disable_M3: 8 Host
+ SG_ ClearFault : 7|8@0+ (1,0) [0|1] "" Motor
+
+BO_ 2248211715 SetZero_M3: 8 Host
+ SG_ Confirm : 7|8@0+ (1,0) [1|1] "" Motor
+
+BO_ 2172649220 MIT_Control_M4: 8 Host
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kp_U16 : 39|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kd_U16 : 55|16@0+ (1,0) [0|65535] "" Motor
+
+BO_ 2189427965 MIT_Status_M4: 8 Motor
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Host
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Host
+ SG_ Trq_U16 : 39|16@0+ (1,0) [0|65535] "" Host
+ SG_ Temp_U16 : 55|16@0+ (1,0) [0|65535] "" Host
+
+BO_ 2197880068 Enable_M4: 0 Host
+
+BO_ 2214657284 Disable_M4: 8 Host
+ SG_ ClearFault : 7|8@0+ (1,0) [0|1] "" Motor
+
+BO_ 2248211716 SetZero_M4: 8 Host
+ SG_ Confirm : 7|8@0+ (1,0) [1|1] "" Motor
+
+BO_ 2172649221 MIT_Control_M5: 8 Host
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kp_U16 : 39|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kd_U16 : 55|16@0+ (1,0) [0|65535] "" Motor
+
+BO_ 2189428221 MIT_Status_M5: 8 Motor
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Host
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Host
+ SG_ Trq_U16 : 39|16@0+ (1,0) [0|65535] "" Host
+ SG_ Temp_U16 : 55|16@0+ (1,0) [0|65535] "" Host
+
+BO_ 2197880069 Enable_M5: 0 Host
+
+BO_ 2214657285 Disable_M5: 8 Host
+ SG_ ClearFault : 7|8@0+ (1,0) [0|1] "" Motor
+
+BO_ 2248211717 SetZero_M5: 8 Host
+ SG_ Confirm : 7|8@0+ (1,0) [1|1] "" Motor
+
+BO_ 2172649222 MIT_Control_M6: 8 Host
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kp_U16 : 39|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kd_U16 : 55|16@0+ (1,0) [0|65535] "" Motor
+
+BO_ 2189428477 MIT_Status_M6: 8 Motor
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Host
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Host
+ SG_ Trq_U16 : 39|16@0+ (1,0) [0|65535] "" Host
+ SG_ Temp_U16 : 55|16@0+ (1,0) [0|65535] "" Host
+
+BO_ 2197880070 Enable_M6: 0 Host
+
+BO_ 2214657286 Disable_M6: 8 Host
+ SG_ ClearFault : 7|8@0+ (1,0) [0|1] "" Motor
+
+BO_ 2248211718 SetZero_M6: 8 Host
+ SG_ Confirm : 7|8@0+ (1,0) [1|1] "" Motor
+
+BO_ 2172649223 MIT_Control_M7: 8 Host
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kp_U16 : 39|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kd_U16 : 55|16@0+ (1,0) [0|65535] "" Motor
+
+BO_ 2189428733 MIT_Status_M7: 8 Motor
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Host
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Host
+ SG_ Trq_U16 : 39|16@0+ (1,0) [0|65535] "" Host
+ SG_ Temp_U16 : 55|16@0+ (1,0) [0|65535] "" Host
+
+BO_ 2197880071 Enable_M7: 0 Host
+
+BO_ 2214657287 Disable_M7: 8 Host
+ SG_ ClearFault : 7|8@0+ (1,0) [0|1] "" Motor
+
+BO_ 2248211719 SetZero_M7: 8 Host
+ SG_ Confirm : 7|8@0+ (1,0) [1|1] "" Motor
+
+BO_ 2172649224 MIT_Control_M8: 8 Host
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kp_U16 : 39|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kd_U16 : 55|16@0+ (1,0) [0|65535] "" Motor
+
+BO_ 2189428989 MIT_Status_M8: 8 Motor
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Host
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Host
+ SG_ Trq_U16 : 39|16@0+ (1,0) [0|65535] "" Host
+ SG_ Temp_U16 : 55|16@0+ (1,0) [0|65535] "" Host
+
+BO_ 2197880072 Enable_M8: 0 Host
+
+BO_ 2214657288 Disable_M8: 8 Host
+ SG_ ClearFault : 7|8@0+ (1,0) [0|1] "" Motor
+
+BO_ 2248211720 SetZero_M8: 8 Host
+ SG_ Confirm : 7|8@0+ (1,0) [1|1] "" Motor
+
+BO_ 2172649225 MIT_Control_M9: 8 Host
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kp_U16 : 39|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kd_U16 : 55|16@0+ (1,0) [0|65535] "" Motor
+
+BO_ 2189429245 MIT_Status_M9: 8 Motor
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Host
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Host
+ SG_ Trq_U16 : 39|16@0+ (1,0) [0|65535] "" Host
+ SG_ Temp_U16 : 55|16@0+ (1,0) [0|65535] "" Host
+
+BO_ 2197880073 Enable_M9: 0 Host
+
+BO_ 2214657289 Disable_M9: 8 Host
+ SG_ ClearFault : 7|8@0+ (1,0) [0|1] "" Motor
+
+BO_ 2248211721 SetZero_M9: 8 Host
+ SG_ Confirm : 7|8@0+ (1,0) [1|1] "" Motor
+
+BO_ 2172649226 MIT_Control_M10: 8 Host
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kp_U16 : 39|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kd_U16 : 55|16@0+ (1,0) [0|65535] "" Motor
+
+BO_ 2189429501 MIT_Status_M10: 8 Motor
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Host
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Host
+ SG_ Trq_U16 : 39|16@0+ (1,0) [0|65535] "" Host
+ SG_ Temp_U16 : 55|16@0+ (1,0) [0|65535] "" Host
+
+BO_ 2197880074 Enable_M10: 0 Host
+
+BO_ 2214657290 Disable_M10: 8 Host
+ SG_ ClearFault : 7|8@0+ (1,0) [0|1] "" Motor
+
+BO_ 2248211722 SetZero_M10: 8 Host
+ SG_ Confirm : 7|8@0+ (1,0) [1|1] "" Motor
+
+BO_ 2172649227 MIT_Control_M11: 8 Host
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kp_U16 : 39|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kd_U16 : 55|16@0+ (1,0) [0|65535] "" Motor
+
+BO_ 2189429757 MIT_Status_M11: 8 Motor
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Host
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Host
+ SG_ Trq_U16 : 39|16@0+ (1,0) [0|65535] "" Host
+ SG_ Temp_U16 : 55|16@0+ (1,0) [0|65535] "" Host
+
+BO_ 2197880075 Enable_M11: 0 Host
+
+BO_ 2214657291 Disable_M11: 8 Host
+ SG_ ClearFault : 7|8@0+ (1,0) [0|1] "" Motor
+
+BO_ 2248211723 SetZero_M11: 8 Host
+ SG_ Confirm : 7|8@0+ (1,0) [1|1] "" Motor
+
+BO_ 2172649228 MIT_Control_M12: 8 Host
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kp_U16 : 39|16@0+ (1,0) [0|65535] "" Motor
+ SG_ Kd_U16 : 55|16@0+ (1,0) [0|65535] "" Motor
+
+BO_ 2189430013 MIT_Status_M12: 8 Motor
+ SG_ Pos_U16 : 7|16@0+ (1,0) [0|65535] "" Host
+ SG_ Vel_U16 : 23|16@0+ (1,0) [0|65535] "" Host
+ SG_ Trq_U16 : 39|16@0+ (1,0) [0|65535] "" Host
+ SG_ Temp_U16 : 55|16@0+ (1,0) [0|65535] "" Host
+
+BO_ 2197880076 Enable_M12: 0 Host
+
+BO_ 2214657292 Disable_M12: 8 Host
+ SG_ ClearFault : 7|8@0+ (1,0) [0|1] "" Motor
+
+BO_ 2248211724 SetZero_M12: 8 Host
+ SG_ Confirm : 7|8@0+ (1,0) [1|1] "" Motor
+
+BA_DEF_ BO_ "VFrameFormat" INT 0 1;
+BA_ "VFrameFormat" BO_ 2172649217 1;
+BA_ "VFrameFormat" BO_ 2189427197 1;
+BA_ "VFrameFormat" BO_ 2197880065 1;
+BA_ "VFrameFormat" BO_ 2214657281 1;
+BA_ "VFrameFormat" BO_ 2248211713 1;
+BA_ "VFrameFormat" BO_ 2172649218 1;
+BA_ "VFrameFormat" BO_ 2189427453 1;
+BA_ "VFrameFormat" BO_ 2197880066 1;
+BA_ "VFrameFormat" BO_ 2214657282 1;
+BA_ "VFrameFormat" BO_ 2248211714 1;
+BA_ "VFrameFormat" BO_ 2172649219 1;
+BA_ "VFrameFormat" BO_ 2189427709 1;
+BA_ "VFrameFormat" BO_ 2197880067 1;
+BA_ "VFrameFormat" BO_ 2214657283 1;
+BA_ "VFrameFormat" BO_ 2248211715 1;
+BA_ "VFrameFormat" BO_ 2172649220 1;
+BA_ "VFrameFormat" BO_ 2189427965 1;
+BA_ "VFrameFormat" BO_ 2197880068 1;
+BA_ "VFrameFormat" BO_ 2214657284 1;
+BA_ "VFrameFormat" BO_ 2248211716 1;
+BA_ "VFrameFormat" BO_ 2172649221 1;
+BA_ "VFrameFormat" BO_ 2189428221 1;
+BA_ "VFrameFormat" BO_ 2197880069 1;
+BA_ "VFrameFormat" BO_ 2214657285 1;
+BA_ "VFrameFormat" BO_ 2248211717 1;
+BA_ "VFrameFormat" BO_ 2172649222 1;
+BA_ "VFrameFormat" BO_ 2189428477 1;
+BA_ "VFrameFormat" BO_ 2197880070 1;
+BA_ "VFrameFormat" BO_ 2214657286 1;
+BA_ "VFrameFormat" BO_ 2248211718 1;
+BA_ "VFrameFormat" BO_ 2172649223 1;
+BA_ "VFrameFormat" BO_ 2189428733 1;
+BA_ "VFrameFormat" BO_ 2197880071 1;
+BA_ "VFrameFormat" BO_ 2214657287 1;
+BA_ "VFrameFormat" BO_ 2248211719 1;
+BA_ "VFrameFormat" BO_ 2172649224 1;
+BA_ "VFrameFormat" BO_ 2189428989 1;
+BA_ "VFrameFormat" BO_ 2197880072 1;
+BA_ "VFrameFormat" BO_ 2214657288 1;
+BA_ "VFrameFormat" BO_ 2248211720 1;
+BA_ "VFrameFormat" BO_ 2172649225 1;
+BA_ "VFrameFormat" BO_ 2189429245 1;
+BA_ "VFrameFormat" BO_ 2197880073 1;
+BA_ "VFrameFormat" BO_ 2214657289 1;
+BA_ "VFrameFormat" BO_ 2248211721 1;
+BA_ "VFrameFormat" BO_ 2172649226 1;
+BA_ "VFrameFormat" BO_ 2189429501 1;
+BA_ "VFrameFormat" BO_ 2197880074 1;
+BA_ "VFrameFormat" BO_ 2214657290 1;
+BA_ "VFrameFormat" BO_ 2248211722 1;
+BA_ "VFrameFormat" BO_ 2172649227 1;
+BA_ "VFrameFormat" BO_ 2189429757 1;
+BA_ "VFrameFormat" BO_ 2197880075 1;
+BA_ "VFrameFormat" BO_ 2214657291 1;
+BA_ "VFrameFormat" BO_ 2248211723 1;
+BA_ "VFrameFormat" BO_ 2172649228 1;
+BA_ "VFrameFormat" BO_ 2189430013 1;
+BA_ "VFrameFormat" BO_ 2197880076 1;
+BA_ "VFrameFormat" BO_ 2214657292 1;
+BA_ "VFrameFormat" BO_ 2248211724 1;
