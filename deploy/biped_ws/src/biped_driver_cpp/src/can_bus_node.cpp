@@ -27,8 +27,6 @@
 #include <biped_msgs/msg/motor_state_array.hpp>
 
 #include <yaml-cpp/yaml.h>
-#include <fstream>
-#include <iomanip>
 #include <std_msgs/msg/string.hpp>
 
 #include "biped_driver_cpp/motor_manager.hpp"
