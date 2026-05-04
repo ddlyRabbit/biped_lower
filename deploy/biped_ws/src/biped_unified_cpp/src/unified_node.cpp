@@ -240,7 +240,7 @@ public:
         init_onnx(model_path);
 
         // ── Init state ───────────────────────────────────────────
-        for (auto& name : JOINT_ORDER) {
+        for (auto& name : MASTER_JOINT_ORDER) {
             stand_start_pos_[name] = DEFAULT_POSITIONS.at(name);
         }
 
@@ -386,7 +386,7 @@ private:
         if (path.empty()) return;
         try {
             YAML::Node data = YAML::LoadFile(path);
-            for (const auto& name : JOINT_ORDER) {
+            for (const auto& name : MASTER_JOINT_ORDER) {
                 if (data[name]) {
                     double kp = data[name]["kp"] ? data[name]["kp"].as<double>() : gains_[name].first;
                     double kd = data[name]["kd"] ? data[name]["kd"].as<double>() : gains_[name].second;
@@ -562,7 +562,7 @@ private:
         biped_msgs::msg::MITCommandArray cmd_msg;
         cmd_msg.header.stamp = now();
 
-        for (const auto& name : JOINT_ORDER) {
+        for (const auto& name : MASTER_JOINT_ORDER) {
             auto kp_kd = gains_.at(name);
             biped_msgs::msg::MITCommand cmd;
             cmd.joint_name  = name;
@@ -623,7 +623,7 @@ private:
         biped_msgs::msg::MITCommandArray cmd_msg;
         cmd_msg.header.stamp = now();
 
-        for (const auto& name : JOINT_ORDER) {
+        for (const auto& name : MASTER_JOINT_ORDER) {
             double start = stand_start_pos_.count(name) ? stand_start_pos_[name] : DEFAULT_POSITIONS.at(name);
             double target = DEFAULT_POSITIONS.at(name);
             double pos = start + (target - start) * pos_alpha;
@@ -647,7 +647,7 @@ private:
         biped_msgs::msg::MITCommandArray cmd_msg;
         cmd_msg.header.stamp = now();
 
-        for (const auto& name : JOINT_ORDER) {
+        for (const auto& name : MASTER_JOINT_ORDER) {
             biped_msgs::msg::MITCommand cmd;
             cmd.joint_name = name;
             cmd.position   = 0.0;
@@ -769,7 +769,7 @@ private:
         // 1. /joint_states
         sensor_msgs::msg::JointState js;
         js.header.stamp = stamp;
-        for (auto& name : JOINT_ORDER) {
+        for (auto& name : MASTER_JOINT_ORDER) {
             js.name.push_back(name);
             js.position.push_back(joint_pos_.count(name) ? joint_pos_[name] : 0.0);
             js.velocity.push_back(joint_vel_.count(name) ? joint_vel_[name] : 0.0);
