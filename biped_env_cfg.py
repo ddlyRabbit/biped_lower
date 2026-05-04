@@ -1029,7 +1029,7 @@ class BipedFlatEnvCfg(ManagerBasedRLEnvCfg):
 class BipedFlatEnvCfg_PLAY(BipedFlatEnvCfg):
     def __post_init__(self):
         super().__post_init__()
-        self.scene.num_envs = 100
+        self.scene.num_envs = 16
         self.scene.env_spacing = 2.5
         self.observations.policy.enable_corruption = False
         self.events.push_robot = None  # disabled for this test
