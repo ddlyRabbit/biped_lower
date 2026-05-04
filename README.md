@@ -229,18 +229,21 @@ docker run --gpus all -d --name biped_play \
 | 3. Fine-tune flat | 16384 | 5.7s | 5000 | ~8h |
 | **Total (flat)** | | | | **~14.5h** |
 
-## Actuator Config
+## Actuator Config (V138)
 
-| Joint | Kp | Kd | Effort (Nm) | Armature |
-|-------|----|----|-------------|----------|
-| hip_roll/yaw | 10 | 3.0 | 50 | 0.0112 |
-| hip_pitch | 15 | 3.0 | 100 | 0.0152 |
-| knee | 15 | 3.0 | 100 | 0.024 |
-| foot_pitch | 2.0 | 0.2 | 30 | 0.0112 |
-| foot_roll | 2.0 | 0.2 | 30 | 0.001 |
+Using `DelayedPDActuator` for training to better map sim-to-real gap. Actions are scaled `[-1, 1]` via `--tanh` flag.
 
-All hip/knee stiffness halved from original Berkeley values. Foot stiffness unchanged.
-Foot: 30Nm each via parallel linkage (2 motors × 15Nm). ImplicitActuator for training.
+| Joint | Kp | Kd | Effort (Nm) | Armature | Action Scale |
+|-------|----|----|-------------|----------|--------------|
+| hip_roll/yaw | 100 | 3.0 | 50 | 0.01 | 0.5 |
+| hip_pitch | 100 | 3.0 | 100 | 0.02 | 0.5 |
+| knee | 100 | 3.0 | 100 | 0.02 | 0.5 |
+| foot_pitch | 30 | 1.0 | 30 | 0.005 | 0.5 |
+| foot_roll | 30 | 1.0 | 30 | 0.005 | 0.25 |
+
+*Delay:* 1-7 steps (at 500Hz physics, ~2-14ms delay)
+
+Foot: 30Nm each via parallel linkage (2 motors × 15Nm).
 
 ## ActuatorNet Pipeline (Sim2Real)
 
