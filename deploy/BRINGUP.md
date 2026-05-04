@@ -257,6 +257,27 @@ ros2 topic echo /imu/data         # IMU data
 ros2 topic echo /safety/status    # should be True
 ```
 
+### Step 3.5: Single Motor Manual Testing
+If you need to manually control or test a single motor without running the full state machine or policy, use the interactive raw motor testing node. It operates exactly at 200Hz but provides a keyboard UI for live parameter tuning. Ensure no other CAN nodes (like `bringup` or `hardware`) are running.
+
+```bash
+ros2 run biped_driver_cpp single_motor_node_cpp --ros-args -p target_motor:=right_hip_pitch_04
+```
+- Operates on pure raw encoder values (no calibration or ankle linkage transforms applied).
+- Press `e` to enable, `d` to disable.
+- Use `w/s` (pos), `p/o` (Kp), `k/j` (Kd), `t/g` (torque) to stage values.
+- Press `ENTER` to instantly apply staged values to the 200Hz active control loop.
+- It constantly streams raw motor feedback via terminal UI and to `/<target_motor>/motor_state`.
+- It broadcasts raw commands to `/<target_motor>/motor_command`.
+
+### Step 3.6: CAN Bus Decoding (DBC)
+To sniff and decode live CAN packets (MIT mode operation commands and status feedback) directly off the bus:
+```bash
+cd ~/biped_lower/deploy/scripts
+./decode_can.sh can0
+```
+This uses `candump` and the included `robstride.dbc` file to print a live, human-readable stream of CAN signals (Position, Velocity, Kp, Kd, Torque, Temperature). *Requires `pip install cantools`*.
+
 ### Step 4: Suspended Test (robot hanging)
 
 ⚠️ **Robot must be suspended with feet off ground!**
