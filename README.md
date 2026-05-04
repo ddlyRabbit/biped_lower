@@ -204,7 +204,7 @@ Expected: reward starts near 0 (critic warmup), reaches teacher level by iter ~3
 pkill Xvfb; Xvfb :99 -screen 0 1920x1080x24 &>/dev/null &
 
 # Play student policy
-docker run --gpus all -d --name biped_play \
+docker run --gpus all --network host -d --name biped_play \
   -e DISPLAY=:99 -v /tmp/.X11-unix:/tmp/.X11-unix \
   ... isaaclab:latest /isaac-sim/python.sh \
   /workspace/biped_locomotion/biped_play_rsl.py \
