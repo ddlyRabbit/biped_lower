@@ -99,11 +99,11 @@ TRAIN_CFG = {
         "lam": 0.95,
         "desired_kl": 0.01,
         "max_grad_norm": 1.0,
-#         "symmetry_cfg": {
-#             "use_data_augmentation": True,
-#             "use_mirror_loss": False,
-#             "data_augmentation_func": "biped_symmetry:biped_symmetry_augmentation",
-#         },
+        "symmetry_cfg": {
+            "use_data_augmentation": True,
+            "use_mirror_loss": False,
+            "data_augmentation_func": "biped_symmetry:biped_symmetry_augmentation",
+        },
     },
 }
 
