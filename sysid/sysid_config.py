@@ -2,7 +2,7 @@
 
 import isaaclab.sim as sim_utils
 from isaaclab.assets import ArticulationCfg
-from isaaclab.actuators import DelayedPDActuatorCfg, ActuatorNetMLPCfg
+from isaaclab.actuators import DelayedPDActuatorCfg
 
 URDF_LIGHT = "/uploads/light/robot.urdf"
 
@@ -49,41 +49,41 @@ SYSID_ROBOT_CFG = ArticulationCfg(
     ),
     soft_joint_pos_limit_factor=0.9,
     actuators={
-        "hip_roll": ActuatorNetMLPCfg(
+        "hip_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_roll.*"],
-            network_file="/workspace/biped_locomotion/actuator_net/models_left_only/hip_roll_net.pt",
-            pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
-            input_idx=[0, 1, 2, 3, 4, 5], effort_limit=100.0, velocity_limit=21.0, saturation_effort=100.0, input_order="pos_vel",
+            effort_limit=50.0, velocity_limit=50.0,
+            stiffness=180.0, damping=6.5, armature=0.01, friction=0.4,
+            min_delay=5, max_delay=5,
         ),
-        "hip_yaw": ActuatorNetMLPCfg(
+        "hip_yaw": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
-            network_file="/workspace/biped_locomotion/actuator_net/models_left_only/hip_yaw_net.pt",
-            pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
-            input_idx=[0, 1, 2, 3, 4, 5], effort_limit=100.0, velocity_limit=21.0, saturation_effort=100.0, input_order="pos_vel",
+            effort_limit=50.0, velocity_limit=50.0,
+            stiffness=180.0, damping=3.0, armature=0.01, friction=0.4,
+            min_delay=5, max_delay=5,
         ),
-        "hip_pitch": ActuatorNetMLPCfg(
+        "hip_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
-            network_file="/workspace/biped_locomotion/actuator_net/models_left_only/hip_pitch_net.pt",
-            pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
-            input_idx=[0, 1, 2, 3, 4, 5], effort_limit=100.0, velocity_limit=21.0, saturation_effort=100.0, input_order="pos_vel",
+            effort_limit=100.0, velocity_limit=15.0,
+            stiffness=180.0, damping=6.5, armature=0.025, friction=0.6,
+            min_delay=5, max_delay=5,
         ),
-        "knee": ActuatorNetMLPCfg(
+        "knee": DelayedPDActuatorCfg(
             joint_names_expr=[".*knee.*"],
-            network_file="/workspace/biped_locomotion/actuator_net/models_left_only/knee_net.pt",
-            pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
-            input_idx=[0, 1, 2, 3, 4, 5], effort_limit=100.0, velocity_limit=21.0, saturation_effort=100.0, input_order="pos_vel",
+            effort_limit=100.0, velocity_limit=15.0,
+            stiffness=180.0, damping=3.0, armature=0.025, friction=0.6,
+            min_delay=5, max_delay=5,
         ),
-        "foot_pitch": ActuatorNetMLPCfg(
+        "foot_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
-            network_file="/workspace/biped_locomotion/actuator_net/models_left_only/foot_pitch_net.pt",
-            pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
-            input_idx=[0, 1, 2, 3, 4, 5], effort_limit=100.0, velocity_limit=21.0, saturation_effort=100.0, input_order="pos_vel",
+            effort_limit=30.0, velocity_limit=44.0,
+            stiffness=30.0, damping=1.0, armature=0.007, friction=0.2,
+            min_delay=5, max_delay=5,
         ),
-        "foot_roll": ActuatorNetMLPCfg(
+        "foot_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
-            network_file="/workspace/biped_locomotion/actuator_net/models_left_only/foot_roll_net.pt",
-            pos_scale=1.0, vel_scale=1.0, torque_scale=1.0,
-            input_idx=[0, 1, 2, 3, 4, 5], effort_limit=100.0, velocity_limit=21.0, saturation_effort=100.0, input_order="pos_vel",
+            effort_limit=30.0, velocity_limit=44.0,
+            stiffness=30.0, damping=1.0, armature=0.007, friction=0.2,
+            min_delay=5, max_delay=5,
         ),
     },
 )

@@ -82,25 +82,18 @@ def read_all_joints(robot, targets):
         row[f"{name}_tau"] = robot.data.applied_torque[0, jidx].item() if hasattr(robot.data, 'applied_torque') else 0.0
     return row
 
-import collections
-target_buffer = collections.deque(maxlen=6) # 5 steps of 10ms delay at 50Hz, plus current
-
 def step_control(robot, sim, targets, decimation=DECIMATION):
     """One control step: PD recomputed every substep (true 2kHz PD)."""
-    target_buffer.append(targets.clone())
-    delayed_targets = target_buffer[0]
     for _ in range(decimation):
-        robot.set_joint_position_target(delayed_targets.unsqueeze(0))
+        robot.set_joint_position_target(targets.unsqueeze(0))
         robot.write_data_to_sim()
         sim.step(render=False)
     robot.update(SIM_DT * decimation)
 
 def step_control_render(robot, sim, targets, decimation=DECIMATION, rgb_annotator=None, video_writer=None):
     """Same as step_control but renders on last substep + captures frame."""
-    target_buffer.append(targets.clone())
-    delayed_targets = target_buffer[0]
     for i in range(decimation):
-        robot.set_joint_position_target(delayed_targets.unsqueeze(0))
+        robot.set_joint_position_target(targets.unsqueeze(0))
         robot.write_data_to_sim()
         sim.step(render=(i == decimation - 1))
     robot.update(SIM_DT * decimation)
@@ -207,7 +200,6 @@ def main():
     # --- Warmup: let robot settle at defaults for 1s ---
     dprint("Warmup: settling at defaults...")
     targets = build_default_targets(robot)
-    for _ in range(6): target_buffer.append(targets.clone()) # Fill buffer
     for _ in range(int(1.0 / CONTROL_DT)):
         do_step(robot, sim, targets)
 
