@@ -60,7 +60,7 @@ def dprint(msg):
 def save_csv(data, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["time", "cmd_pos", "pos", "vel", "torque"])
+        w = csv.DictWriter(f, fieldnames=["time"] + [f"{j}_target" for j in JOINT_INDEX.keys()] + [f"{j}_pos" for j in JOINT_INDEX.keys()] + [f"{j}_vel" for j in JOINT_INDEX.keys()] + [f"{j}_tau" for j in JOINT_INDEX.keys()])
         w.writeheader()
         w.writerows(data)
     print("  Saved %s (%d rows)" % (path, len(data)))
@@ -72,31 +72,39 @@ def build_default_targets(robot):
     return targets
 
 
+def read_all_joints(robot, targets):
+    """Read all joint positions, velocities, and torques matching real ROS recorder."""
+    row = {}
+    for name, jidx in JOINT_INDEX.items():
+        row[f"{name}_target"] = targets[jidx].item()
+        row[f"{name}_pos"] = robot.data.joint_pos[0, jidx].item()
+        row[f"{name}_vel"] = robot.data.joint_vel[0, jidx].item()
+        row[f"{name}_tau"] = robot.data.applied_torque[0, jidx].item() if hasattr(robot.data, 'applied_torque') else 0.0
+    return row
+
+import collections
+target_buffer = collections.deque(maxlen=6) # 5 steps of 10ms delay at 50Hz, plus current
+
 def step_control(robot, sim, targets, decimation=DECIMATION):
     """One control step: PD recomputed every substep (true 2kHz PD)."""
+    target_buffer.append(targets.clone())
+    delayed_targets = target_buffer[0]
     for _ in range(decimation):
-        robot.set_joint_position_target(targets.unsqueeze(0))
+        robot.set_joint_position_target(delayed_targets.unsqueeze(0))
         robot.write_data_to_sim()
         sim.step(render=False)
     robot.update(SIM_DT * decimation)
 
-
 def step_control_render(robot, sim, targets, decimation=DECIMATION, rgb_annotator=None, video_writer=None):
     """Same as step_control but renders on last substep + captures frame."""
+    target_buffer.append(targets.clone())
+    delayed_targets = target_buffer[0]
     for i in range(decimation):
-        robot.set_joint_position_target(targets.unsqueeze(0))
+        robot.set_joint_position_target(delayed_targets.unsqueeze(0))
         robot.write_data_to_sim()
         sim.step(render=(i == decimation - 1))
     robot.update(SIM_DT * decimation)
     capture_frame(rgb_annotator, video_writer)
-
-
-def read_joint(robot, jidx):
-    """Read position, velocity, and applied torque for a single joint."""
-    pos = robot.data.joint_pos[0, jidx].item()
-    vel = robot.data.joint_vel[0, jidx].item()
-    torque = robot.data.applied_torque[0, jidx].item() if hasattr(robot.data, 'applied_torque') else 0.0
-    return pos, vel, torque
 
 
 def capture_frame(rgb_annotator, video_writer):
@@ -199,11 +207,12 @@ def main():
     # --- Warmup: let robot settle at defaults for 1s ---
     dprint("Warmup: settling at defaults...")
     targets = build_default_targets(robot)
+    for _ in range(6): target_buffer.append(targets.clone()) # Fill buffer
     for _ in range(int(1.0 / CONTROL_DT)):
         do_step(robot, sim, targets)
 
-    pos0, vel0, _ = read_joint(robot, jidx)
-    dprint("After warmup: pos=%.4f vel=%.4f" % (pos0, vel0))
+    row = read_all_joints(robot, targets)
+    dprint("After warmup: pos=%.4f vel=%.4f" % (row[f"{joint_name}_pos"], row[f"{joint_name}_vel"]))
 
     # --- Step Response ---
     dprint("\nStep response...")
@@ -215,9 +224,9 @@ def main():
     targets = build_default_targets(robot)
     for _ in range(int(0.5 / CONTROL_DT)):
         do_step(robot, sim, targets)
-        pos, vel, torque = read_joint(robot, jidx)
-        data.append({"time": round(t, 5), "cmd_pos": round(default, 6),
-                      "pos": round(pos, 6), "vel": round(vel, 6), "torque": round(torque, 6)})
+        row = read_all_joints(robot, targets)
+        row["time"] = round(t, 5)
+        data.append(row)
         t += CONTROL_DT
 
     # Step to absolute target (2s)
@@ -225,61 +234,76 @@ def main():
     targets[jidx] = step_target
     for _ in range(int(2.0 / CONTROL_DT)):
         do_step(robot, sim, targets)
-        pos, vel, torque = read_joint(robot, jidx)
-        data.append({"time": round(t, 5), "cmd_pos": round(step_target, 6),
-                      "pos": round(pos, 6), "vel": round(vel, 6), "torque": round(torque, 6)})
+        row = read_all_joints(robot, targets)
+        row["time"] = round(t, 5)
+        data.append(row)
         t += CONTROL_DT
 
     # Return to default (1s)
     targets = build_default_targets(robot)
     for _ in range(int(1.0 / CONTROL_DT)):
         do_step(robot, sim, targets)
-        pos, vel, torque = read_joint(robot, jidx)
-        data.append({"time": round(t, 5), "cmd_pos": round(default, 6),
-                      "pos": round(pos, 6), "vel": round(vel, 6), "torque": round(torque, 6)})
+        row = read_all_joints(robot, targets)
+        row["time"] = round(t, 5)
+        data.append(row)
         t += CONTROL_DT
 
     save_csv(data, os.path.join(out_dir, "step_response.csv"))
 
-    # --- Sine Sweeps ---
-    amps = params.get("amps", [params["amp"]] * len(params["freqs"]))
-    for freq, amp in zip(params["freqs"], amps):
-        dprint("Sine sweep %.1f Hz, amp=%.3f rad..." % (freq, amp))
-        data = []
-        t = 0.0
-        dur = 5.0 / freq  # 5 cycles
+    # --- Chirp Sweep (Matches state_machine_node exactly) ---
+    dprint("\nChirp sweep 1Hz to 10Hz (6s per step)...")
+    data = []
+    t = 0.0
 
-        # Hold 0.5s
-        targets = build_default_targets(robot)
-        for _ in range(int(0.5 / CONTROL_DT)):
-            do_step(robot, sim, targets)
-            pos, vel, torque = read_joint(robot, jidx)
-            data.append({"time": round(t, 5), "cmd_pos": round(default, 6),
-                          "pos": round(pos, 6), "vel": round(vel, 6), "torque": round(torque, 6)})
-            t += CONTROL_DT
+    # Hold 0.5s at center (mid)
+    targets = build_default_targets(robot)
+    jcfg = params # has "step" (not needed), "amp" which is actually half_range * 0.5. 
+    # Wait, state_machine_node uses: amp_base = (jcfg.max - jcfg.min) / 2.0.
+    # In sysid_config.py, params["amp"] IS half_range * 0.5, but wait, the real node doesn't multiply by 0.5?
+    # Let me check state_machine_node: double amp_base = (jcfg.max - jcfg.min) / 2.0;
+    # So amp_base is the full half_range.
+    amp_base = params["half_range"]
+    mid = params["mid"]
 
-        # Sine around default
-        t0 = t
-        for _ in range(int(dur / CONTROL_DT)):
-            desired = default + amp * math.sin(2 * math.pi * freq * (t - t0))
+    for _ in range(int(0.5 / CONTROL_DT)):
+        targets[jidx] = mid
+        do_step(robot, sim, targets)
+        row = read_all_joints(robot, targets)
+        row["time"] = round(t, 5)
+        data.append(row)
+        t += CONTROL_DT
+
+    # Chirp
+    t0 = t
+    for step_idx in range(10): # 0 to 9 -> 1Hz to 10Hz
+        current_f = 1.0 + step_idx
+        phi_start = 2.0 * math.pi * 6.0 * (step_idx + (step_idx * (step_idx - 1)) / 2.0)
+        amp = amp_base / current_f
+        dprint("  Step %d: %.1f Hz, amp=%.3f rad" % (step_idx, current_f, amp))
+        
+        for _ in range(int(6.0 / CONTROL_DT)):
+            time_in_step = t - t0 - (step_idx * 6.0)
+            phi = phi_start + 2.0 * math.pi * current_f * time_in_step
+            desired = mid + amp * math.sin(phi)
+            
             targets = build_default_targets(robot)
             targets[jidx] = desired
             do_step(robot, sim, targets)
-            pos, vel, torque = read_joint(robot, jidx)
-            data.append({"time": round(t, 5), "cmd_pos": round(desired, 6),
-                          "pos": round(pos, 6), "vel": round(vel, 6), "torque": round(torque, 6)})
+            row = read_all_joints(robot, targets)
+            row["time"] = round(t, 5)
+            data.append(row)
             t += CONTROL_DT
 
-        # Hold 0.5s
-        targets = build_default_targets(robot)
-        for _ in range(int(0.5 / CONTROL_DT)):
-            do_step(robot, sim, targets)
-            pos, vel, torque = read_joint(robot, jidx)
-            data.append({"time": round(t, 5), "cmd_pos": round(default, 6),
-                          "pos": round(pos, 6), "vel": round(vel, 6), "torque": round(torque, 6)})
-            t += CONTROL_DT
+    # Hold 0.5s at default
+    targets = build_default_targets(robot)
+    for _ in range(int(0.5 / CONTROL_DT)):
+        do_step(robot, sim, targets)
+        row = read_all_joints(robot, targets)
+        row["time"] = round(t, 5)
+        data.append(row)
+        t += CONTROL_DT
 
-        save_csv(data, os.path.join(out_dir, "sine_%.1fhz.csv" % freq))
+    save_csv(data, os.path.join(out_dir, "chirp_sweep.csv"))
 
     # Metadata
     meta = {
