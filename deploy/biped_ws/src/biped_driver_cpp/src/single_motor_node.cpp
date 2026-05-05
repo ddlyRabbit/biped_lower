@@ -200,8 +200,9 @@ public:
 
         try {
             bus_ = std::make_shared<RobstrideBus>(cfg.interface, motors, cals);
+            bus_->connect();
         } catch (const std::exception& e) {
-            RCLCPP_FATAL(this->get_logger(), "Failed to init RobstrideBus on %s: %s", cfg.interface.c_str(), e.what());
+            RCLCPP_FATAL(this->get_logger(), "Failed to init or connect RobstrideBus on %s: %s", cfg.interface.c_str(), e.what());
             exit(1);
         }
 
