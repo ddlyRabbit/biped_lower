@@ -76,6 +76,8 @@ std::atomic<double> fb_pos{0.0};
 std::atomic<double> fb_vel{0.0};
 std::atomic<double> fb_tau{0.0};
 std::atomic<double> fb_temp{0.0};
+std::atomic<int> fb_fault{0};
+std::atomic<int> fb_mode{0};
 
 std::string motor_name;
 std::string motor_interface;
@@ -94,7 +96,10 @@ void draw_ui() {
     std::cout << "Pos: " << std::showpos << fb_pos.load() << " rad | Vel: " 
               << fb_vel.load() << " rad/s | Torque: " 
               << fb_tau.load() << " Nm | Temp: " 
-              << std::noshowpos << fb_temp.load() << "°C\n\n";
+              << std::noshowpos << fb_temp.load() << "°C\n";
+    
+    int fault = fb_fault.load();
+    std::cout << "Mode: " << fb_mode.load() << " | Fault: " << (fault ? "\033[1;31m" : "\033[1;32m") << fault << "\033[0m\n\n";
 
     std::cout << "--- CONTROL PARAMETERS ---\n";
     std::cout << "          [ACTIVE]      [STAGED] (Edit with keys)\n";
@@ -267,6 +272,9 @@ private:
             cmd_msg.kd = kd;
             cmd_msg.torque_ff = t;
             cmd_pub_->publish(cmd_msg);
+        } else {
+            // Actively poll the motor even when disabled so we get feedback!
+            bus_->write_operation_frame(motor_name, fb_pos.load(), 0.0, 0.0, 0.0, 0.0);
         }
 
         auto fb_opt = bus_->receive_feedback(motor_name, 0.001);
@@ -276,6 +284,8 @@ private:
             fb_vel = fb.velocity;
             fb_tau = fb.torque;
             fb_temp = fb.temperature;
+            fb_fault = fb.fault_code;
+            fb_mode = fb.mode_status;
 
             biped_msgs::msg::MotorState msg;
             msg.joint_name = motor_name;
