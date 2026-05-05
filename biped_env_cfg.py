@@ -805,7 +805,7 @@ class RewardsCfg:
     )
     joint_deviation_foot = RewTerm(
         func=base_mdp.joint_deviation_l1,
-        weight=-0.5,
+        weight=-0.05,
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_pitch.*", ".*foot_roll.*"]),
         },
