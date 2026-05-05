@@ -538,43 +538,43 @@ BIPED_CFG = ArticulationCfg(
         "hip_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_roll.*"],
             effort_limit=50.0, velocity_limit=10.0,
-            stiffness=200.0, damping=2.0, armature=0.01,
-            friction=0.8,
+            stiffness=150.0, damping=3.0, armature=0.01,
+            friction=0.4,
             min_delay=1, max_delay=7,
         ),
         "hip_yaw": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
             effort_limit=50.0, velocity_limit=10.0,
-            stiffness=200.0, damping=2.0, armature=0.01,
-            friction=0.8,
+            stiffness=150.0, damping=3.0, armature=0.01,
+            friction=0.4,
             min_delay=1, max_delay=7,
         ),
         "hip_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
             effort_limit=100.0, velocity_limit=10.0,
-            stiffness=200.0, damping=2.0, armature=0.02,
-            friction=1.2,
+            stiffness=150.0, damping=3.0, armature=0.025,
+            friction=0.6,
             min_delay=1, max_delay=7,
         ),
         "knee": DelayedPDActuatorCfg(
             joint_names_expr=[".*knee.*"],
             effort_limit=100.0, velocity_limit=10.0,
-            stiffness=200.0, damping=2.0, armature=0.02,
-            friction=1.2,
+            stiffness=150.0, damping=3.0, armature=0.025,
+            friction=0.6,
             min_delay=1, max_delay=7,
         ),
         "foot_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=50.0, damping=2.0, armature=0.005,
-            friction=0.4,
+            stiffness=50.0, damping=2.0, armature=0.007,
+            friction=0.2,
             min_delay=1, max_delay=7,
         ),
         "foot_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
             effort_limit=30.0, velocity_limit=10.0,
-            stiffness=50.0, damping=2.0, armature=0.005,
-            friction=0.4,
+            stiffness=50.0, damping=2.0, armature=0.007,
+            friction=0.2,
             min_delay=1, max_delay=7,
         ),
     },
@@ -805,7 +805,7 @@ class RewardsCfg:
     )
     joint_deviation_foot = RewTerm(
         func=base_mdp.joint_deviation_l1,
-        weight=-0.1,
+        weight=-0.5,
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_pitch.*", ".*foot_roll.*"]),
         },
@@ -982,7 +982,7 @@ class CurriculumsCfg:
         func=modify_push_force,
         params={
             "term_name": "push_robot",
-            "max_velocity": [0.80, 0.80],     # max push 0.4 m/s
+            "max_velocity": [1.5, 1.5],     # max push 1.5 m/s
             "interval": 200 * 24,
             "starting_step": 1000 * 24,     # start after 1000 iterations
         },
