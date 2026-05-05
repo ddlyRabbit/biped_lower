@@ -60,6 +60,7 @@ std::optional<MotorConfig> parse_target_motor(const std::string& yaml_path, cons
 // Global state for sharing between background input thread and 200Hz control loop
 std::atomic<bool> running{true};
 std::atomic<bool> enabled{false};
+std::atomic<bool> request_clear_fault{false};
 
 std::atomic<double> active_pos{0.0};
 std::atomic<double> active_kp{0.0};
@@ -105,6 +106,7 @@ void draw_ui() {
 
     std::cout << "Controls:\n";
     std::cout << "  [e]/[d] Enable/Disable immediately\n";
+    std::cout << "  [c]     Clear Fault (disables motor)\n";
     std::cout << "  [ENTER] Commit STAGED -> ACTIVE\n";
     std::cout << "  [q]     Quit safely\n";
     std::cout << std::flush;
@@ -139,6 +141,8 @@ void input_thread() {
             } else if (c == 'e') {
                 enabled = true;
             } else if (c == 'd') {
+            } else if (c == 'c') {
+                request_clear_fault = true;
                 enabled = false;
             } else if (c == '\n' || c == '\r') {
                 active_pos = staged_pos.load();
@@ -239,6 +243,13 @@ private:
         } else if (!is_en && was_enabled_) {
             bus_->disable(motor_name, false);
             was_enabled_ = false;
+        }
+
+        if (request_clear_fault.load()) {
+            bus_->disable(motor_name, true);
+            enabled = false;
+            was_enabled_ = false;
+            request_clear_fault = false;
         }
 
         if (is_en) {
