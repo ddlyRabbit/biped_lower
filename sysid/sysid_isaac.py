@@ -60,7 +60,7 @@ def dprint(msg):
 def save_csv(data, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["time"] + [f"{j}_target" for j in JOINT_INDEX.keys()] + [f"{j}_pos" for j in JOINT_INDEX.keys()] + [f"{j}_vel" for j in JOINT_INDEX.keys()] + [f"{j}_tau" for j in JOINT_INDEX.keys()])
+        w = csv.DictWriter(f, fieldnames=["time"] + [f"{j}_target" for j in JOINT_INDEX.keys()] + [f"{j}_pos_sim" for j in JOINT_INDEX.keys()] + [f"{j}_vel_sim" for j in JOINT_INDEX.keys()] + [f"{j}_tau_sim" for j in JOINT_INDEX.keys()])
         w.writeheader()
         w.writerows(data)
     print("  Saved %s (%d rows)" % (path, len(data)))
@@ -77,8 +77,8 @@ def read_all_joints(robot, targets):
     row = {}
     for name, jidx in JOINT_INDEX.items():
         row[f"{name}_target"] = targets[jidx].item()
-        row[f"{name}_pos"] = robot.data.joint_pos[0, jidx].item()
-        row[f"{name}_vel"] = robot.data.joint_vel[0, jidx].item()
+        row[f"{name}_pos_sim"] = robot.data.joint_pos[0, jidx].item()
+        row[f"{name}_vel_sim"] = robot.data.joint_vel[0, jidx].item()
         
         # Handle Isaac Lab API naming (applied_effort or applied_torque)
         tau = 0.0
@@ -86,7 +86,7 @@ def read_all_joints(robot, targets):
             tau = robot.data.applied_effort[0, jidx].item()
         elif hasattr(robot.data, 'applied_torque') and robot.data.applied_torque is not None:
             tau = robot.data.applied_torque[0, jidx].item()
-        row[f"{name}_tau"] = tau
+        row[f"{name}_tau_sim"] = tau
         
     return row
 
@@ -212,7 +212,7 @@ def main():
         do_step(robot, sim, targets)
 
     row = read_all_joints(robot, targets)
-    dprint("After warmup: pos=%.4f vel=%.4f" % (row[f"{joint_name}_pos"], row[f"{joint_name}_vel"]))
+    dprint("After warmup: pos=%.4f vel=%.4f" % (row[f"{joint_name}_pos_sim"], row[f"{joint_name}_vel_sim"]))
 
     # --- Step Response ---
     dprint("\nStep response...")
