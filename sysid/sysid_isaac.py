@@ -198,30 +198,27 @@ def main():
     # DelayedPDActuator computes PD torques in Python, but armature/friction
     # are PhysX joint properties that may not propagate in standalone scripts.
     dprint("\nApplying actuator armature + friction to PhysX joints...")
+    import omni.physics.tensors.impl.api as physx
+
+    # Get the PhysX articulation view
+    physx_sim = physx.create_simulation_view("world", robot.device)
+    articulation_view = physx_sim.get_articulation_view(robot.prim_path)
+
     for act_name, act_cfg in SYSID_ROBOT_CFG.actuators.items():
-        # Resolve joint indices for this actuator group
         joint_ids, _ = robot.find_joints(act_cfg.joint_names_expr)
         if len(joint_ids) == 0:
             dprint("  WARNING: no joints matched for %s (%s)" % (act_name, act_cfg.joint_names_expr))
             continue
-        # Set armature (adds apparent rotational inertia)
-        armature_vals = torch.full((1, len(joint_ids)), act_cfg.armature, device=robot.device)
-        robot.set_joint_armature(armature_vals, joint_ids=joint_ids)
-        # Set friction (Coulomb-like friction on joint)
-        friction_vals = torch.full((1, len(joint_ids)), act_cfg.friction, device=robot.device)
-        robot.set_joint_friction(friction_vals, joint_ids=joint_ids)
+        # Set armature via PhysX API
+        armature_vals = torch.full((len(joint_ids),), act_cfg.armature, device=robot.device)
+        articulation_view.set_armatures(armature_vals, torch.as_tensor(joint_ids, device=robot.device))
+        # Set joint friction via PhysX API
+        friction_vals = torch.full((len(joint_ids),), act_cfg.friction, device=robot.device)
+        articulation_view.set_joint_frictions(friction_vals, torch.as_tensor(joint_ids, device=robot.device))
         dprint("  %s: joints=%s armature=%.4f friction=%.4f" % (
             act_name, joint_ids.tolist(), act_cfg.armature, act_cfg.friction))
 
-    # Verify: read back armature/friction from PhysX
-    dprint("\nVerification — PhysX joint properties after set:")
-    for act_name, act_cfg in SYSID_ROBOT_CFG.actuators.items():
-        joint_ids, _ = robot.find_joints(act_cfg.joint_names_expr)
-        if len(joint_ids) == 0:
-            continue
-        arm_read = robot.data.joint_armature[0, joint_ids].cpu().numpy()
-        fri_read = robot.data.joint_friction[0, joint_ids].cpu().numpy() if hasattr(robot.data, 'joint_friction') else ["N/A"] * len(joint_ids)
-        dprint("  %s: armature_read=%s friction_read=%s" % (act_name, arm_read, fri_read))
+    dprint("Armature + friction applied via PhysX API.")
 
     # Create render product after sim reset (viewport must exist)
     if args.video:
