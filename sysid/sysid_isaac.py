@@ -210,6 +210,18 @@ def main():
             robot.write_joint_armature_to_sim(act_cfg.armature, joint_ids=joint_ids)
             robot.write_joint_friction_to_sim(act_cfg.friction, joint_ids=joint_ids)
             
+            # In Isaac Sim 5.0+ (PhysX 5), the "friction" parameter maps to static friction.
+            # To affect moving joints, we must also set dynamic friction.
+            dyn_fric = getattr(act_cfg, 'dynamic_friction', None)
+            if dyn_fric is None: dyn_fric = act_cfg.friction # Fallback to static if not set
+            visc_fric = getattr(act_cfg, 'viscous_friction', None)
+            if visc_fric is None: visc_fric = 0.0
+            
+            if hasattr(robot, 'write_joint_dynamic_friction_coefficient_to_sim'):
+                robot.write_joint_dynamic_friction_coefficient_to_sim(dyn_fric, joint_ids=joint_ids)
+            if hasattr(robot, 'write_joint_viscous_friction_coefficient_to_sim'):
+                robot.write_joint_viscous_friction_coefficient_to_sim(visc_fric, joint_ids=joint_ids)
+
             # handle joint_ids printing safely whether it's a tensor, numpy array, or list
             jlist = joint_ids.tolist() if hasattr(joint_ids, 'tolist') else list(joint_ids)
             dprint("  %s: joints=%s armature=%.4f friction=%.4f" % (
