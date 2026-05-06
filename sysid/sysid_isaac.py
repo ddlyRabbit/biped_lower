@@ -209,8 +209,11 @@ def main():
             # Isaac Lab provides built-in methods to write these properties directly to sim
             robot.write_joint_armature_to_sim(act_cfg.armature, joint_ids=joint_ids)
             robot.write_joint_friction_to_sim(act_cfg.friction, joint_ids=joint_ids)
+            
+            # handle joint_ids printing safely whether it's a tensor, numpy array, or list
+            jlist = joint_ids.tolist() if hasattr(joint_ids, 'tolist') else list(joint_ids)
             dprint("  %s: joints=%s armature=%.4f friction=%.4f" % (
-                act_name, joint_ids.tolist(), act_cfg.armature, act_cfg.friction))
+                act_name, jlist, act_cfg.armature, act_cfg.friction))
         except Exception as e:
             dprint("  ERROR applying to %s: %s" % (act_name, str(e)))
 
