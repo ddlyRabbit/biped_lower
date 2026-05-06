@@ -1,16 +1,30 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, ConcatDataset
 from dataset_flat import ActuatorDatasetFlattened
 from model import ActuatorNet
 
-def train_model(csv_file, joint_type, epochs=100, batch_size=256, lr=1e-3, k_history=6):
-    print(f"Loading data for {joint_type}...")
-    dataset = ActuatorDatasetFlattened(csv_file, joint_type, k_history=k_history)
-    train_size = int(0.8 * len(dataset))
-    val_size = len(dataset) - train_size
-    train_ds, val_ds = random_split(dataset, [train_size, val_size])
+def train_model(csv_files, joint_type, epochs=100, batch_size=256, lr=1e-3, k_history=6):
+    print(f"Loading data for {joint_type} from {csv_files}...")
+    
+    datasets = []
+    for csv_file in csv_files:
+        try:
+            ds = ActuatorDatasetFlattened(csv_file, joint_type, k_history=k_history)
+            datasets.append(ds)
+        except ValueError as e:
+            print(f"Skipping {csv_file} for {joint_type}: {e}")
+            
+    if not datasets:
+        print(f"No data available to train {joint_type}")
+        return
+        
+    full_dataset = ConcatDataset(datasets)
+    
+    train_size = int(0.8 * len(full_dataset))
+    val_size = len(full_dataset) - train_size
+    train_ds, val_ds = random_split(full_dataset, [train_size, val_size])
 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
@@ -57,7 +71,7 @@ def train_model(csv_file, joint_type, epochs=100, batch_size=256, lr=1e-3, k_his
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--csv", required=True)
+    parser.add_argument("--csv", nargs='+', required=True, help="List of CSV files")
     parser.add_argument("--joint_type", required=True)
     parser.add_argument("--epochs", type=int, default=100)
     args = parser.parse_args()

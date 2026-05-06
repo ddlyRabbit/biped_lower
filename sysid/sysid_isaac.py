@@ -217,7 +217,7 @@ def main():
     for _ in range(int(0.5 / CONTROL_DT)):
         do_step(robot, sim, targets)
         row = read_all_joints(robot, targets)
-        row["time"] = round(t, 5)
+        row["time"] = round(t + CONTROL_DT, 5)
         data.append(row)
         t += CONTROL_DT
 
@@ -227,7 +227,7 @@ def main():
     for _ in range(int(2.0 / CONTROL_DT)):
         do_step(robot, sim, targets)
         row = read_all_joints(robot, targets)
-        row["time"] = round(t, 5)
+        row["time"] = round(t + CONTROL_DT, 5)
         data.append(row)
         t += CONTROL_DT
 
@@ -236,7 +236,7 @@ def main():
     for _ in range(int(1.0 / CONTROL_DT)):
         do_step(robot, sim, targets)
         row = read_all_joints(robot, targets)
-        row["time"] = round(t, 5)
+        row["time"] = round(t + CONTROL_DT, 5)
         data.append(row)
         t += CONTROL_DT
 
@@ -261,7 +261,7 @@ def main():
         targets[jidx] = mid
         do_step(robot, sim, targets)
         row = read_all_joints(robot, targets)
-        row["time"] = round(t, 5)
+        row["time"] = round(t + CONTROL_DT, 5)
         data.append(row)
         t += CONTROL_DT
 
@@ -282,7 +282,7 @@ def main():
             targets[jidx] = desired
             do_step(robot, sim, targets)
             row = read_all_joints(robot, targets)
-            row["time"] = round(t, 5)
+            row["time"] = round(t + CONTROL_DT, 5)
             data.append(row)
             t += CONTROL_DT
 
@@ -291,7 +291,7 @@ def main():
     for _ in range(int(0.5 / CONTROL_DT)):
         do_step(robot, sim, targets)
         row = read_all_joints(robot, targets)
-        row["time"] = round(t, 5)
+        row["time"] = round(t + CONTROL_DT, 5)
         data.append(row)
         t += CONTROL_DT
 
