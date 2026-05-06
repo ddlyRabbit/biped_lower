@@ -200,23 +200,26 @@ def main():
     dprint("\nApplying actuator armature + friction to PhysX joints...")
     import omni.physics.tensors.impl.api as physx
 
-    # Get the PhysX articulation view
-    physx_sim = physx.create_simulation_view("world", robot.device)
-    articulation_view = physx_sim.get_articulation_view(robot.prim_path)
+    # Get the PhysX articulation view using Isaac Lab's properties
+    # robot.root_physx_view is the core physx articulation object
+    physx_view = robot.root_physx_view
 
     for act_name, act_cfg in SYSID_ROBOT_CFG.actuators.items():
         joint_ids, _ = robot.find_joints(act_cfg.joint_names_expr)
         if len(joint_ids) == 0:
             dprint("  WARNING: no joints matched for %s (%s)" % (act_name, act_cfg.joint_names_expr))
             continue
-        # Set armature via PhysX API
-        armature_vals = torch.full((len(joint_ids),), act_cfg.armature, device=robot.device)
-        articulation_view.set_armatures(armature_vals, torch.as_tensor(joint_ids, device=robot.device))
-        # Set joint friction via PhysX API
-        friction_vals = torch.full((len(joint_ids),), act_cfg.friction, device=robot.device)
-        articulation_view.set_joint_frictions(friction_vals, torch.as_tensor(joint_ids, device=robot.device))
-        dprint("  %s: joints=%s armature=%.4f friction=%.4f" % (
-            act_name, joint_ids.tolist(), act_cfg.armature, act_cfg.friction))
+        
+        # In Isaac Lab, the articulation view provides setter/getter for joint properties
+        try:
+            armature_vals = torch.full((1, len(joint_ids)), act_cfg.armature, device=robot.device)
+            physx_view.set_armatures(armature_vals, joint_indices=joint_ids)
+            friction_vals = torch.full((1, len(joint_ids)), act_cfg.friction, device=robot.device)
+            physx_view.set_joint_frictions(friction_vals, joint_indices=joint_ids)
+            dprint("  %s: joints=%s armature=%.4f friction=%.4f" % (
+                act_name, joint_ids.tolist(), act_cfg.armature, act_cfg.friction))
+        except Exception as e:
+            dprint("  ERROR applying to %s: %s" % (act_name, str(e)))
 
     dprint("Armature + friction applied via PhysX API.")
 
