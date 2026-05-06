@@ -60,7 +60,7 @@ def dprint(msg):
 def save_csv(data, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["time"] + [f"{j}_target" for j in JOINT_INDEX.keys()] + [f"{j}_pos_sim" for j in JOINT_INDEX.keys()] + [f"{j}_vel_sim" for j in JOINT_INDEX.keys()] + [f"{j}_tau_sim" for j in JOINT_INDEX.keys()])
+        w = csv.DictWriter(f, fieldnames=["time"] + [f"{j}_target_sim" for j in JOINT_INDEX.keys()] + [f"{j}_pos_sim" for j in JOINT_INDEX.keys()] + [f"{j}_vel_sim" for j in JOINT_INDEX.keys()] + [f"{j}_tau_sim" for j in JOINT_INDEX.keys()])
         w.writeheader()
         w.writerows(data)
     print("  Saved %s (%d rows)" % (path, len(data)))
@@ -76,7 +76,7 @@ def read_all_joints(robot, targets):
     """Read all joint positions, velocities, and torques matching real ROS recorder."""
     row = {}
     for name, jidx in JOINT_INDEX.items():
-        row[f"{name}_target"] = targets[jidx].item()
+        row[f"{name}_target_sim"] = targets[jidx].item()
         row[f"{name}_pos_sim"] = robot.data.joint_pos[0, jidx].item()
         row[f"{name}_vel_sim"] = robot.data.joint_vel[0, jidx].item()
         
@@ -90,22 +90,36 @@ def read_all_joints(robot, targets):
         
     return row
 
-def step_control(robot, sim, targets, decimation=DECIMATION):
-    """One control step: PD recomputed every substep (true 2kHz PD)."""
+def step_control(robot, sim, targets, t_start, data):
+    """One control step: PD recomputed every substep (true 2kHz PD). Records at 200Hz."""
     robot.set_joint_position_target(targets.unsqueeze(0))
-    for _ in range(decimation):
+    t = t_start
+    for i in range(DECIMATION):
         robot.write_data_to_sim()
         sim.step(render=False)
         robot.update(SIM_DT)
+        t += SIM_DT
+        if (i + 1) % 10 == 0:  # 2kHz / 10 = 200Hz
+            row = read_all_joints(robot, targets)
+            row["time"] = round(t, 5)
+            data.append(row)
+    return t
 
-def step_control_render(robot, sim, targets, decimation=DECIMATION, rgb_annotator=None, video_writer=None):
+def step_control_render(robot, sim, targets, t_start, data, rgb_annotator=None, video_writer=None):
     """Same as step_control but renders on last substep + captures frame."""
     robot.set_joint_position_target(targets.unsqueeze(0))
-    for i in range(decimation):
+    t = t_start
+    for i in range(DECIMATION):
         robot.write_data_to_sim()
-        sim.step(render=(i == decimation - 1))
+        sim.step(render=(i == DECIMATION - 1))
         robot.update(SIM_DT)
+        t += SIM_DT
+        if (i + 1) % 10 == 0:
+            row = read_all_joints(robot, targets)
+            row["time"] = round(t, 5)
+            data.append(row)
     capture_frame(rgb_annotator, video_writer)
+    return t
 
 
 def capture_frame(rgb_annotator, video_writer):
@@ -200,16 +214,17 @@ def main():
 
     # Choose step function based on video flag
     if args.video:
-        def do_step(robot, sim, targets, decimation=DECIMATION):
-            step_control_render(robot, sim, targets, decimation, rgb_annotator, video_writer)
+        def do_step(robot, sim, targets, t, data):
+            return step_control_render(robot, sim, targets, t, data, rgb_annotator, video_writer)
     else:
         do_step = step_control
 
     # --- Warmup: let robot settle at defaults for 1s ---
     dprint("Warmup: settling at defaults...")
     targets = build_default_targets(robot)
+    t = 0.0
     for _ in range(int(1.0 / CONTROL_DT)):
-        do_step(robot, sim, targets)
+        t = do_step(robot, sim, targets, t, [])
 
     row = read_all_joints(robot, targets)
     dprint("After warmup: pos=%.4f vel=%.4f" % (row[f"{joint_name}_pos_sim"], row[f"{joint_name}_vel_sim"]))
@@ -223,30 +238,18 @@ def main():
     # Hold at default (0.5s)
     targets = build_default_targets(robot)
     for _ in range(int(0.5 / CONTROL_DT)):
-        do_step(robot, sim, targets)
-        row = read_all_joints(robot, targets)
-        row["time"] = round(t + CONTROL_DT, 5)
-        data.append(row)
-        t += CONTROL_DT
+        t = do_step(robot, sim, targets, t, data)
 
     # Step to absolute target (2s)
     targets = build_default_targets(robot)
     targets[jidx] = step_target
     for _ in range(int(2.0 / CONTROL_DT)):
-        do_step(robot, sim, targets)
-        row = read_all_joints(robot, targets)
-        row["time"] = round(t + CONTROL_DT, 5)
-        data.append(row)
-        t += CONTROL_DT
+        t = do_step(robot, sim, targets, t, data)
 
     # Return to default (1s)
     targets = build_default_targets(robot)
     for _ in range(int(1.0 / CONTROL_DT)):
-        do_step(robot, sim, targets)
-        row = read_all_joints(robot, targets)
-        row["time"] = round(t + CONTROL_DT, 5)
-        data.append(row)
-        t += CONTROL_DT
+        t = do_step(robot, sim, targets, t, data)
 
     save_csv(data, os.path.join(out_dir, "step_response.csv"))
 
@@ -267,11 +270,7 @@ def main():
 
     for _ in range(int(0.5 / CONTROL_DT)):
         targets[jidx] = mid
-        do_step(robot, sim, targets)
-        row = read_all_joints(robot, targets)
-        row["time"] = round(t + CONTROL_DT, 5)
-        data.append(row)
-        t += CONTROL_DT
+        t = do_step(robot, sim, targets, t, data)
 
     # Chirp
     t0 = t
@@ -288,20 +287,12 @@ def main():
             
             targets = build_default_targets(robot)
             targets[jidx] = desired
-            do_step(robot, sim, targets)
-            row = read_all_joints(robot, targets)
-            row["time"] = round(t + CONTROL_DT, 5)
-            data.append(row)
-            t += CONTROL_DT
+            t = do_step(robot, sim, targets, t, data)
 
     # Hold 0.5s at default
     targets = build_default_targets(robot)
     for _ in range(int(0.5 / CONTROL_DT)):
-        do_step(robot, sim, targets)
-        row = read_all_joints(robot, targets)
-        row["time"] = round(t + CONTROL_DT, 5)
-        data.append(row)
-        t += CONTROL_DT
+        t = do_step(robot, sim, targets, t, data)
 
     save_csv(data, os.path.join(out_dir, "chirp_sweep.csv"))
 
