@@ -222,6 +222,14 @@ def main():
             if hasattr(robot, 'write_joint_viscous_friction_coefficient_to_sim'):
                 robot.write_joint_viscous_friction_coefficient_to_sim(visc_fric, joint_ids=joint_ids)
 
+            # CRITICAL PHYSX WORKAROUND:
+            # PhysX disables joint friction if the joint drive stiffness & damping are exactly 0.0.
+            # Because explicit actuators set them to 0.0, PhysX silently drops the friction constraints.
+            # We must apply an epsilon non-zero stiffness/damping to force PhysX to evaluate friction.
+            epsilon = 1e-5
+            robot.write_joint_stiffness_to_sim(epsilon, joint_ids=joint_ids)
+            robot.write_joint_damping_to_sim(epsilon, joint_ids=joint_ids)
+
             # handle joint_ids printing safely whether it's a tensor, numpy array, or list
             jlist = joint_ids.tolist() if hasattr(joint_ids, 'tolist') else list(joint_ids)
             dprint("  %s: joints=%s armature=%.4f friction=%.4f" % (
