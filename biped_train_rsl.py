@@ -116,7 +116,10 @@ def main():
     else:
         env_cfg = BipedFlatEnvCfg()
         env_id = "Biped-Flat-v0"
-        experiment = "biped_flat_v142"
+        if args_cli.config == "v143":
+            experiment = "biped_flat_v143"
+        else:
+            experiment = "biped_flat_v142"
 
     env_cfg.scene.num_envs = args_cli.num_envs
     env_cfg.seed = args_cli.seed
