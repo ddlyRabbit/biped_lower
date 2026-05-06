@@ -198,11 +198,6 @@ def main():
     # DelayedPDActuator computes PD torques in Python, but armature/friction
     # are PhysX joint properties that may not propagate in standalone scripts.
     dprint("\nApplying actuator armature + friction to PhysX joints...")
-    import omni.physics.tensors.impl.api as physx
-
-    # Get the PhysX articulation view using Isaac Lab's properties
-    # robot.root_physx_view is the core physx articulation object
-    physx_view = robot.root_physx_view
 
     for act_name, act_cfg in SYSID_ROBOT_CFG.actuators.items():
         joint_ids, _ = robot.find_joints(act_cfg.joint_names_expr)
@@ -210,18 +205,16 @@ def main():
             dprint("  WARNING: no joints matched for %s (%s)" % (act_name, act_cfg.joint_names_expr))
             continue
         
-        # In Isaac Lab, the articulation view provides setter/getter for joint properties
         try:
-            armature_vals = torch.full((1, len(joint_ids)), act_cfg.armature, device=robot.device)
-            physx_view.set_armatures(armature_vals, joint_indices=joint_ids)
-            friction_vals = torch.full((1, len(joint_ids)), act_cfg.friction, device=robot.device)
-            physx_view.set_joint_frictions(friction_vals, joint_indices=joint_ids)
+            # Isaac Lab provides built-in methods to write these properties directly to sim
+            robot.write_joint_armature_to_sim(act_cfg.armature, joint_ids=joint_ids)
+            robot.write_joint_friction_to_sim(act_cfg.friction, joint_ids=joint_ids)
             dprint("  %s: joints=%s armature=%.4f friction=%.4f" % (
                 act_name, joint_ids.tolist(), act_cfg.armature, act_cfg.friction))
         except Exception as e:
             dprint("  ERROR applying to %s: %s" % (act_name, str(e)))
 
-    dprint("Armature + friction applied via PhysX API.")
+    dprint("Armature + friction applied via Isaac Lab API.")
 
     # Create render product after sim reset (viewport must exist)
     if args.video:
