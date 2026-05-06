@@ -79,7 +79,15 @@ def read_all_joints(robot, targets):
         row[f"{name}_target"] = targets[jidx].item()
         row[f"{name}_pos"] = robot.data.joint_pos[0, jidx].item()
         row[f"{name}_vel"] = robot.data.joint_vel[0, jidx].item()
-        row[f"{name}_tau"] = robot.data.applied_torque[0, jidx].item() if hasattr(robot.data, 'applied_torque') else 0.0
+        
+        # Handle Isaac Lab API naming (applied_effort or applied_torque)
+        tau = 0.0
+        if hasattr(robot.data, 'applied_effort') and robot.data.applied_effort is not None:
+            tau = robot.data.applied_effort[0, jidx].item()
+        elif hasattr(robot.data, 'applied_torque') and robot.data.applied_torque is not None:
+            tau = robot.data.applied_torque[0, jidx].item()
+        row[f"{name}_tau"] = tau
+        
     return row
 
 def step_control(robot, sim, targets, decimation=DECIMATION):
