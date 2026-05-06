@@ -539,42 +539,42 @@ BIPED_CFG = ArticulationCfg(
             joint_names_expr=[".*hip_roll.*"],
             effort_limit=50.0, velocity_limit=10.0,
             stiffness=180.0, damping=6.5, armature=0.01,
-            friction=0.4,
+            friction=0.1,
             min_delay=5, max_delay=10,
         ),
         "hip_yaw": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
             effort_limit=50.0, velocity_limit=10.0,
             stiffness=180.0, damping=3.0, armature=0.01,
-            friction=0.4,
+            friction=0.1,
             min_delay=5, max_delay=10,
         ),
         "hip_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
             effort_limit=100.0, velocity_limit=10.0,
             stiffness=180.0, damping=6.5, armature=0.025,
-            friction=0.6,
+            friction=0.1,
             min_delay=5, max_delay=10,
         ),
         "knee": DelayedPDActuatorCfg(
             joint_names_expr=[".*knee.*"],
             effort_limit=100.0, velocity_limit=10.0,
             stiffness=180.0, damping=3.0, armature=0.025,
-            friction=0.6,
+            friction=0.1,
             min_delay=5, max_delay=10,
         ),
         "foot_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
             effort_limit=30.0, velocity_limit=10.0,
             stiffness=30.0, damping=1.0, armature=0.007,
-            friction=0.2,
+            friction=0.1,
             min_delay=5, max_delay=10,
         ),
         "foot_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
             effort_limit=30.0, velocity_limit=10.0,
             stiffness=30.0, damping=1.0, armature=0.007,
-            friction=0.2,
+            friction=0.1,
             min_delay=5, max_delay=10,
         ),
     },
@@ -735,11 +735,11 @@ class RewardsCfg:
     )
     track_ang_vel_z_exp = RewTerm(
         func=base_mdp.track_ang_vel_z_exp,
-        weight=0.5,
+        weight=1.0,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     # -- penalties
-    lin_vel_z_l2 = RewTerm(func=base_mdp.lin_vel_z_l2, weight=-2.0)
+    lin_vel_z_l2 = RewTerm(func=base_mdp.lin_vel_z_l2, weight=-0.1)
     ang_vel_xy_l2 = RewTerm(func=base_mdp.ang_vel_xy_l2, weight=-0.01)
     joint_torques_l2 = RewTerm(
         func=base_mdp.joint_torques_l2,
@@ -753,8 +753,8 @@ class RewardsCfg:
             "command_name": "base_velocity",
             "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
-            "threshold_min": 0.2,
-            "threshold_max": 0.4,
+            "threshold_min": 0.15,
+            "threshold_max": 0.35,
         },
     )
     feet_slide = RewTerm(
@@ -819,7 +819,7 @@ class RewardsCfg:
     #         "asset_cfg": SceneEntityCfg("robot", body_names="foot_6061.*"),
     #     },
     # )
-    flat_orientation_l2 = RewTerm(func=base_mdp.flat_orientation_l2, weight=-0.5)
+    flat_orientation_l2 = RewTerm(func=base_mdp.flat_orientation_l2, weight=-0.1)
     dof_pos_limits = RewTerm(func=base_mdp.joint_pos_limits, weight=-1.0)
 
 
