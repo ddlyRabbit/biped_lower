@@ -4,7 +4,7 @@ import isaaclab.sim as sim_utils
 from isaaclab.assets import ArticulationCfg
 from isaaclab.actuators import DelayedPDActuatorCfg
 
-URDF_LIGHT = "/uploads/light/robot.urdf"
+URDF_LIGHT = "/home/roy/biped_lower/urdf/light/robot.urdf"
 
 SYSID_ROBOT_CFG = ArticulationCfg(
     prim_path="/World/Robot",
