@@ -902,7 +902,7 @@ class EventsCfg:
         func=base_mdp.randomize_joint_parameters,
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
-            "friction_distribution_params": (0.7, 1.3),
+            "friction_distribution_params": (0.9, 1.1),
             "operation": "scale",
         },
         mode="startup",
