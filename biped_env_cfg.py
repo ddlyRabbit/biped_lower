@@ -735,7 +735,7 @@ class RewardsCfg:
     )
     track_ang_vel_z_exp = RewTerm(
         func=base_mdp.track_ang_vel_z_exp,
-        weight=1.0,
+        weight=0.5,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     # -- penalties
@@ -982,7 +982,7 @@ class CurriculumsCfg:
         func=modify_push_force,
         params={
             "term_name": "push_robot",
-            "max_velocity": [1.5, 1.5],     # max push 1.5 m/s
+            "max_velocity": [0.8, 0.8],     # max push 0.8 m/s
             "interval": 200 * 24,
             "starting_step": 1000 * 24,     # start after 1000 iterations
         },
