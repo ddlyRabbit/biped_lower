@@ -283,3 +283,15 @@ BipedMotorManager::get_ankle_pair(const std::string& name) const {
 }
 
 }  // namespace biped_driver_cpp
+
+int BipedMotorManager::pump_rx() {
+    int count = 0;
+    for (auto& [_, bus] : buses_) {
+        count += bus->pump_rx(0.002);
+    }
+    return count;
+}
+
+std::optional<MotorFeedback> BipedMotorManager::get_latest_feedback(const std::string& name) {
+    return bus_for(name).get_latest_feedback(name);
+}

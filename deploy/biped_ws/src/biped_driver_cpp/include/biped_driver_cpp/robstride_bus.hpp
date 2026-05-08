@@ -112,6 +112,8 @@ public:
     void disable_all(bool clear_fault = false);
     void enable_and_set_mit_all();
     int flush_rx(double timeout_sec = 0.005);
+    int pump_rx(double timeout_sec = 0.0);
+    std::optional<MotorFeedback> get_latest_feedback(const std::string& name);
 
     // ── Accessors ────────────────────────────────────────────────
     const std::unordered_map<std::string, Motor>& motors() const { return motors_; }
@@ -135,6 +137,8 @@ private:
     int socket_fd_ = -1;
     std::unordered_map<std::string, Motor> motors_;
     std::unordered_map<std::string, CalibrationEntry> calibration_;
+    std::unordered_map<int, std::string> id_to_name_;
+    std::unordered_map<std::string, MotorFeedback> latest_feedback_;
 };
 
 }  // namespace biped_driver_cpp

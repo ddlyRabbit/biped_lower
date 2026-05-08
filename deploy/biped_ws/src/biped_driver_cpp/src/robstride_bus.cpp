@@ -66,7 +66,11 @@ RobstrideBus::RobstrideBus(
     const std::string& channel,
     const std::unordered_map<std::string, Motor>& motors,
     const std::unordered_map<std::string, CalibrationEntry>& calibration)
-    : channel_(channel), motors_(motors), calibration_(calibration) {}
+    : channel_(channel), motors_(motors), calibration_(calibration) {
+    for (const auto& [name, m] : motors_) {
+        id_to_name_[m.id] = name;
+    }
+}
 
 RobstrideBus::~RobstrideBus() {
     if (is_connected()) disconnect();
@@ -422,3 +426,77 @@ void RobstrideBus::enable_and_set_mit_all() {
 }
 
 }  // namespace biped_driver_cpp
+
+std::optional<MotorFeedback> RobstrideBus::get_latest_feedback(const std::string& name) {
+    auto it = latest_feedback_.find(name);
+    if (it != latest_feedback_.end()) return it->second;
+    return std::nullopt;
+}
+
+int RobstrideBus::pump_rx(double timeout_sec) {
+    int count = 0;
+    auto deadline = std::chrono::steady_clock::now() +
+                    std::chrono::duration<double>(timeout_sec);
+    
+    while (true) {
+        double remaining = 0.0;
+        if (timeout_sec > 0.0) {
+            remaining = std::chrono::duration<double>(deadline - std::chrono::steady_clock::now()).count();
+            if (remaining < 0) break;
+        }
+
+        auto rx = receive(remaining);
+        if (!rx) break;
+        count++;
+
+        if (rx->comm_type == CommType::FAULT_REPORT) {
+            // Log but don't crash
+            uint32_t fault_val, warn_val;
+            std::memcpy(&fault_val, rx->data, 4);
+            std::memcpy(&warn_val, rx->data + 4, 4);
+            continue;
+        }
+
+        if (rx->comm_type != CommType::OPERATION_STATUS) continue;
+
+        int device_id = rx->extra_data & 0xFF;
+        auto name_it = id_to_name_.find(device_id);
+        if (name_it == id_to_name_.end()) continue;
+        
+        const std::string& name = name_it->second;
+        const auto& model = motors_.at(name).model;
+        const auto& scale = get_mit_scale(model);
+
+        int fault_code = (rx->extra_data >> 8) & 0x3F;
+        int mode_status = (rx->extra_data >> 14) & 0x03;
+
+        uint16_t pos_u16  = (static_cast<uint16_t>(rx->data[0]) << 8) | rx->data[1];
+        uint16_t vel_u16  = (static_cast<uint16_t>(rx->data[2]) << 8) | rx->data[3];
+        uint16_t trq_u16  = (static_cast<uint16_t>(rx->data[4]) << 8) | rx->data[5];
+        uint16_t temp_u16 = (static_cast<uint16_t>(rx->data[6]) << 8) | rx->data[7];
+
+        double position = (static_cast<double>(pos_u16) / 0x7FFF - 1.0) * scale.position;
+        double velocity = (static_cast<double>(vel_u16) / 0x7FFF - 1.0) * scale.velocity;
+        double torque   = (static_cast<double>(trq_u16) / 0x7FFF - 1.0) * scale.torque;
+        double temperature = static_cast<double>(temp_u16) * 0.1;
+
+        auto cal_it = calibration_.find(name);
+        int direction = 1;
+        double homing_offset = 0.0;
+        if (cal_it != calibration_.end()) {
+            direction = cal_it->second.direction;
+            homing_offset = cal_it->second.homing_offset;
+        }
+
+        MotorFeedback fb;
+        fb.position    = (position * direction) - homing_offset;
+        fb.velocity    = velocity * direction;
+        fb.torque      = torque * direction;
+        fb.temperature = temperature;
+        fb.fault_code  = fault_code;
+        fb.mode_status = mode_status;
+
+        latest_feedback_[name] = fb;
+    }
+    return count;
+}

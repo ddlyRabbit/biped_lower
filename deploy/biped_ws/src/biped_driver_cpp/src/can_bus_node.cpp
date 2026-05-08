@@ -249,9 +249,10 @@ private:
             }
 
             // ── Phase 2: Read all feedback ───────────────────────
+            mgr_.buses().at(bus_name_)->pump_rx(0.005);
             for (auto& name : normal_motors_) {
                 try {
-                    auto fb = mgr_.read_feedback(name);
+                    auto fb = mgr_.get_latest_feedback(name);
                     if (fb) {
                         last_positions_[name] = fb->position;
                         buffer_->write_feedback(name, FeedbackEntry{
@@ -269,7 +270,7 @@ private:
             for (auto& [top_name, bottom_name] : ankle_pairs_) {
                 for (auto& motor_name : {top_name, bottom_name}) {
                     try {
-                        auto fb = mgr_.read_feedback(motor_name);
+                        auto fb = mgr_.get_latest_feedback(motor_name);
                         if (fb) {
                             last_positions_[motor_name] = fb->position;
                             buffer_->write_feedback(motor_name, FeedbackEntry{

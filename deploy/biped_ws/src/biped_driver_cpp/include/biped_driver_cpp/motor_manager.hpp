@@ -105,6 +105,8 @@ public:
                                 double velocity = 0.0, double torque_ff = 0.0,
                                 std::optional<double> actual_pos = std::nullopt);
 
+    int pump_rx();
+    std::optional<MotorFeedback> get_latest_feedback(const std::string& name);
     std::optional<MotorFeedback> read_feedback(const std::string& name,
                                                 double timeout = 0.005);
 
