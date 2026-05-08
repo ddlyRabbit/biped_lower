@@ -249,7 +249,7 @@ private:
             }
 
             // ── Phase 2: Read all feedback ───────────────────────
-            mgr_.buses().at(bus_name_)->pump_rx(0.005);
+            mgr_.buses().at(bus_name_)->pump_rx(0.003);
             for (auto& name : normal_motors_) {
                 try {
                     auto fb = mgr_.get_latest_feedback(name);

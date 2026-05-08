@@ -287,7 +287,7 @@ BipedMotorManager::get_ankle_pair(const std::string& name) const {
 int BipedMotorManager::pump_rx() {
     int count = 0;
     for (auto& [_, bus] : buses_) {
-        count += bus->pump_rx(0.002);
+        count += bus->pump_rx(0.003);
     }
     return count;
 }

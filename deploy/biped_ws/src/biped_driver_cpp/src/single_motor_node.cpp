@@ -277,7 +277,7 @@ private:
             bus_->write_operation_frame(motor_name, fb_pos.load(), 0.0, 0.0, 0.0, 0.0);
         }
 
-        bus_->pump_rx(0.001);
+        bus_->pump_rx(0.003);
         auto fb_opt = bus_->get_latest_feedback(motor_name);
         if (fb_opt) {
             auto fb = fb_opt.value();
