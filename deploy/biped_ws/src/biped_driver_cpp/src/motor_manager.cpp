@@ -282,7 +282,7 @@ BipedMotorManager::get_ankle_pair(const std::string& name) const {
     return std::nullopt;
 }
 
-}  // namespace biped_driver_cpp
+
 
 int BipedMotorManager::pump_rx() {
     int count = 0;
@@ -295,3 +295,4 @@ int BipedMotorManager::pump_rx() {
 std::optional<MotorFeedback> BipedMotorManager::get_latest_feedback(const std::string& name) {
     return bus_for(name).get_latest_feedback(name);
 }
+} // namespace biped_driver_cpp
