@@ -425,7 +425,7 @@ void RobstrideBus::enable_and_set_mit_all() {
     }
 }
 
-}  // namespace biped_driver_cpp
+
 
 std::optional<MotorFeedback> RobstrideBus::get_latest_feedback(const std::string& name) {
     auto it = latest_feedback_.find(name);
@@ -500,3 +500,4 @@ int RobstrideBus::pump_rx(double timeout_sec) {
     }
     return count;
 }
+}  // namespace biped_driver_cpp
