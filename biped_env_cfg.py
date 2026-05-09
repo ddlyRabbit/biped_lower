@@ -8,7 +8,7 @@
 #   PPO:          [128,128,128], init_noise_std=1.0, entropy_coef=0.005
 #   OBSERVATIONS: base_lin_vel in policy, per-joint-group noise, obs_dim=48
 #   ACTIONS:      scale=0.5
-#   COMMANDS:     lin_vel_x=(-0.5, 0.8) forward, lin_vel_y=(-0.5, 0.5) lateral
+#   COMMANDS:     lin_vel_x=(-0.625, 1.0) forward, lin_vel_y=(-0.625, 0.625) lateral
 #   TERMINATIONS: base_contact (torso, threshold=1.0), time_out
 #   EVENTS:       All Berkeley events + scale_all_actuator_gains (extra)
 #   DECIMATION:   4 (50 Hz control)
@@ -635,9 +635,9 @@ class CommandsCfg:
         rel_standing_envs=0.02,
         rel_heading_envs=1.0,
         ranges=base_mdp.UniformVelocityCommandCfg.Ranges(
-            lin_vel_x=(-0.5, 0.8),      # forward=+X (biased positive)
-            lin_vel_y=(-0.5, 0.5),      # lateral (small)
-            ang_vel_z=(-1.0, 1.0),
+            lin_vel_x=(-0.625, 1.0),      # forward=+X (biased positive)
+            lin_vel_y=(-0.625, 0.625),      # lateral (small)
+            ang_vel_z=(-1.25, 1.25),
             heading=(-math.pi, math.pi),
         ),
     )
@@ -745,7 +745,7 @@ class RewardsCfg:
         func=base_mdp.joint_torques_l2,
         weight=-1e-05,
     )
-    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.05)
+    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.1)
     feet_air_time = RewTerm(
         func="biped_env_cfg:feet_air_time_adaptive_berkeley",
         weight=10.0,
@@ -755,6 +755,7 @@ class RewardsCfg:
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
             "threshold_min": 0.15,
             "threshold_max": 0.35,
+            "switch_step": 4800,
         },
     )
     feet_slide = RewTerm(
@@ -767,7 +768,7 @@ class RewardsCfg:
     )
     foot_contact_force = RewTerm(
         func="biped_env_cfg:foot_contact_force_l2",
-        weight=-0.02,
+        weight=-0.04,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
             "threshold": 200.0,
@@ -805,7 +806,7 @@ class RewardsCfg:
     )
     joint_deviation_foot = RewTerm(
         func=base_mdp.joint_deviation_l1,
-        weight=-0.05,
+        weight=-0.01,
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_pitch.*", ".*foot_roll.*"]),
         },
@@ -961,7 +962,7 @@ class EventsCfg:
     # --- Interval ---
     push_robot = EventTerm(
         func=base_mdp.push_by_setting_velocity,
-        params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
+        params={"velocity_range": {"x": (-0.3, 0.3), "y": (-0.3, 0.3)}},
         mode="interval",
         interval_range_s=(10.0, 15.0),
     )
@@ -984,7 +985,7 @@ class CurriculumsCfg:
             "term_name": "push_robot",
             "max_velocity": [0.8, 0.8],     # max push 0.8 m/s
             "interval": 200 * 24,
-            "starting_step": 1000 * 24,     # start after 1000 iterations
+            "starting_step": 3000 * 24,     # start after 1000 iterations
         },
     )
     command_vel = CurrTerm(
