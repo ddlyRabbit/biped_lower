@@ -537,45 +537,45 @@ BIPED_CFG = ArticulationCfg(
     actuators={
         "hip_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_roll.*"],
-            effort_limit=50.0, velocity_limit=10.0,
-            stiffness=180.0, damping=6.5, armature=0.01,
+            effort_limit=50.0, velocity_limit=15.0,
+            stiffness=180.0, damping=15.0, armature=0.01,
             friction=0.1,
-            min_delay=5, max_delay=10,
+            min_delay=16, max_delay=30,
         ),
         "hip_yaw": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_yaw.*"],
-            effort_limit=50.0, velocity_limit=10.0,
-            stiffness=180.0, damping=3.0, armature=0.01,
+            effort_limit=50.0, velocity_limit=15.0,
+            stiffness=180.0, damping=15.0, armature=0.01,
             friction=0.1,
-            min_delay=5, max_delay=10,
+            min_delay=16, max_delay=30,
         ),
         "hip_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*hip_pitch.*"],
-            effort_limit=100.0, velocity_limit=10.0,
-            stiffness=180.0, damping=6.5, armature=0.025,
+            effort_limit=100.0, velocity_limit=15.0,
+            stiffness=180.0, damping=20.0, armature=0.025,
             friction=0.1,
-            min_delay=5, max_delay=10,
+            min_delay=16, max_delay=30,
         ),
         "knee": DelayedPDActuatorCfg(
             joint_names_expr=[".*knee.*"],
-            effort_limit=100.0, velocity_limit=10.0,
-            stiffness=180.0, damping=3.0, armature=0.025,
+            effort_limit=100.0, velocity_limit=15.0,
+            stiffness=180.0, damping=10.0, armature=0.3,
             friction=0.1,
-            min_delay=5, max_delay=10,
+            min_delay=16, max_delay=30,
         ),
         "foot_pitch": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_pitch.*"],
-            effort_limit=30.0, velocity_limit=10.0,
-            stiffness=30.0, damping=1.0, armature=0.007,
+            effort_limit=30.0, velocity_limit=15.0,
+            stiffness=30.0, damping=2.8, armature=0.1,
             friction=0.1,
-            min_delay=5, max_delay=10,
+            min_delay=16, max_delay=30,
         ),
         "foot_roll": DelayedPDActuatorCfg(
             joint_names_expr=[".*foot_roll.*"],
-            effort_limit=30.0, velocity_limit=10.0,
-            stiffness=30.0, damping=1.0, armature=0.007,
+            effort_limit=30.0, velocity_limit=15.0,
+            stiffness=30.0, damping=2.8, armature=0.1,
             friction=0.1,
-            min_delay=5, max_delay=10,
+            min_delay=16, max_delay=30,
         ),
     },
 )
@@ -768,10 +768,10 @@ class RewardsCfg:
     )
     foot_contact_force = RewTerm(
         func="biped_env_cfg:foot_contact_force_l2",
-        weight=-0.04,
+        weight=-0.0001,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
-            "threshold": 200.0,
+            "threshold": 300.0,
         },
     )
     undesired_contacts = RewTerm(
@@ -793,8 +793,15 @@ class RewardsCfg:
         weight=-0.01,
         params={
             "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*hip_roll.*", ".*hip_yaw.*", ".*hip_pitch.*"],
+                "robot", joint_names=[".*hip_roll.*", ".*hip_pitch.*"],
             ),
+        },
+    )
+    joint_deviation_hip_yaw = RewTerm(
+        func=base_mdp.joint_deviation_l1,
+        weight=-0.1,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*hip_yaw.*"]),
         },
     )
     joint_deviation_knee = RewTerm(
