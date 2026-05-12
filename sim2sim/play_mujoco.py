@@ -75,13 +75,37 @@ ACTION_SCALE = np.array([
 
 # ─── PD gains (from training config) ────────────────────────────────────────
 def get_kp_mj():
-    # V138: hip/knee Kp=100, foot Kp=30
-    return np.array([100.0 if "foot" not in name else 30.0 for name in mj_actuator_names], dtype=np.float32)
+    return np.array([180.0 if "foot" not in name else 30.0 for name in mj_actuator_names], dtype=np.float32)
+
 def get_kd_mj():
-    # V138: hip/knee Kd=3.0, foot Kd=1.0
-    return np.array([3.0 if "foot" not in name else 1.0 for name in mj_actuator_names], dtype=np.float32)
+    kd = []
+    for name in mj_actuator_names:
+        if "foot" in name:
+            kd.append(2.8)
+        elif "knee" in name:
+            kd.append(10.0)
+        elif "hip_pitch" in name:
+            kd.append(20.0)
+        elif "hip_roll" in name or "hip_yaw" in name:
+            kd.append(15.0)
+        else:
+            kd.append(3.0)
+    return np.array(kd, dtype=np.float32)
+
 def get_friction_mj():
-    return np.array([0.5 if "pitch" in name or "knee" in name else (0.375 if "roll" in name or "yaw" in name else 0.25) for name in mj_actuator_names], dtype=np.float32)
+    return np.array([0.1 for _ in mj_actuator_names], dtype=np.float32)
+
+def get_effort_mj():
+    eff = []
+    for name in mj_actuator_names:
+        if "foot" in name:
+            eff.append(30.0)
+        elif "hip_roll" in name or "hip_yaw" in name:
+            eff.append(50.0)
+        else:
+            eff.append(100.0)
+    return np.array(eff, dtype=np.float32)
+
 
 BASE_HEIGHT = 0.802
 
@@ -184,6 +208,30 @@ def main():
     global mj_actuator_names, ISAAC_TO_MJ_MAP
     mj_actuator_names = [mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, i) for i in range(model.nu)]
     print(f"[INFO] Actuators: {mj_actuator_names}")
+
+    # Set accurate armature (rotor inertia) matching training config
+    for i, name in enumerate(mj_actuator_names):
+        dof_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
+        if "foot" in name:
+            model.dof_armature[model.jnt_dofadr[dof_id]] = 0.1
+        elif "knee" in name:
+            model.dof_armature[model.jnt_dofadr[dof_id]] = 0.3
+        elif "hip_pitch" in name:
+            model.dof_armature[model.jnt_dofadr[dof_id]] = 0.025
+        elif "hip_roll" in name or "hip_yaw" in name:
+            model.dof_armature[model.jnt_dofadr[dof_id]] = 0.01
+
+    print("\n[INFO] Validating applied properties (Actuator Order):")
+    kd_vals = get_kd_mj()
+    kp_vals = get_kp_mj()
+    fric_vals = get_friction_mj()
+    eff_vals = get_effort_mj()
+    for i, name in enumerate(mj_actuator_names):
+        dof_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
+        arm_val = model.dof_armature[model.jnt_dofadr[dof_id]]
+        print(f"{name:20s} | Arm: {arm_val:.3f} | KP: {kp_vals[i]:.0f} | KD: {kd_vals[i]:.1f} | Fric: {fric_vals[i]:.2f} | MaxTorque: {eff_vals[i]:.0f}")
+    print("\n")
+
     ISAAC_TO_MJ_MAP = build_isaac_to_mj_mapping()
     print(f"[INFO] Isaac->MuJoCo mapping:")
     for isaac_name, mj_i in sorted(ISAAC_TO_MJ_MAP.items(), key=lambda x: x[1]):
@@ -319,7 +367,7 @@ def main():
                 torques = get_kp_mj() * (delayed_targets_mj - jp) + get_kd_mj() * (0.0 - jv)
                 friction_torque = -get_friction_mj() * np.sign(jv)
                 torques = torques + friction_torque
-                torques = np.clip(torques, -100.0, 100.0)
+                torques = np.clip(torques, -get_effort_mj(), get_effort_mj())
                 data.ctrl[actuator_idx] = torques
                 mujoco.mj_step(model, data)
 
