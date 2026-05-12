@@ -872,7 +872,7 @@ class EventsCfg:
         func=base_mdp.randomize_rigid_body_mass,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "mass_distribution_params": (1.0, 1.2),
+            "mass_distribution_params": (0.9, 1.1),
             "operation": "scale",
         },
         mode="startup",
@@ -901,7 +901,7 @@ class EventsCfg:
         func=base_mdp.randomize_joint_parameters,
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
-            "armature_distribution_params": (1.0, 1.05),
+            "armature_distribution_params": (0.9, 1.1),
             "operation": "scale",
         },
         mode="startup",
