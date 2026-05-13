@@ -120,31 +120,34 @@ def quat_rotate_inverse(q, v):
     return a - b + c
 
 
-def build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, obs_dim=45):
-    """Build 45d observation vector matching Isaac training order."""
+def build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, imu_data=None, proprio_data=None, obs_dim=45):
+    """Build observation vector matching Isaac training order."""
     obs = np.zeros(obs_dim, dtype=np.float32)
     offset = 0
-    # Projected gravity from orientation sensor
-    quat_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SENSOR, "orientation")
-    quat_adr = model.sensor_adr[quat_id]
-    base_quat = data.sensordata[quat_adr:quat_adr + 4].copy()  # w, x, y, z
+
+    if imu_data is not None:
+        base_quat, ang_vel, lin_vel_world = imu_data
+    else:
+        quat_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SENSOR, "orientation")
+        quat_adr = model.sensor_adr[quat_id]
+        base_quat = data.sensordata[quat_adr:quat_adr + 4].copy()
+
+        gyro_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SENSOR, "angular-velocity")
+        gyro_adr = model.sensor_adr[gyro_id]
+        ang_vel = data.sensordata[gyro_adr:gyro_adr + 3].copy()
+
+        lin_vel_world = data.qvel[0:3].copy()
 
     if obs_dim == 48:
         # [0-2] base linear velocity (body frame)
-        # data.qvel[0:3] is in world frame. We must rotate it to body frame using inverse base_quat
-        lin_vel_world = data.qvel[0:3].copy()
         lin_vel_body = quat_rotate_inverse(base_quat, lin_vel_world)
         obs[0:3] = lin_vel_body
         offset = 3
 
-    # Base angular velocity from gyro sensor
-    gyro_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SENSOR, "angular-velocity")
-    gyro_adr = model.sensor_adr[gyro_id]
-    ang_vel = data.sensordata[gyro_adr:gyro_adr + 3].copy()
-
     # Projected gravity
     gravity_world = np.array([0.0, 0.0, -1.0])
     proj_gravity = quat_rotate_inverse(base_quat, gravity_world)
+
 
     # [0-2] base angular velocity
     obs[offset:offset+3] = ang_vel
@@ -156,8 +159,11 @@ def build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, obs_dim
     obs[offset+6:offset+9] = cmd_vel
 
     # Joint positions (relative to default) — need Isaac name mapping
-    joint_pos_mj = data.qpos[qp_idx]
-    joint_vel_mj = data.qvel[qv_idx]
+    if proprio_data is not None:
+        joint_pos_mj, joint_vel_mj = proprio_data
+    else:
+        joint_pos_mj = data.qpos[qp_idx].copy()
+        joint_vel_mj = data.qvel[qv_idx].copy()
 
     # Build name→value dicts
     # Build pos and vel mapping by dropping Mujoco CAD suffixes
@@ -190,6 +196,7 @@ def main():
     parser.add_argument("--cmd_wz", type=float, default=0.0)
     parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"])
     parser.add_argument("--latency_ms", type=float, default=0.0, help="Artificial hardware latency in milliseconds")
+    parser.add_argument("--imu_latency_ms", type=float, default=0.0, help="IMU latency in ms")
     args = parser.parse_args()
 
     # Load ONNX model
@@ -315,11 +322,29 @@ def main():
     # 6 policy steps = 6 * 40 physics steps = 240 physics steps max
     # Use default 3 policy steps of delay (midpoint)
     if args.latency_ms > 0:
-        latency_steps = int(args.latency_ms / 1000.0 / PHYSICS_DT)
+        action_latency_steps = int((args.latency_ms / 2.0) / 1000.0 / PHYSICS_DT)
+        proprio_latency_steps = int((args.latency_ms / 2.0) / 1000.0 / PHYSICS_DT)
     else:
-        # Default: 3 policy steps of delay (matches midpoint of training 0-6)
-        latency_steps = 3 * SUBSTEPS
-    target_buffer = collections.deque([DEFAULT_POS_MJ.copy() for _ in range(latency_steps + 1)], maxlen=latency_steps + 1)
+        action_latency_steps = 3 * SUBSTEPS // 2
+        proprio_latency_steps = 3 * SUBSTEPS // 2
+
+    target_buffer = collections.deque([DEFAULT_POS_MJ.copy() for _ in range(action_latency_steps + 1)], maxlen=action_latency_steps + 1)
+    proprio_buffer = collections.deque(maxlen=proprio_latency_steps + 1)
+
+    if args.imu_latency_ms > 0:
+        imu_latency_steps = int(args.imu_latency_ms / 1000.0 / PHYSICS_DT)
+    else:
+        imu_latency_steps = 0
+    # Store tuples of (quat, ang_vel, lin_vel_world)
+    imu_buffer = collections.deque(maxlen=imu_latency_steps + 1)
+
+
+    print(f"\n[INFO] Delay Configuration:")
+    print(f"  Physics DT   : {PHYSICS_DT*1000:.2f} ms")
+    print(f"  Policy DT    : {POLICY_DT*1000:.2f} ms ({SUBSTEPS} substeps)")
+    print(f"  Action Lat   : {args.latency_ms/2.0} ms -> {action_latency_steps} physics steps (Buffer len: {target_buffer.maxlen})")
+    print(f"  Proprio Lat  : {args.latency_ms/2.0} ms -> {proprio_latency_steps} physics steps (Buffer len: {proprio_buffer.maxlen})")
+    print(f"  IMU Latency  : {args.imu_latency_ms} ms -> {imu_latency_steps} physics steps (Buffer len: {imu_buffer.maxlen})\n")
 
     csv_writer = None
     if args.video:
@@ -330,13 +355,34 @@ def main():
         header = ['time'] + [f'cmd_{j}' for j in MASTER_JOINT_ORDER] + [f'pos_{j}' for j in MASTER_JOINT_ORDER] + [f'act_{j}' for j in MASTER_JOINT_ORDER]
         csv_writer.writerow(header)
 
+    # Initialize IMU buffer
+    mujoco.mj_step(model, data)  # one step to populate sensors
+    quat_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SENSOR, "orientation")
+    quat_adr = model.sensor_adr[quat_id]
+    gyro_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SENSOR, "angular-velocity")
+    gyro_adr = model.sensor_adr[gyro_id]
+    
+    init_imu = (
+        data.sensordata[quat_adr:quat_adr + 4].copy(),
+        data.sensordata[gyro_adr:gyro_adr + 3].copy(),
+        data.qvel[0:3].copy()
+    )
+    for _ in range(imu_buffer.maxlen):
+        imu_buffer.append(init_imu)
+    delayed_imu = imu_buffer[0]
+
+    init_proprio = (data.qpos[qp_idx].copy(), data.qvel[qv_idx].copy())
+    for _ in range(proprio_buffer.maxlen):
+        proprio_buffer.append(init_proprio)
+    delayed_proprio = proprio_buffer[0]
+
     step = 0
     try:
         while playing and (args.duration == float('inf') or step < int(args.duration / POLICY_DT)):
             t0 = time.perf_counter()
 
             # Build observation
-            obs = build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, obs_dim=obs_dim)
+            obs = build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, imu_data=delayed_imu, proprio_data=delayed_proprio, obs_dim=obs_dim)
 
             # Run policy
             actions_isaac = policy.run(None, {input_name: obs.reshape(1, -1)})[0][0]
@@ -357,11 +403,31 @@ def main():
                 isaac_i = MASTER_JOINT_ORDER.index(isaac_name)
                 targets_mj[mj_i] = targets_isaac[isaac_i]
             
+            # Update IMU buffer at physics rate
+            quat_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SENSOR, "orientation")
+            quat_adr = model.sensor_adr[quat_id]
+            current_quat = data.sensordata[quat_adr:quat_adr + 4].copy()
+            gyro_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SENSOR, "angular-velocity")
+            gyro_adr = model.sensor_adr[gyro_id]
+            current_gyro = data.sensordata[gyro_adr:gyro_adr + 3].copy()
+            current_lin_vel = data.qvel[0:3].copy()
+            
+
             # Step physics at 2000Hz
             for _ in range(SUBSTEPS):
                 target_buffer.append(targets_mj.copy())
                 delayed_targets_mj = target_buffer[0]
                 
+                # Push newest IMU
+                imu_buffer.append((
+                    data.sensordata[quat_adr:quat_adr + 4].copy(),
+                    data.sensordata[gyro_adr:gyro_adr + 3].copy(),
+                    data.qvel[0:3].copy()
+                ))
+
+                # Push newest Proprioception
+                proprio_buffer.append((data.qpos[qp_idx].copy(), data.qvel[qv_idx].copy()))
+
                 jp = data.qpos[qp_idx]
                 jv = data.qvel[qv_idx]
                 torques = get_kp_mj() * (delayed_targets_mj - jp) + get_kd_mj() * (0.0 - jv)
@@ -370,6 +436,10 @@ def main():
                 torques = np.clip(torques, -get_effort_mj(), get_effort_mj())
                 data.ctrl[actuator_idx] = torques
                 mujoco.mj_step(model, data)
+                
+            delayed_imu = imu_buffer[0]
+            delayed_proprio = proprio_buffer[0]
+
 
             if csv_writer is not None:
                 mj_pos_by_isaac = [data.qpos[qp_idx][ISAAC_TO_MJ_MAP[name]] for name in MASTER_JOINT_ORDER]
