@@ -197,6 +197,9 @@ def main():
     parser.add_argument("--urdf", type=str, default="heavy", choices=["heavy", "light"])
     parser.add_argument("--latency_ms", type=float, default=0.0, help="Artificial hardware latency in milliseconds")
     parser.add_argument("--imu_latency_ms", type=float, default=0.0, help="IMU latency in ms")
+    parser.add_argument("--push_time", type=float, default=-1.0, help="Time to apply push (s)")
+    parser.add_argument("--push_duration", type=float, default=0.2, help="Duration of push (s)")
+    parser.add_argument("--push_force", type=float, nargs=3, default=[0.0, 0.0, 0.0], help="Push force vector [Fx, Fy, Fz] in Newtons")
     args = parser.parse_args()
 
     # Load ONNX model
@@ -215,6 +218,18 @@ def main():
     global mj_actuator_names, ISAAC_TO_MJ_MAP
     mj_actuator_names = [mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, i) for i in range(model.nu)]
     print(f"[INFO] Actuators: {mj_actuator_names}")
+
+    # Set accurate armature (rotor inertia) matching training config
+    for i, name in enumerate(mj_actuator_names):
+        dof_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
+        if "foot" in name:
+            model.dof_armature[model.jnt_dofadr[dof_id]] = 0.1
+        elif "knee" in name:
+            model.dof_armature[model.jnt_dofadr[dof_id]] = 0.3
+        elif "hip_pitch" in name:
+            model.dof_armature[model.jnt_dofadr[dof_id]] = 0.025
+        elif "hip_roll" in name or "hip_yaw" in name:
+            model.dof_armature[model.jnt_dofadr[dof_id]] = 0.01
 
     # Set accurate armature (rotor inertia) matching training config
     for i, name in enumerate(mj_actuator_names):
@@ -413,8 +428,25 @@ def main():
             current_lin_vel = data.qvel[0:3].copy()
             
 
+            # Find root body ID for push
+            root_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "root")
+            push_active = False
+
             # Step physics at 2000Hz
             for _ in range(SUBSTEPS):
+                # Handle Push
+                current_time = data.time
+                if args.push_time > 0 and args.push_time <= current_time <= (args.push_time + args.push_duration):
+                    data.xfrc_applied[root_id][:3] = args.push_force
+                    if not push_active:
+                        print(f"[{current_time:.2f}s] [INFO] Applying push force: {args.push_force} N")
+                        push_active = True
+                else:
+                    data.xfrc_applied[root_id][:3] = [0.0, 0.0, 0.0]
+                    if push_active:
+                        print(f"[{current_time:.2f}s] [INFO] Push ended.")
+                        push_active = False
+
                 target_buffer.append(targets_mj.copy())
                 delayed_targets_mj = target_buffer[0]
                 
