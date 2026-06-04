@@ -369,11 +369,18 @@ class CalibrateNode(Node):
                 else:
                     cal['offset'] = round(float(mn - cmd_lo), 4)
             else:
+                existing_dir = existing_cal.get(name, {}).get('direction', 1)
                 if urdf:
-                    offset = mn - urdf[0]
+                    if existing_dir == -1:
+                        offset = mx + urdf[0]
+                    else:
+                        offset = mn - urdf[0]
                     cal['offset'] = round(float(offset), 4)
                 else:
-                    cal['offset'] = round(float(mn), 4)
+                    if existing_dir == -1:
+                        cal['offset'] = round(float(mx), 4)
+                    else:
+                        cal['offset'] = round(float(mn), 4)
 
 
 
