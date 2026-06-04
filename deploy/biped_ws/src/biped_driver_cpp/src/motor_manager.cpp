@@ -125,7 +125,7 @@ BipedMotorManager build_manager_from_yaml(
                 direction = cal["direction"] ? cal["direction"].as<int>() : 1;
 
                 if (direction == -1 && !ankle) {
-                    offset = m_max + urdf_lo;
+                    offset = cal["offset"] ? cal["offset"].as<double>() : 0.0;
                 } else {
                     offset = cal["offset"] ? cal["offset"].as<double>() : 0.0;
                 }
