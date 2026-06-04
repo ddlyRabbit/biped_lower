@@ -253,7 +253,11 @@ std::optional<MotorFeedback> RobstrideBus::receive_feedback(
             direction = cal_it->second.direction;
             homing_offset = cal_it->second.homing_offset;
         }
-        position = (position - homing_offset) * direction;
+        if (direction == -1) {
+            position = -(position - homing_offset);
+        } else {
+            position = position - homing_offset;
+        }
         velocity = velocity * direction;
         torque = torque * direction;
 
@@ -343,7 +347,12 @@ void RobstrideBus::write_operation_frame(
         direction = cal_it->second.direction;
         homing_offset = cal_it->second.homing_offset;
     }
-    double pos = position * direction + homing_offset;
+    double pos = 0.0;
+    if (direction == -1) {
+        pos = homing_offset - position;
+    } else {
+        pos = position + homing_offset;
+    }
     double vel = velocity * direction;
     double trq = torque * direction;
 
@@ -489,7 +498,11 @@ int RobstrideBus::pump_rx(double timeout_sec) {
         }
 
         MotorFeedback fb;
-        fb.position    = (position * direction) - homing_offset;
+        if (direction == -1) {
+            fb.position = -(position - homing_offset);
+        } else {
+            fb.position = position - homing_offset;
+        }
         fb.velocity    = velocity * direction;
         fb.torque      = torque * direction;
         fb.temperature = temperature;
