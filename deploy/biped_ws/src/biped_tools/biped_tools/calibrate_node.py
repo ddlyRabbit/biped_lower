@@ -355,17 +355,23 @@ class CalibrateNode(Node):
             is_ankle = name in ANKLE_ALL
 
             if is_ankle:
-                # Ankle offset: depends on motor direction.
-                # dir=+1: pos = encoder - offset → at m_min, pos = cmd_lo
-                #   offset = m_min - cmd_lo
-                # dir=-1: pos = -(encoder - offset) → at m_min, pos = cmd_hi
-                #   offset = m_min + cmd_hi
                 is_upper = name in ANKLE_TOP_MOTORS
                 pitch_sign = -1 if name.startswith("L") else 1
                 cmd_lo, cmd_hi = ankle_motor_theoretical_limits(is_upper, pitch_sign)
                 existing_dir = existing_cal.get(name, {}).get('direction', 1)
+                
+                # If direction is +1: motor encoder moves natively with joint cmd
+                #   pos = (encoder - offset)
+                #   at min joint cmd (cmd_lo), encoder should be motor_min (mn)
+                #   cmd_lo = mn - offset  =>  offset = mn - cmd_lo
+                #
+                # If direction is -1: motor encoder moves opposite to joint cmd
+                #   pos = -(encoder - offset)
+                #   at min joint cmd (cmd_lo), encoder should be at motor_max (mx)
+                #   cmd_lo = -(mx - offset)  =>  -cmd_lo = mx - offset  =>  offset = mx + cmd_lo
+                
                 if existing_dir == -1:
-                    cal['offset'] = round(float(mn + cmd_hi), 4)
+                    cal['offset'] = round(float(mx + cmd_lo), 4)
                 else:
                     cal['offset'] = round(float(mn - cmd_lo), 4)
             else:
