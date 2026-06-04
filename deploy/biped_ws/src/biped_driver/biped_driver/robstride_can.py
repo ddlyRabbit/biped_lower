@@ -246,8 +246,8 @@ class BipedMotorManager:
                     # Limits from calibration (motor command-space)
                     if direction == -1:
                         # pos = -(encoder - offset) = offset - encoder
-                        motor_cmd_lo = -(m_max - offset)
-                        motor_cmd_hi = -(m_min - offset)
+                        motor_cmd_lo = offset - m_max
+                        motor_cmd_hi = offset - m_min
                     else:
                         motor_cmd_lo = m_min - offset
                         motor_cmd_hi = m_max - offset

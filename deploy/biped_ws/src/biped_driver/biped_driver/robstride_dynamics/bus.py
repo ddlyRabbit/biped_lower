@@ -188,7 +188,11 @@ class RobstrideBus:
 
         # Apply calibration
         cal = self.calibration.get(motor_name, {"direction": 1, "homing_offset": 0.0})
-        pos = position * cal["direction"] + cal["homing_offset"]
+        if cal["direction"] == -1:
+            pos = cal["homing_offset"] - position
+        else:
+            pos = position + cal["homing_offset"]
+        
         vel = velocity * cal["direction"]
         trq = torque * cal["direction"]
 
@@ -331,7 +335,11 @@ class RobstrideBus:
 
             # Undo calibration
             cal = self.calibration.get(motor_name, {"direction": 1, "homing_offset": 0.0})
-            position = (position - cal["homing_offset"]) * cal["direction"]
+            if cal["direction"] == -1:
+                position = -(position - cal["homing_offset"])
+            else:
+                position = position - cal["homing_offset"]
+            
             velocity = velocity * cal["direction"]
             torque = torque * cal["direction"]
 
