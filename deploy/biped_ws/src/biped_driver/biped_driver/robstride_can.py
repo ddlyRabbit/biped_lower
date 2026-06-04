@@ -239,9 +239,7 @@ class BipedMotorManager:
                     direction = cal.get("direction", 1)
 
                     if direction == -1 and not is_ankle:
-                        # Inverted encoder: pos = -(encoder - offset)
-                        # offset = motor_max maps encoder_max → 0 (urdf_lower)
-                        offset = m_max + urdf[0]
+                        offset = cal.get("offset", 0.0)
                     else:
                         offset = cal.get("offset", 0.0)
 
