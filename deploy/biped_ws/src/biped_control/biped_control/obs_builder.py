@@ -33,10 +33,6 @@ JOINT_ORDER = ISAAC_JOINT_ORDER
 # Observation group joint order (from biped_env_cfg.py obs config)
 # hip_pos uses regex [".*hip_roll.*", ".*hip_yaw.*", ".*hip_pitch.*"]
 # Isaac resolves to: L_roll, R_roll, L_yaw, R_yaw, L_pitch, R_pitch
-HIP_POS_ORDER = ["L_hip_roll", "R_hip_roll", "L_hip_yaw", "R_hip_yaw", "L_hip_pitch", "R_hip_pitch"]
-KNEE_POS_ORDER = ["L_knee", "R_knee"]
-FOOT_PITCH_ORDER = ["L_foot_pitch", "R_foot_pitch"]
-FOOT_ROLL_ORDER = ["L_foot_roll", "R_foot_roll"]
 
 DEFAULT_POSITIONS = {}
 DEFAULT_GAINS = {}
@@ -107,22 +103,9 @@ class ObsBuilder:
         # [6-8] velocity_commands
         obs[6:9] = cmd_vel
 
-        # [9-14] hip_pos (relative to default)
-        for i, name in enumerate(HIP_POS_ORDER):
+        # [9-20] joint_pos (relative to default)
+        for i, name in enumerate(ISAAC_JOINT_ORDER):
             obs[9 + i] = joint_positions.get(name, 0.0) - DEFAULT_POSITIONS[name]
-
-        # [15-16] knee_pos
-        for i, name in enumerate(KNEE_POS_ORDER):
-            obs[15 + i] = joint_positions.get(name, 0.0) - DEFAULT_POSITIONS[name]
-
-        # [17-18] foot_pitch_pos
-        for i, name in enumerate(FOOT_PITCH_ORDER):
-            obs[17 + i] = joint_positions.get(name, 0.0) - DEFAULT_POSITIONS[name]
-
-        # [19-20] foot_roll_pos
-        for i, name in enumerate(FOOT_ROLL_ORDER):
-            obs[19 + i] = joint_positions.get(name, 0.0) - DEFAULT_POSITIONS[name]
-
         # [21-32] joint_vel (Isaac runtime order)
         for i, name in enumerate(ISAAC_JOINT_ORDER):
             obs[21 + i] = joint_velocities.get(name, 0.0)

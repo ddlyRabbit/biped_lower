@@ -43,33 +43,14 @@ class FlatStudentObservationsCfg:
             func=base_mdp.generated_commands,
             params={"command_name": "base_velocity"},
         )
-        hip_pos = ObsTerm(
+        joint_pos = ObsTerm(
             func=base_mdp.joint_pos_rel,
-            params={
-                "asset_cfg": SceneEntityCfg(
-                    "robot",
-                    joint_names=[".*hip_roll.*", ".*hip_yaw.*", ".*hip_pitch.*"],
-                ),
-            },
-            noise=Unoise(n_min=-0.03, n_max=0.03),
-        )
-        knee_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*knee.*"])},
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST, preserve_order=True)},
             noise=Unoise(n_min=-0.05, n_max=0.05),
-        )
-        foot_pitch_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_pitch.*"])},
-            noise=Unoise(n_min=-0.08, n_max=0.08),
-        )
-        foot_roll_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_roll.*"])},
-            noise=Unoise(n_min=-0.03, n_max=0.03),
         )
         joint_vel = ObsTerm(
             func=base_mdp.joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST, preserve_order=True)},
             noise=Unoise(n_min=-1.5, n_max=1.5),
         )
         actions = ObsTerm(func=base_mdp.last_action)
@@ -97,33 +78,14 @@ class FlatStudentObservationsCfg:
             func=base_mdp.generated_commands,
             params={"command_name": "base_velocity"},
         )
-        hip_pos = ObsTerm(
+        joint_pos = ObsTerm(
             func=base_mdp.joint_pos_rel,
-            params={
-                "asset_cfg": SceneEntityCfg(
-                    "robot",
-                    joint_names=[".*hip_roll.*", ".*hip_yaw.*", ".*hip_pitch.*"],
-                ),
-            },
-            noise=Unoise(n_min=-0.03, n_max=0.03),
-        )
-        knee_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*knee.*"])},
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST, preserve_order=True)},
             noise=Unoise(n_min=-0.05, n_max=0.05),
-        )
-        foot_pitch_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_pitch.*"])},
-            noise=Unoise(n_min=-0.08, n_max=0.08),
-        )
-        foot_roll_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_roll.*"])},
-            noise=Unoise(n_min=-0.03, n_max=0.03),
         )
         joint_vel = ObsTerm(
             func=base_mdp.joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST, preserve_order=True)},
             noise=Unoise(n_min=-1.5, n_max=1.5),
         )
         actions = ObsTerm(func=base_mdp.last_action)
@@ -142,28 +104,16 @@ class FlatStudentObservationsCfg:
             func=base_mdp.generated_commands,
             params={"command_name": "base_velocity"},
         )
-        hip_pos = ObsTerm(
+        joint_pos = ObsTerm(
             func=base_mdp.joint_pos_rel,
-            params={
-                "asset_cfg": SceneEntityCfg(
-                    "robot",
-                    joint_names=[".*hip_roll.*", ".*hip_yaw.*", ".*hip_pitch.*"],
-                ),
-            },
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST, preserve_order=True)},
+            noise=Unoise(n_min=-0.05, n_max=0.05),
         )
-        knee_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*knee.*"])},
+        joint_vel = ObsTerm(
+            func=base_mdp.joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST, preserve_order=True)},
+            noise=Unoise(n_min=-1.5, n_max=1.5),
         )
-        foot_pitch_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_pitch.*"])},
-        )
-        foot_roll_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_roll.*"])},
-        )
-        joint_vel = ObsTerm(func=base_mdp.joint_vel_rel)
         actions = ObsTerm(func=base_mdp.last_action)
 
         def __post_init__(self):
@@ -198,33 +148,14 @@ class RoughStudentObservationsCfg:
             func=base_mdp.generated_commands,
             params={"command_name": "base_velocity"},
         )
-        hip_pos = ObsTerm(
+        joint_pos = ObsTerm(
             func=base_mdp.joint_pos_rel,
-            params={
-                "asset_cfg": SceneEntityCfg(
-                    "robot",
-                    joint_names=[".*hip_roll.*", ".*hip_yaw.*", ".*hip_pitch.*"],
-                ),
-            },
-            noise=Unoise(n_min=-0.03, n_max=0.03),
-        )
-        knee_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*knee.*"])},
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST, preserve_order=True)},
             noise=Unoise(n_min=-0.05, n_max=0.05),
-        )
-        foot_pitch_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_pitch.*"])},
-            noise=Unoise(n_min=-0.08, n_max=0.08),
-        )
-        foot_roll_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_roll.*"])},
-            noise=Unoise(n_min=-0.03, n_max=0.03),
         )
         joint_vel = ObsTerm(
             func=base_mdp.joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST, preserve_order=True)},
             noise=Unoise(n_min=-1.5, n_max=1.5),
         )
         actions = ObsTerm(func=base_mdp.last_action)
@@ -258,33 +189,14 @@ class RoughStudentObservationsCfg:
             func=base_mdp.generated_commands,
             params={"command_name": "base_velocity"},
         )
-        hip_pos = ObsTerm(
+        joint_pos = ObsTerm(
             func=base_mdp.joint_pos_rel,
-            params={
-                "asset_cfg": SceneEntityCfg(
-                    "robot",
-                    joint_names=[".*hip_roll.*", ".*hip_yaw.*", ".*hip_pitch.*"],
-                ),
-            },
-            noise=Unoise(n_min=-0.03, n_max=0.03),
-        )
-        knee_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*knee.*"])},
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST, preserve_order=True)},
             noise=Unoise(n_min=-0.05, n_max=0.05),
-        )
-        foot_pitch_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_pitch.*"])},
-            noise=Unoise(n_min=-0.08, n_max=0.08),
-        )
-        foot_roll_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_roll.*"])},
-            noise=Unoise(n_min=-0.03, n_max=0.03),
         )
         joint_vel = ObsTerm(
             func=base_mdp.joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST, preserve_order=True)},
             noise=Unoise(n_min=-1.5, n_max=1.5),
         )
         actions = ObsTerm(func=base_mdp.last_action)
@@ -309,28 +221,16 @@ class RoughStudentObservationsCfg:
             func=base_mdp.generated_commands,
             params={"command_name": "base_velocity"},
         )
-        hip_pos = ObsTerm(
+        joint_pos = ObsTerm(
             func=base_mdp.joint_pos_rel,
-            params={
-                "asset_cfg": SceneEntityCfg(
-                    "robot",
-                    joint_names=[".*hip_roll.*", ".*hip_yaw.*", ".*hip_pitch.*"],
-                ),
-            },
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST, preserve_order=True)},
+            noise=Unoise(n_min=-0.05, n_max=0.05),
         )
-        knee_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*knee.*"])},
+        joint_vel = ObsTerm(
+            func=base_mdp.joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ISAAC_REGEX_LIST, preserve_order=True)},
+            noise=Unoise(n_min=-1.5, n_max=1.5),
         )
-        foot_pitch_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_pitch.*"])},
-        )
-        foot_roll_pos = ObsTerm(
-            func=base_mdp.joint_pos_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*foot_roll.*"])},
-        )
-        joint_vel = ObsTerm(func=base_mdp.joint_vel_rel)
         actions = ObsTerm(func=base_mdp.last_action)
         height_scan = ObsTerm(
             func=base_mdp.height_scan,
