@@ -745,7 +745,7 @@ class RewardsCfg:
         func=base_mdp.joint_torques_l2,
         weight=-1e-05,
     )
-    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.1)
+    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.5)
     feet_air_time = RewTerm(
         func="biped_env_cfg:feet_air_time_adaptive_berkeley",
         weight=10.0,
@@ -803,6 +803,11 @@ class RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*hip_yaw.*"]),
         },
+    )
+    joint_deviation_hip_roll = RewTerm(
+        func=base_mdp.joint_deviation_l1,
+        weight=-0.1,
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*hip_roll.*"])},
     )
     joint_deviation_knee = RewTerm(
         func=base_mdp.joint_deviation_l1,
@@ -887,6 +892,20 @@ class EventsCfg:
             "operation": "add",
         },
         mode="startup",
+    )
+    add_base_com = EventTerm(
+        func=base_mdp.randomize_rigid_body_com,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot", body_names="assy_formfg___kd_b_102b_torso_btm",
+            ),
+            "com_range": {
+                "x": (-0.04, 0.04),
+                "y": (-0.08, 0.08),
+                "z": (-0.04, 0.04),
+            },
+        },
+        mode="reset",
     )
     add_all_joint_default_pos = EventTerm(
         func="biped_env_cfg:randomize_joint_default_pos",
