@@ -102,6 +102,10 @@ void ObsBuilder::update_last_action(const std::array<float, 12>& action) {
     last_action_ = action;
 }
 
+void ObsBuilder::zero_last_action() {
+    last_action_.fill(0.0f);
+}
+
 std::unordered_map<std::string, double> ObsBuilder::action_to_positions(const std::array<float, 12>& action) {
     std::unordered_map<std::string, double> targets;
     for (size_t i = 0; i < MASTER_JOINT_ORDER.size(); ++i) {

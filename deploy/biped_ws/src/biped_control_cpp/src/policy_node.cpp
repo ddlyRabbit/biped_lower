@@ -193,6 +193,8 @@ private:
             RCLCPP_INFO(get_logger(), "FSM: %s -> %s", fsm_state_.c_str(), new_state.c_str());
             if (new_state == "WALK" || new_state == "SIM_WALK") {
                 walk_start_time_ = now().seconds();
+            } else if (new_state == "STAND" || new_state == "ESTOP" || new_state == "IDLE") {
+                obs_builder_.zero_last_action();
             }
             fsm_state_ = new_state;
         }

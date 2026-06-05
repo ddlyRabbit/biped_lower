@@ -36,6 +36,7 @@ public:
     ) const;
 
     void update_last_action(const std::array<float, 12>& action);
+    void zero_last_action();
 
     static std::unordered_map<std::string, double> action_to_positions(const std::array<float, 12>& action);
 

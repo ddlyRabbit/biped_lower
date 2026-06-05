@@ -119,6 +119,10 @@ class ObsBuilder:
         """Store action for next observation (before scaling)."""
         self._last_action = action.copy()
 
+    def zero_last_action(self):
+        """Reset action history when not walking to prevent stale data."""
+        self._last_action.fill(0.0)
+
     @staticmethod
     def action_to_positions(action: np.ndarray) -> Dict[str, float]:
         """Convert policy output to joint position targets.

@@ -149,6 +149,8 @@ class PolicyNode(Node):
             self.get_logger().info(f'FSM: {self._fsm_state} → {new_state}')
             if new_state in ("WALK", "SIM_WALK"):
                 self._walk_start_time = time.time()
+            elif new_state in ("STAND", "ESTOP", "IDLE"):
+                self._obs_builder.zero_last_action()
             self._fsm_state = new_state
 
     # --- Main loop ---
