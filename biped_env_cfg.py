@@ -745,7 +745,7 @@ class RewardsCfg:
         func=base_mdp.joint_torques_l2,
         weight=-1e-05,
     )
-    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.5)
+    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.3)
     feet_air_time = RewTerm(
         func="biped_env_cfg:feet_air_time_adaptive_berkeley",
         weight=10.0,
@@ -803,11 +803,6 @@ class RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*hip_yaw.*"]),
         },
-    )
-    joint_deviation_hip_roll = RewTerm(
-        func=base_mdp.joint_deviation_l1,
-        weight=-0.1,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*hip_roll.*"])},
     )
     joint_deviation_knee = RewTerm(
         func=base_mdp.joint_deviation_l1,
