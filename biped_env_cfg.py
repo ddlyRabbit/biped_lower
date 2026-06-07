@@ -745,7 +745,7 @@ class RewardsCfg:
         func=base_mdp.joint_torques_l2,
         weight=-1e-05,
     )
-    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.1)
+    action_rate_l2 = RewTerm(func=base_mdp.action_rate_l2, weight=-0.3)
     feet_air_time = RewTerm(
         func="biped_env_cfg:feet_air_time_adaptive_berkeley",
         weight=10.0,
@@ -755,7 +755,7 @@ class RewardsCfg:
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
             "threshold_min": 0.15,
             "threshold_max": 0.35,
-            "switch_step": 7200,  # 300 iters * 24 steps = 7200
+            "switch_step": 14400,  # 600 iters * 24 steps = 14400
         },
     )
     feet_slide = RewTerm(
