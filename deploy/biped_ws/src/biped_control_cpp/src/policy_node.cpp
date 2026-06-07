@@ -112,6 +112,8 @@ public:
     }
 
 private:
+    std::array<float, 12> filtered_actions_ = {0}; // Holds the EMA output
+    const float EMA_ALPHA = 0.3f;                   // EMA smoothing factor
     double rate_, gain_scale_;
     std::unordered_map<std::string, std::pair<double, double>> gains_;
     ObsBuilder obs_builder_;
@@ -189,12 +191,14 @@ private:
         std::string new_state = msg->data;
         for (auto& c : new_state) c = std::toupper(c);
         
-        if (new_state != fsm_state_) {
+                if (new_state != fsm_state_) {
             RCLCPP_INFO(get_logger(), "FSM: %s -> %s", fsm_state_.c_str(), new_state.c_str());
             if (new_state == "WALK" || new_state == "SIM_WALK") {
                 walk_start_time_ = now().seconds();
             } else if (new_state == "STAND" || new_state == "ESTOP" || new_state == "IDLE") {
+                RCLCPP_INFO(get_logger(), "Zeroing action buffers on transition to non-walking state.");
                 obs_builder_.zero_last_action();
+                filtered_actions_.fill(0.0f);
             }
             fsm_state_ = new_state;
         }
@@ -232,20 +236,28 @@ private:
             output_node_names_.data(), 1);
 
         float* out_arr = output_tensors.front().GetTensorMutableData<float>();
-        std::array<float, 12> actions;
+
+        // EMA Filter
         for (int i = 0; i < 12; i++) {
-            actions[i] = std::max(-1.0f, std::min(1.0f, out_arr[i]));
+            float raw_action = std::max(-1.0f, std::min(1.0f, out_arr[i]));
+            filtered_actions_[i] = (EMA_ALPHA * raw_action) + ((1.0f - EMA_ALPHA) * filtered_actions_[i]);
         }
-        RCLCPP_INFO(get_logger(), "[RAW] actions=%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f", actions[0], actions[1], actions[2], actions[3], actions[4], actions[5], actions[6], actions[7], actions[8], actions[9], actions[10], actions[11]);
-        obs_builder_.update_last_action(actions);
+        obs_builder_.update_last_action(filtered_actions_);
 
-        debug_timer_++;
-        int debug_freq = static_cast<int>(rate_) * 10;
-        if (debug_timer_ % debug_freq == 1) {
-            RCLCPP_INFO(get_logger(), "[RAW] cmd_vel=%.2f,%.2f,%.2f", cmd_vel_[0], cmd_vel_[1], cmd_vel_[2]);
+        // --- Action Ramping (1.5s) ---
+        double action_ramp = 1.0;
+        if (walk_start_time_ > 0.0) {
+            double walk_elapsed = now().seconds() - walk_start_time_;
+            action_ramp = std::max(0.0, std::min(1.0, walk_elapsed / 1.5));
         }
 
-        auto targets = ObsBuilder::action_to_positions(actions);
+        // Apply ramp to the filtered actions
+        std::array<float, 12> transitioned_actions;
+        for (int i = 0; i < 12; i++) {
+            transitioned_actions[i] = filtered_actions_[i] * action_ramp;
+        }
+
+        auto targets = ObsBuilder::action_to_positions(transitioned_actions);
 
         biped_msgs::msg::MITCommandArray cmd_msg;
         cmd_msg.header.stamp = now();
@@ -264,8 +276,10 @@ private:
             cmd.joint_name = name;
             cmd.position = targets.at(name);
             cmd.velocity = 0.0;
-            cmd.kp = kp_kd.first * gs * walk_ramp;
-            cmd.kd = kp_kd.second * gs * walk_ramp;
+                        // cmd.kp = kp_kd.first * gs * walk_ramp;  // <-- COMMENTED OUT
+            // cmd.kd = kp_kd.second * gs * walk_ramp;  // <-- COMMENTED OUT
+            cmd.kp = kp_kd.first * gs;                 // <-- USE FULL GAIN
+            cmd.kd = kp_kd.second * gs;                // <-- USE FULL GAIN
             cmd.torque_ff = 0.0;
             cmd_msg.commands.push_back(cmd);
         }
