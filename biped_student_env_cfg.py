@@ -16,7 +16,7 @@ from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from isaaclab.envs import mdp as base_mdp
 
-from biped_env_cfg import BipedFlatEnvCfg
+from biped_env_cfg import BipedFlatEnvCfg, ISAAC_REGEX_LIST
 from biped_rough_env_cfg import BipedRoughEnvCfg
 
 
