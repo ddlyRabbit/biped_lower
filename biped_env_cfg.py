@@ -707,7 +707,7 @@ class ActionsCfg:
         asset_name="robot",
         joint_names=ISAAC_REGEX_LIST,
         scale={
-            ".*hip_yaw.*": 0.5, ".*hip_roll.*": 0.5, ".*hip_pitch.*": 0.5,
+            ".*hip_yaw.*": 0.0, ".*hip_roll.*": 0.5, ".*hip_pitch.*": 0.5,
             ".*knee.*": 0.5, ".*foot_pitch.*": 0.5, ".*foot_roll.*": 0.25,
         },
         preserve_order=True,
@@ -755,7 +755,7 @@ class RewardsCfg:
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
             "threshold_min": 0.15,
             "threshold_max": 0.35,
-            "switch_step": 48,  # 2 iters * 24 steps = 48
+            "switch_step": 7200,  # 300 iters * 24 steps = 7200
         },
     )
     feet_slide = RewTerm(
