@@ -755,7 +755,7 @@ class RewardsCfg:
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
             "threshold_min": 0.15,
             "threshold_max": 0.35,
-            "switch_step": 14400,  # 600 iters * 24 steps = 14400
+            "switch_step": 48,  # 2 iters * 24 steps = 48
         },
     )
     feet_slide = RewTerm(
