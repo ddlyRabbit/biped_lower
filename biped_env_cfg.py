@@ -1004,7 +1004,7 @@ class CurriculumsCfg:
         func=modify_push_force,
         params={
             "term_name": "push_robot",
-            "max_velocity": [0.8, 0.8],     # max push 0.8 m/s
+            "max_velocity": [0.4, 0.4],     # max push 0.4 m/s
             "interval": 200 * 24,
             "starting_step": 3000 * 24,     # start after 1000 iterations
         },
