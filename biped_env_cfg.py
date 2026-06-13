@@ -895,9 +895,9 @@ class EventsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="assy_formfg___kd_b_102b_torso_btm"),
             "com_range": {
-                "x": (-0.02, 0.02),
-                "y": (-0.04, 0.04),
-                "z": (-0.02, 0.02),
+                "x": (-0.03, 0.03),
+                "y": (-0.06, 0.06),
+                "z": (-0.03, 0.03),
             },
         },
         mode="startup",
