@@ -854,14 +854,14 @@ class TerminationsCfg:
 # Events — Berkeley events + push_robot for curriculum
 ###############################################################################
 
-def randomize_com_curriculum(env: "ManagerBasedRLEnv", env_ids: torch.Tensor, asset_cfg: SceneEntityCfg):
+def randomize_com_curriculum(env: "ManagerBasedRLEnv", env_ids: torch.Tensor):
     if env.common_step_counter > (1000 * 24):
         com_range = {"x": (-0.02, 0.02), "y": (-0.04, 0.04), "z": (-0.02, 0.02)}
     else:
         com_range = {"x": (0.0, 0.0), "y": (0.0, 0.0), "z": (0.0, 0.0)}
         
-    if isinstance(asset_cfg, dict):
-        asset_cfg = SceneEntityCfg(**asset_cfg)
+    asset_cfg = SceneEntityCfg("robot", body_names="assy_formfg___kd_b_102b_torso_btm")
+    asset_cfg.resolve(env.scene)
         
     return base_mdp.randomize_rigid_body_com(env, env_ids, asset_cfg, com_range)
 
@@ -901,11 +901,6 @@ class EventsCfg:
     )
     add_base_com = EventTerm(
         func=randomize_com_curriculum,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", body_names="assy_formfg___kd_b_102b_torso_btm",
-            ),
-        },
         mode="reset",
     )
     add_all_joint_default_pos = EventTerm(
