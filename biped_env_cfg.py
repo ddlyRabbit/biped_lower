@@ -854,16 +854,7 @@ class TerminationsCfg:
 # Events — Berkeley events + push_robot for curriculum
 ###############################################################################
 
-def randomize_com_curriculum(env: "ManagerBasedRLEnv", env_ids: torch.Tensor):
-    if env.common_step_counter > (1000 * 24):
-        com_range = {"x": (-0.02, 0.02), "y": (-0.04, 0.04), "z": (-0.02, 0.02)}
-    else:
-        com_range = {"x": (0.0, 0.0), "y": (0.0, 0.0), "z": (0.0, 0.0)}
-        
-    asset_cfg = SceneEntityCfg("robot", body_names="assy_formfg___kd_b_102b_torso_btm")
-    asset_cfg.resolve(env.scene)
-        
-    return base_mdp.randomize_rigid_body_com(env=env, env_ids=env_ids, com_range=com_range, asset_cfg=asset_cfg)
+
 
 @configclass
 class EventsCfg:
@@ -900,8 +891,16 @@ class EventsCfg:
         mode="startup",
     )
     add_base_com = EventTerm(
-        func=randomize_com_curriculum,
-        mode="reset",
+        func=base_mdp.randomize_rigid_body_com,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="assy_formfg___kd_b_102b_torso_btm"),
+            "com_range": {
+                "x": (-0.02, 0.02),
+                "y": (-0.04, 0.04),
+                "z": (-0.02, 0.02),
+            },
+        },
+        mode="startup",
     )
     add_all_joint_default_pos = EventTerm(
         func="biped_env_cfg:randomize_joint_default_pos",
