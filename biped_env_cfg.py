@@ -894,10 +894,14 @@ class EventsCfg:
             "asset_cfg": SceneEntityCfg(
                 "robot", body_names="assy_formfg___kd_b_102b_torso_btm",
             ),
-                        "com_range": {
+            "com_range": lambda env: {
                 "x": (-0.02, 0.02),
                 "y": (-0.04, 0.04),
                 "z": (-0.02, 0.02),
+            } if env.common_step_counter > (1000 * 24) else {
+                "x": (0.0, 0.0),
+                "y": (0.0, 0.0),
+                "z": (0.0, 0.0),
             },
         },
         mode="reset",
