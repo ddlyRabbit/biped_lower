@@ -863,7 +863,7 @@ def randomize_com_curriculum(env: "ManagerBasedRLEnv", env_ids: torch.Tensor):
     asset_cfg = SceneEntityCfg("robot", body_names="assy_formfg___kd_b_102b_torso_btm")
     asset_cfg.resolve(env.scene)
         
-    return base_mdp.randomize_rigid_body_com(env, env_ids, asset_cfg, com_range)
+    return base_mdp.randomize_rigid_body_com(env=env, env_ids=env_ids, com_range=com_range, asset_cfg=asset_cfg)
 
 @configclass
 class EventsCfg:
