@@ -69,7 +69,7 @@ def get_default_pos_mj():
 
 # ─── Action scaling ──────────────────────────────────────────────────────────
 ACTION_SCALE = np.array([
-    0.25 if name.endswith("foot_roll") else 0.5
+    0.0 if "hip_yaw" in name else (0.25 if name.endswith("foot_roll") else 0.5)
     for name in MASTER_JOINT_ORDER
 ], dtype=np.float32)
 
@@ -200,6 +200,8 @@ def main():
     parser.add_argument("--push_time", type=float, default=-1.0, help="Time to apply push (s)")
     parser.add_argument("--push_duration", type=float, default=0.2, help="Duration of push (s)")
     parser.add_argument("--push_force", type=float, nargs=3, default=[0.0, 0.0, 0.0], help="Push force vector [Fx, Fy, Fz] in Newtons")
+    parser.add_argument("--use_ema_filter", action="store_true", help="Enable EMA filter on policy actions")
+    parser.add_argument("--ema_alpha", type=float, default=0.3, help="EMA filter alpha value")
     args = parser.parse_args()
 
     # Load ONNX model
@@ -282,6 +284,7 @@ def main():
 
     cmd_vel = np.array([args.cmd_vx, args.cmd_vy, args.cmd_wz], dtype=np.float32)
     last_action = np.zeros(12, dtype=np.float32)
+    filtered_actions = np.zeros(12, dtype=np.float32)
 
     def key_callback(keycode):
         nonlocal playing
@@ -400,9 +403,18 @@ def main():
             obs = build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, imu_data=delayed_imu, proprio_data=delayed_proprio, obs_dim=obs_dim)
 
             # Run policy
-            actions_isaac = policy.run(None, {input_name: obs.reshape(1, -1)})[0][0]
-            actions_isaac = np.clip(actions_isaac, -10.0, 10.0)
-            last_action = actions_isaac.copy()
+            raw_actions_isaac = policy.run(None, {input_name: obs.reshape(1, -1)})[0][0]
+
+            if args.use_ema_filter:
+                # Apply the same logic as the C++ deployment node
+                clipped_actions = np.clip(raw_actions_isaac, -1.0, 1.0)
+                filtered_actions = (args.ema_alpha * clipped_actions) + ((1.0 - args.ema_alpha) * filtered_actions)
+                actions_isaac = filtered_actions
+            else:
+                # Keep original MuJoCo behavior
+                actions_isaac = np.clip(raw_actions_isaac, -10.0, 10.0)
+
+            last_action = actions_isaac.copy() # for next observation
 
             # Convert to joint targets (Isaac order)
             # Network outputs action directly in MASTER_JOINT_ORDER
