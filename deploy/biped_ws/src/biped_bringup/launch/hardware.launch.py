@@ -28,6 +28,28 @@ def _make_safety_node(context):
         parameters=[{
             'max_pitch_deg': LaunchConfiguration('max_pitch_deg'),
             'max_roll_deg': LaunchConfiguration('max_roll_deg'),
+            'control_params_file': LaunchConfiguration('control_params_file').perform(context),
+        }],
+    )]
+
+
+def _make_can_driver_node(context):
+    """Select CAN driver package based on can_driver arg (same as bringup.launch.py)."""
+    driver = LaunchConfiguration('can_driver').perform(context)
+    if driver == 'can_bus_node_cpp':
+        pkg = 'biped_driver_cpp'
+        exe = 'can_bus_node_cpp'
+    else:
+        pkg = 'biped_driver'
+        exe = driver
+    return [Node(
+        package=pkg, executable=exe,
+        name=exe, output='screen',
+        parameters=[{
+            'robot_config': LaunchConfiguration('robot_config').perform(context),
+            'calibration_file': LaunchConfiguration('calibration_file').perform(context),
+            'loop_rate': 50.0,
+            'publish_rate': 200.0,
         }],
     )]
 
@@ -45,7 +67,12 @@ def _make_imu_node(context):
         return [Node(
             package='biped_driver_cpp', executable='imu_node',
             name='imu_node', output='screen',
-            parameters=[{'rate_hz': 200.0, 'i2c_bus': 1, 'i2c_address': 75, 'reset_pin': 4}],
+            parameters=[{
+                'rate_hz': 200.0, 'i2c_bus': 1, 'i2c_address': 75, 'reset_pin': 4,
+                'imu_filter_enable': LaunchConfiguration('imu_filter').perform(context) == 'true',
+                'imu_gyro_cutoff_hz': float(LaunchConfiguration('imu_gyro_cutoff_hz').perform(context)),
+                'imu_gravity_cutoff_hz': float(LaunchConfiguration('imu_gravity_cutoff_hz').perform(context)),
+            }],
         )]
     else:  # bno085 (default)
         return [Node(
@@ -73,6 +100,17 @@ def generate_launch_description():
         DeclareLaunchArgument('max_roll_deg', default_value='85.0'),
         DeclareLaunchArgument('control_driver', default_value='biped_control',
                               description='Control package: biped_control | biped_control_cpp'),
+        DeclareLaunchArgument('can_driver', default_value='can_bus_node',
+                              description='CAN driver: can_bus_node (Python) | can_bus_node_cpp (C++)'),
+        DeclareLaunchArgument('control_params_file',
+                              default_value=os.path.join(bringup_dir, 'config', 'control_params.yaml'),
+                              description='Default positions / PD gains / joint limits YAML'),
+        DeclareLaunchArgument('imu_filter', default_value='false',
+                              description='Enable Butterworth low-pass on IMU gyro/gravity (C++ nodes)'),
+        DeclareLaunchArgument('imu_gyro_cutoff_hz', default_value='40.0',
+                              description='Gyro low-pass cutoff (Hz), applied at IMU report rate'),
+        DeclareLaunchArgument('imu_gravity_cutoff_hz', default_value='40.0',
+                              description='Gravity low-pass cutoff (Hz), applied at IMU report rate'),
 
         # Robot description
         Node(
@@ -84,16 +122,8 @@ def generate_launch_description():
         # IMU — selected by imu_type arg (bno085 default, im10a for USB IMU)
         OpaqueFunction(function=_make_imu_node),
 
-        # CAN bus
-        Node(
-            package='biped_driver', executable='can_bus_node',
-            name='can_bus_node', output='screen',
-            parameters=[{
-                'robot_config': LaunchConfiguration('robot_config'),
-                'calibration_file': LaunchConfiguration('calibration_file'),
-                'loop_rate': 50.0,
-            }],
-        ),
+        # CAN bus — selected by can_driver arg (can_bus_node default, can_bus_node_cpp for C++)
+        OpaqueFunction(function=_make_can_driver_node),
 
         # Safety
         OpaqueFunction(function=_make_safety_node),

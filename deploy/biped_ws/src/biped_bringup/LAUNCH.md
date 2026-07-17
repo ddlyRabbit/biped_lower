@@ -8,6 +8,12 @@ Everything needed to walk + automatic rosbag recording.
 
 **Nodes:** robot_state_publisher → imu_node → can_bus_node → safety_node → state_machine_node → policy_node + rosbag recorder
 
+With `unified:=true`, the imu / can / policy nodes are replaced by a single
+`biped_unified_cpp/unified_node` process (lowest latency, CPU-pinned);
+safety_node and state_machine_node still run standalone. Python vs C++
+variants of the standalone nodes are selected via `can_driver`,
+`control_driver`, and `imu_type`.
+
 Records MCAP bags to `~/biped_lower/bags/<timestamp>/` on every run. Open `.mcap` files directly in Foxglove Studio for playback.
 
 ```bash
@@ -19,8 +25,13 @@ ros2 launch biped_bringup bringup.launch.py calibration_file:=calibration.yaml
 
 | Param | Default | Description |
 |---|---|---|
+| `unified` | `false` | `true` = single-process C++ node for IMU+CAN+Policy |
+| `can_driver` | `can_bus_node` | `can_bus_node_cpp` (C++, recommended) or `can_bus_node` (Python) |
+| `control_driver` | `biped_control` | `biped_control_cpp` (C++) or `biped_control` (Python) |
+| `imu_type` | `bno085` | `bno085` / `bno085_cpp` / `im10a` / `im10a_cpp` |
 | `robot_config` | `config/robot.yaml` | Motor → CAN bus mapping |
 | `calibration_file` | _(none)_ | Joint offset calibration |
+| `control_params_file` | `config/control_params.yaml` | Default pos / PD gains / joint limits |
 | `onnx_model` | `student_flat.onnx` | Policy model file |
 | `gain_scale` | `1.0` | PD gain multiplier (use 0.3 for testing) |
 | `max_pitch_deg` | `85.0` | Safety pitch limit |
@@ -59,13 +70,19 @@ IMU + motors + safety, no policy or state machine. Use for hardware checkout bef
 
 ```bash
 ros2 launch biped_bringup hardware.launch.py
-ros2 launch biped_bringup hardware.launch.py calibration_file:=calibration.yaml
+ros2 launch biped_bringup hardware.launch.py \
+  can_driver:=can_bus_node_cpp control_driver:=biped_control_cpp \
+  imu_type:=bno085_cpp calibration_file:=calibration.yaml
 ```
 
 | Param | Default | Description |
 |---|---|---|
+| `can_driver` | `can_bus_node` | `can_bus_node_cpp` (C++, recommended) or `can_bus_node` (Python) |
+| `control_driver` | `biped_control` | Selects safety node variant (`biped_control_cpp` = C++) |
+| `imu_type` | `bno085` | `bno085` / `bno085_cpp` / `im10a` |
 | `robot_config` | `config/robot.yaml` | Motor → CAN bus mapping |
 | `calibration_file` | _(none)_ | Joint offset calibration |
+| `control_params_file` | `config/control_params.yaml` | Default pos / PD gains / joint limits |
 | `max_pitch_deg` | `85.0` | Safety pitch limit |
 | `max_roll_deg` | `85.0` | Safety roll limit |
 

@@ -181,7 +181,41 @@ ros2 launch biped_bringup bringup.launch.py \
 | `onnx_model` | Student policy ONNX | `student_flat.onnx` | Absolute path to `.onnx` file |
 | `gain_scale` | PD gain multiplier | `1.0` | `0.1`–`1.0` (start low!) |
 | `trajectory_file` | CSV for PLAY_TRAJ | `""` (empty) | Absolute path |
-| `record` | Enable rosbag recording | `false` | `true` / `false` |
+| `record` | Enable rosbag recording (MCAP) | `true` | `true` / `false` |
+| `imu_filter` | Butterworth low-pass on IMU gyro/gravity (C++ nodes) | `false` | `true` / `false` |
+| `imu_gyro_cutoff_hz` | Gyro cutoff, applied at 200 Hz report rate | `40.0` | `30`–`40` typical |
+| `imu_gravity_cutoff_hz` | Gravity cutoff, applied at 200 Hz report rate | `40.0` | `30`–`40` typical |
+
+### Recommended Configurations (C++)
+
+> The Python nodes are legacy — always select the C++ variants explicitly
+> (launch defaults still point to Python for compatibility).
+
+**Preferred: C++ individual nodes (RPi 5):**
+```bash
+ros2 launch biped_bringup bringup.launch.py \
+  can_driver:=can_bus_node_cpp \
+  control_driver:=biped_control_cpp \
+  imu_type:=bno085_cpp \
+  robot_config:=robot.yaml \
+  calibration_file:=calibration.yaml \
+  onnx_model:=~/biped_lower/deploy/v155_student_light_6800.onnx \
+  gain_scale:=0.3
+```
+
+**Lowest latency: unified node** (single C++ process for IMU + CAN + policy;
+state machine + safety still run standalone, so `control_driver:=biped_control_cpp`
+still applies to them):
+```bash
+ros2 launch biped_bringup bringup.launch.py \
+  unified:=true \
+  control_driver:=biped_control_cpp \
+  imu_type:=bno085_cpp \
+  robot_config:=robot.yaml \
+  calibration_file:=calibration.yaml \
+  onnx_model:=~/biped_lower/deploy/v155_student_light_6800.onnx \
+  gain_scale:=0.3
+```
 
 ### Platform-Specific Examples
 
@@ -189,10 +223,11 @@ ros2 launch biped_bringup bringup.launch.py \
 ```bash
 ros2 launch biped_bringup bringup.launch.py \
   can_driver:=can_bus_node_cpp \
+  control_driver:=biped_control_cpp \
   robot_config:=robot.yaml \
-  imu_type:=bno085 \
+  imu_type:=bno085_cpp \
   calibration_file:=calibration.yaml \
-  onnx_model:=~/biped_lower/deploy/v76_student_5600_tanh.onnx \
+  onnx_model:=~/biped_lower/deploy/v155_student_light_6800.onnx \
   gain_scale:=0.3
 ```
 
@@ -200,10 +235,12 @@ ros2 launch biped_bringup bringup.launch.py \
 ```bash
 ros2 launch biped_bringup bringup.launch.py \
   can_driver:=can_bus_node_cpp \
+  control_driver:=biped_control_cpp \
   robot_config:=robot_jetson.yaml \
-  imu_type:=bno085 \
+  imu_type:=bno085_cpp \
+  i2c_bus:=7 \
   calibration_file:=calibration.yaml \
-  onnx_model:=~/biped_lower/deploy/v76_student_5600_tanh.onnx \
+  onnx_model:=~/biped_lower/deploy/v155_student_light_6800.onnx \
   gain_scale:=0.3
 ```
 
@@ -211,19 +248,22 @@ ros2 launch biped_bringup bringup.launch.py \
 ```bash
 ros2 launch biped_bringup bringup.launch.py \
   can_driver:=can_bus_node_cpp \
-  imu_type:=im10a \
+  control_driver:=biped_control_cpp \
+  imu_type:=im10a_cpp \
   ...
 ```
 
 ### IMU Parameter Overrides
 
-The BNO085 node auto-detects the platform (Jetson vs RPi) for GPIO reset. Override if needed:
+⚠️ The BNO085 nodes do **not** auto-detect the platform — the I2C bus must match
+your board. Node defaults differ: Python `imu_node` defaults to bus 7 (Jetson),
+C++ `imu_node` defaults to bus 1 (RPi 5). Pass `i2c_bus` explicitly:
 
 ```bash
 # RPi 5: I2C bus 1
 ros2 launch biped_bringup bringup.launch.py imu_type:=bno085 i2c_bus:=1
 
-# Jetson: I2C bus 7 (default)
+# Jetson: I2C bus 7
 ros2 launch biped_bringup bringup.launch.py imu_type:=bno085 i2c_bus:=7
 ```
 
@@ -248,7 +288,8 @@ ros2 launch biped_bringup calibrate.launch.py
 ```bash
 ros2 launch biped_bringup hardware.launch.py \
   can_driver:=can_bus_node_cpp \
-  imu_type:=bno085 \
+  control_driver:=biped_control_cpp \
+  imu_type:=bno085_cpp \
   calibration_file:=calibration.yaml
 
 # Verify:
@@ -283,10 +324,12 @@ This uses `candump` and the included `robstride.dbc` file to print a live, human
 ⚠️ **Robot must be suspended with feet off ground!**
 
 ```bash
-# Terminal 1: launch
+# Terminal 1: launch (preferred C++ config)
 ros2 launch biped_bringup bringup.launch.py \
   can_driver:=can_bus_node_cpp \
-  onnx_model:=~/biped_lower/deploy/v76_student_5600_tanh.onnx \
+  control_driver:=biped_control_cpp \
+  imu_type:=bno085_cpp \
+  onnx_model:=~/biped_lower/deploy/v155_student_light_6800.onnx \
   gain_scale:=0.3
 
 # Terminal 2: teleop
@@ -344,16 +387,14 @@ Same as Step 4 but with `gain_scale:=0.5` or higher.
 | 0.7 | Ground standing |
 | 1.0 | Full sim-matched gains |
 
-Base PD gains are in `obs_builder.py`:
-```python
-DEFAULT_GAINS = {
-    "L_hip_pitch": (180.0, 6.5), "R_hip_pitch": (180.0, 6.5),
-    "L_hip_roll":  (180.0, 6.5), "R_hip_roll":  (180.0, 6.5),
-    "L_hip_yaw":   (180.0, 3.0), "R_hip_yaw":   (180.0, 3.0),
-    "L_knee":      (180.0, 3.0), "R_knee":      (180.0, 3.0),
-    "L_foot_pitch": (30.0, 1.0), "R_foot_pitch": (30.0, 1.0),
-    "L_foot_roll":  (30.0, 1.0), "R_foot_roll":  (30.0, 1.0),
-}
+Base PD gains, default positions, and joint limits live in
+`biped_bringup/config/control_params.yaml` (loaded at runtime by both Python and
+C++ nodes — single source of truth, synced to Isaac Sim):
+```yaml
+# kp, kd per joint (current values)
+hip_pitch: 180, 20    knee:       180, 10
+hip_roll:  180, 15    foot_pitch:  30, 2.8
+hip_yaw:   180, 15    foot_roll:   30, 2.8
 ```
 
 ---

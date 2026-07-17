@@ -5,6 +5,7 @@
 #include <vector>
 #include <stdint.h>
 #include "biped_driver_cpp/bno085_reader.hpp" // For ImuData struct
+#include "biped_driver_cpp/imu_filter.hpp"
 
 namespace biped_driver_cpp {
 
@@ -15,6 +16,13 @@ public:
 
     bool init(const std::string& port = "/dev/ttyUSB0", int target_baud = 460800);
     ImuData read();
+
+    /// Enable Butterworth low-pass on gyro/gravity, applied per parsed frame
+    /// (~sample_hz). Call after init(); cutoff <= 0 or >= 0.45*sample_hz = off.
+    void set_filter(double gyro_cutoff_hz, double gravity_cutoff_hz, double sample_hz) {
+        gyro_filter_.init(gyro_cutoff_hz, sample_hz);
+        gravity_filter_.init(gravity_cutoff_hz, sample_hz);
+    }
 
 private:
     int fd_;
@@ -36,6 +44,10 @@ private:
     double gyro_[3];
     double accel_[3];
     double gravity_[3];
+
+    // Optional low-pass filters (bypass by default)
+    Vec3Filter gyro_filter_;
+    Vec3Filter gravity_filter_;
 
     bool configure_serial(int fd, int baud);
     bool auto_baud_and_upgrade();

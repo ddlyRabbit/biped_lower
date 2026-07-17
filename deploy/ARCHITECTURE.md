@@ -129,24 +129,28 @@ of (pitch_min/max, roll_min/max) through the linkage transform.
 
 ## Joint Limits & Defaults
 
+All values load at runtime from `biped_bringup/config/control_params.yaml` (single source of truth for defaults, gains, and limits — both Python and C++ read it).
+
 | Joint | Lower | Upper | Default | | Joint | Lower | Upper | Default |
 |-------|-------|-------|---------|---|-------|-------|-------|---------|
-| R_hip_pitch | −2.217 | 1.047 | 0.2 | | L_hip_pitch | −1.047 | 2.217 | −0.2 |
+| R_hip_pitch | −2.217 | 1.047 | 0.08 | | L_hip_pitch | −1.047 | 2.217 | −0.08 |
 | R_hip_roll | −2.269 | 0.209 | 0.0 | | L_hip_roll | −0.209 | 2.269 | 0.0 |
 | R_hip_yaw | −1.571 | 1.571 | 0.0 | | L_hip_yaw | −1.571 | 1.571 | 0.0 |
-| R_knee | 0.000 | 2.705 | 0.4 | | L_knee | 0.000 | 2.705 | 0.4 |
-| R_foot_pitch | −0.873 | 0.524 | −0.2 | | L_foot_pitch | −0.873 | 0.524 | −0.2 |
+| R_knee | 0.000 | 2.705 | 0.25 | | L_knee | 0.000 | 2.705 | 0.25 |
+| R_foot_pitch | −0.873 | 0.524 | −0.17 | | L_foot_pitch | −0.873 | 0.524 | −0.17 |
 | R_foot_roll | −0.262 | 0.262 | 0.0 | | L_foot_roll | −0.262 | 0.262 | 0.0 |
 
 Hip pitch/roll limits are mirrored L↔R. Knee, foot limits are symmetric.
 
 ## PD Gains
 
+From `control_params.yaml` (synced to Isaac Sim, commit 044448e):
+
 | Group | Kp | Kd | | Group | Kp | Kd |
 |-------|----|----|---|-------|----|----|
-| hip_pitch | 15 | 3.0 | | knee | 15 | 3.0 |
-| hip_roll | 10 | 3.0 | | foot_pitch | 2.0 | 0.2 |
-| hip_yaw | 10 | 3.0 | | foot_roll | 2.0 | 0.2 |
+| hip_pitch | 180 | 20 | | knee | 180 | 10 |
+| hip_roll | 180 | 15 | | foot_pitch | 30 | 2.8 |
+| hip_yaw | 180 | 15 | | foot_roll | 30 | 2.8 |
 
 Runtime-tunable via `gain_scale` parameter (0.3→1.0 ladder).
 
@@ -251,19 +255,28 @@ biped_ws/src/
 ### Policy Pipeline
 
 ```
-Sensor data → obs_builder.build() → 48d observation vector
+Sensor data → obs_builder.build() → 45d observation vector
     ↓
-ONNX inference (MLP 48→128→128→128→12) → raw actions
+ONNX inference (MLP 45→128→128→128→12) → raw actions
     ↓
-np.clip(actions, -1.0, 1.0) → clamped actions
+clip(actions, -1.0, 1.0) → clamped actions
+    ↓
+EMA filter: filtered = 0.6×raw + 0.4×prev   (C++ nodes; feeds last_action obs)
+    ↓
+action ramp: × clamp(walk_elapsed / 1.5s)   (soft engage after WALK entry)
     ↓
 action_to_positions: target = default_pos + action × scale → joint targets (rad)
+    scale: 0.5 default · 0.25 foot_roll · 0.0 hip_yaw (locked at default, matches training)
     ↓
-MITCommand per joint: { position, velocity=0, kp, kd, torque_ff=0 }
+MITCommand per joint: { position, velocity=0, kp×gain_scale, kd×gain_scale, torque_ff=0 }
+    (full gains from first WALK frame — the old walk-entry gain ramp is disabled)
     ↓
 WALK  → /joint_commands → motors
 SIM_WALK → /policy_viz + /policy_viz_joints → Foxglove
 ```
+
+On transition to STAND/ESTOP/IDLE the C++ nodes zero `last_action` and the EMA
+buffer (`zero_last_action()`) so re-entering WALK starts from a clean state.
 
 ### Tanh Output Layer (V74+)
 
@@ -350,6 +363,8 @@ Also saves `action_stats.csv` alongside the video for post-analysis.
 
 All control loops run at **50 Hz**. Safety at 50 Hz, state publishing at 10 Hz.
 
+**`unified_node` loop** (with `unified:=true`; replaces imu + can + policy nodes, state machine + safety stay separate): each 20 ms cycle runs 4 phases — ① re-send last command to prime motor feedback, ② parallel read (one thread per CAN bus + IMU on main thread), ③ FSM dispatch → inference → send to motors, ④ publish ROS topics. Same EMA/ramp/yaw-lock action pipeline as `policy_node_cpp`.
+
 ---
 
 ## Ankle Parallel Linkage
@@ -435,6 +450,10 @@ All in **motor command-space** (not joint-space). For ankles, per-motor independ
 
 ## Observation Vector (45d)
 
+Optional IMU filtering (`imu_filter:=true`): 2nd-order Butterworth LPF on gyro and
+gravity at the 200 Hz report rate inside the C++ readers (default 40 Hz cutoff) —
+anti-aliasing for the 50 Hz policy, transparent (≤ −0.6 dB) below 25 Hz. Off by default.
+
 ```
 [0–2]   base_ang_vel      ← IMU gyro (rad/s, body frame)
 [3–5]   projected_gravity  ← −gravity/‖g‖ (Isaac convention)
@@ -454,8 +473,12 @@ L_foot_pitch, R_foot_pitch, L_foot_roll, R_foot_roll
 ## Action Pipeline
 
 ```
-action[12] (±1) → target = default + action × 0.5 → MIT(pos, kp×scale, kd×scale)
+action[12] (±1) → EMA(α=0.6) → ×ramp(1.5s) → target = default + action × scale
+                → MIT(pos, kp×gain_scale, kd×gain_scale)
 ```
+
+Per-joint action scale: `0.5` default, `0.25` foot_roll, `0.0` hip_yaw
+(yaw locked at default 0.0 — trained with hip_yaw action scale 0.0, v155+).
 
 ---
 
@@ -506,7 +529,7 @@ MCP2515 TX buffer: 5-attempt retry with 0.5 ms backoff.
 | URDF / Isaac | Z-up, +X forward, +Y left |
 | IMU (mounted) | +X forward, +Y left, +Z up — aligned to base_link, no corrections |
 | IMU quaternion | Sensor→Earth rotation, published raw as odom→base_link TF |
-| projected_gravity | Both IMUs output (0,0,+9.81) upright → obs_builder negates → Isaac (0,0,−1) |
+| projected_gravity | IMU nodes negate + normalize on publish → `/imu/gravity` is a unit vector, (0,0,−1) upright (Isaac convention); obs_builder uses it as-is |
 | IM10A gravity | Derived from quaternion: `R.apply([0,0,-1], inverse=True)` × −9.81 |
 | Motor positions | Radians, output shaft, absolute encoder |
 

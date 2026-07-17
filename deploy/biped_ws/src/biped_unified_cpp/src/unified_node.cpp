@@ -159,6 +159,9 @@ public:
         declare_parameter("imu_rate_hz", 200.0);
         declare_parameter("use_game_quaternion", false);
         declare_parameter("imu_reset_pin", 4);
+        declare_parameter("imu_filter_enable", false);
+        declare_parameter("imu_gyro_cutoff_hz", 40.0);
+        declare_parameter("imu_gravity_cutoff_hz", 40.0);
 
         std::string robot_cfg_path = get_parameter("robot_config").as_string();
         std::string cal_path       = get_parameter("calibration_file").as_string();
@@ -233,6 +236,26 @@ public:
             } else {
                 RCLCPP_FATAL(get_logger(), "BNO085 init failed! Aborting.");
                 throw std::runtime_error("BNO085 init failed");
+            }
+        }
+
+        // Optional IMU low-pass (Butterworth 2nd order @ report rate)
+        if (get_parameter("imu_filter_enable").as_bool()) {
+            double gyro_fc = get_parameter("imu_gyro_cutoff_hz").as_double();
+            double grav_fc = get_parameter("imu_gravity_cutoff_hz").as_double();
+            double imu_rate = get_parameter("imu_rate_hz").as_double();
+            if (imu_type_ == "im10a") {
+                im10a_imu_.set_filter(gyro_fc, grav_fc, imu_rate);
+            } else {
+                bno085_imu_.set_filter(gyro_fc, grav_fc, imu_rate);
+            }
+            if (gyro_fc >= 0.45 * imu_rate || grav_fc >= 0.45 * imu_rate) {
+                RCLCPP_WARN(get_logger(),
+                            "IMU filter cutoff >= 0.45x sample rate (%.0fHz) — filter bypassed",
+                            imu_rate);
+            } else {
+                RCLCPP_INFO(get_logger(), "IMU filter on — gyro %.0fHz, gravity %.0fHz @ %.0fHz",
+                            gyro_fc, grav_fc, imu_rate);
             }
         }
 

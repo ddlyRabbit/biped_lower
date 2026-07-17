@@ -62,16 +62,24 @@ def _make_imu_node(context):
             package='biped_driver_cpp', executable='im10a_node',
             name='imu_node', output='screen',
             parameters=[{
-                'serial_port': LaunchConfiguration('im10a_port'), 
-                'baud_rate': LaunchConfiguration('im10a_baud'), 
-                'rate_hz': 200.0
+                'serial_port': LaunchConfiguration('im10a_port'),
+                'baud_rate': LaunchConfiguration('im10a_baud'),
+                'rate_hz': 200.0,
+                'imu_filter_enable': LaunchConfiguration('imu_filter').perform(context) == 'true',
+                'imu_gyro_cutoff_hz': float(LaunchConfiguration('imu_gyro_cutoff_hz').perform(context)),
+                'imu_gravity_cutoff_hz': float(LaunchConfiguration('imu_gravity_cutoff_hz').perform(context)),
             }],
         )]
     elif imu_type == 'bno085_cpp':
         return [Node(
             package='biped_driver_cpp', executable='imu_node',
             name='imu_node', output='screen',
-            parameters=[{'rate_hz': 200.0, 'i2c_bus': 1, 'i2c_address': 75, 'reset_pin': 4}],
+            parameters=[{
+                'rate_hz': 200.0, 'i2c_bus': 1, 'i2c_address': 75, 'reset_pin': 4,
+                'imu_filter_enable': LaunchConfiguration('imu_filter').perform(context) == 'true',
+                'imu_gyro_cutoff_hz': float(LaunchConfiguration('imu_gyro_cutoff_hz').perform(context)),
+                'imu_gravity_cutoff_hz': float(LaunchConfiguration('imu_gravity_cutoff_hz').perform(context)),
+            }],
         )]
     else:  # bno085 (default)
         return [Node(
@@ -167,6 +175,9 @@ def _make_control_nodes(context):
                 'i2c_address': 75,
                 'imu_rate_hz': 200.0,
                 'imu_reset_pin': 4,
+                'imu_filter_enable': LaunchConfiguration('imu_filter').perform(context) == 'true',
+                'imu_gyro_cutoff_hz': float(LaunchConfiguration('imu_gyro_cutoff_hz').perform(context)),
+                'imu_gravity_cutoff_hz': float(LaunchConfiguration('imu_gravity_cutoff_hz').perform(context)),
             }],
         ))
     else:
@@ -222,6 +233,12 @@ def generate_launch_description():
                               description='IMU driver: bno085 | im10a'),
         DeclareLaunchArgument('record', default_value='true',
                               description='Enable rosbag recording (MCAP format)'),
+        DeclareLaunchArgument('imu_filter', default_value='false',
+                              description='Enable Butterworth low-pass on IMU gyro/gravity (C++ nodes)'),
+        DeclareLaunchArgument('imu_gyro_cutoff_hz', default_value='40.0',
+                              description='Gyro low-pass cutoff (Hz), applied at IMU report rate'),
+        DeclareLaunchArgument('imu_gravity_cutoff_hz', default_value='40.0',
+                              description='Gravity low-pass cutoff (Hz), applied at IMU report rate'),
 
         # Robot description (URDF → /tf, /tf_static, /robot_description)
         Node(

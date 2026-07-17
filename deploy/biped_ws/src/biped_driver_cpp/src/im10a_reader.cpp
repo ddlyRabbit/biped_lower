@@ -219,6 +219,17 @@ void Im10aReader::compute_gravity() {
         gravity_[1] = 0.0;
         gravity_[2] = -1.0;
     }
+
+    // Optional low-pass, then re-normalize (filtering shrinks the norm)
+    if (!gravity_filter_.bypassed()) {
+        gravity_filter_.apply(gravity_);
+        double fn = std::sqrt(gravity_[0]*gravity_[0] + gravity_[1]*gravity_[1] + gravity_[2]*gravity_[2]);
+        if (fn > 0.001) {
+            gravity_[0] /= fn;
+            gravity_[1] /= fn;
+            gravity_[2] /= fn;
+        }
+    }
 }
 
 void Im10aReader::process_packet(uint8_t type, const uint8_t* data) {
@@ -238,6 +249,7 @@ void Im10aReader::process_packet(uint8_t type, const uint8_t* data) {
         gyro_[0] = (wx / 32768.0) * 2000.0 * (PI / 180.0);
         gyro_[1] = (wy / 32768.0) * 2000.0 * (PI / 180.0);
         gyro_[2] = (wz / 32768.0) * 2000.0 * (PI / 180.0);
+        gyro_filter_.apply(gyro_);  // no-op unless set_filter enabled
         has_new_data_ = true;
     }
     else if (type == 0x59) { // Quaternion

@@ -145,6 +145,7 @@ ImuData Bno085Reader::read() {
                         gyro_[0] = x / 512.0;
                         gyro_[1] = y / 512.0;
                         gyro_[2] = z / 512.0;
+                        gyro_filter_.apply(gyro_);  // no-op unless set_filter enabled
                     };
                     decode_g(offset + 4);
                     offset += 10;
@@ -170,6 +171,18 @@ ImuData Bno085Reader::read() {
                             gravity_[0] = 0.0;
                             gravity_[1] = 0.0;
                             gravity_[2] = -1.0;
+                        }
+                        // Optional low-pass, then re-normalize (filtering shrinks the norm)
+                        if (!gravity_filter_.bypassed()) {
+                            gravity_filter_.apply(gravity_);
+                            double fn = std::sqrt(gravity_[0]*gravity_[0] +
+                                                  gravity_[1]*gravity_[1] +
+                                                  gravity_[2]*gravity_[2]);
+                            if (fn > 0.1) {
+                                gravity_[0] /= fn;
+                                gravity_[1] /= fn;
+                                gravity_[2] /= fn;
+                            }
                         }
                     };
                     decode_gr(offset + 4);

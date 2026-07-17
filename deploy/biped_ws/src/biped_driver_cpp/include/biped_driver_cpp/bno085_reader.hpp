@@ -12,6 +12,8 @@
 #include <string>
 #include <array>
 
+#include "biped_driver_cpp/imu_filter.hpp"
+
 namespace biped_driver_cpp {
 
 struct ImuData {
@@ -34,6 +36,13 @@ public:
     /// Drain FIFO and return latest data.
     ImuData read();
 
+    /// Enable Butterworth low-pass on gyro/gravity, applied per parsed report
+    /// (~sample_hz). Call after init(); cutoff <= 0 or >= 0.45*sample_hz = off.
+    void set_filter(double gyro_cutoff_hz, double gravity_cutoff_hz, double sample_hz) {
+        gyro_filter_.init(gyro_cutoff_hz, sample_hz);
+        gravity_filter_.init(gravity_cutoff_hz, sample_hz);
+    }
+
     bool is_initialized() const { return fd_ >= 0; }
 
 private:
@@ -46,6 +55,10 @@ private:
     double quat_[4]   = {0.0, 0.0, 0.0, 1.0};
     double gyro_[3]   = {0.0, 0.0, 0.0};
     double gravity_[3] = {0.0, 0.0, -1.0};
+
+    // Optional low-pass filters (bypass by default)
+    Vec3Filter gyro_filter_;
+    Vec3Filter gravity_filter_;
 
     uint64_t read_count_  = 0;
     uint64_t error_count_ = 0;

@@ -12,6 +12,7 @@
 #include "geometry_msgs/msg/vector3_stamped.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "tf2_ros/transform_broadcaster.h"
+#include "biped_driver_cpp/imu_filter.hpp"
 
 using namespace std::chrono_literals;
 
@@ -25,6 +26,9 @@ public:
         declare_parameter("frame_id", "imu_link");
         declare_parameter("use_game_quaternion", false);
         declare_parameter("reset_pin", 7);
+        declare_parameter("imu_filter_enable", false);
+        declare_parameter("imu_gyro_cutoff_hz", 40.0);
+        declare_parameter("imu_gravity_cutoff_hz", 40.0);
 
         i2c_bus_ = get_parameter("i2c_bus").as_int();
         i2c_addr_ = get_parameter("i2c_address").as_int();
@@ -32,6 +36,16 @@ public:
         frame_id_ = get_parameter("frame_id").as_string();
         use_game_quat_ = get_parameter("use_game_quaternion").as_bool();
         reset_pin_ = get_parameter("reset_pin").as_int();
+
+        // Optional IMU low-pass (Butterworth 2nd order @ sample rate)
+        if (get_parameter("imu_filter_enable").as_bool()) {
+            double gyro_fc = get_parameter("imu_gyro_cutoff_hz").as_double();
+            double grav_fc = get_parameter("imu_gravity_cutoff_hz").as_double();
+            gyro_filter_.init(gyro_fc, rate_hz_);
+            gravity_filter_.init(grav_fc, rate_hz_);
+            RCLCPP_INFO(get_logger(), "IMU filter on — gyro %.0fHz, gravity %.0fHz @ %.0fHz",
+                        gyro_fc, grav_fc, rate_hz_);
+        }
 
         // QoS: best-effort for real-time sensor data
         auto sensor_qos = rclcpp::QoS(1);
@@ -74,6 +88,10 @@ private:
     double last_quat_[4] = {0.0, 0.0, 0.0, 1.0}; // x, y, z, w
     double last_gyro_[3] = {0.0, 0.0, 0.0};      // rad/s
     double last_gravity_[3] = {0.0, 0.0, -1.0}; // m/s^2
+
+    // Optional low-pass filters (bypass by default)
+    biped_driver_cpp::Vec3Filter gyro_filter_;
+    biped_driver_cpp::Vec3Filter gravity_filter_;
 
     // Diagnostics
     uint64_t read_count_ = 0;
@@ -230,6 +248,7 @@ private:
                             last_gyro_[0] = x / 512.0;
                             last_gyro_[1] = y / 512.0;
                             last_gyro_[2] = z / 512.0;
+                            gyro_filter_.apply(last_gyro_);  // no-op unless enabled
                             offset += 10;
                         } else if (report_id == 0x06) { // Gravity
                             if (offset + 10 > packet_len) break;
@@ -250,6 +269,18 @@ private:
                                 last_gravity_[0] = 0.0;
                                 last_gravity_[1] = 0.0;
                                 last_gravity_[2] = -1.0;
+                            }
+                            // Optional low-pass, then re-normalize
+                            if (!gravity_filter_.bypassed()) {
+                                gravity_filter_.apply(last_gravity_);
+                                double fn = std::sqrt(last_gravity_[0]*last_gravity_[0] +
+                                                      last_gravity_[1]*last_gravity_[1] +
+                                                      last_gravity_[2]*last_gravity_[2]);
+                                if (fn > 0.1) {
+                                    last_gravity_[0] /= fn;
+                                    last_gravity_[1] /= fn;
+                                    last_gravity_[2] /= fn;
+                                }
                             }
                             offset += 10;
                         } else {

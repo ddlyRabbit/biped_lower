@@ -14,6 +14,9 @@ public:
         this->declare_parameter<std::string>("frame_id", "imu_link");
         this->declare_parameter<bool>("publish_tf", true);
         this->declare_parameter<double>("rate_hz", 200.0);
+        this->declare_parameter<bool>("imu_filter_enable", false);
+        this->declare_parameter<double>("imu_gyro_cutoff_hz", 40.0);
+        this->declare_parameter<double>("imu_gravity_cutoff_hz", 40.0);
 
         std::string port = this->get_parameter("serial_port").as_string();
         int baud = this->get_parameter("baudrate").as_int();
@@ -26,6 +29,15 @@ public:
         if (!reader_.init(port, baud)) {
             RCLCPP_ERROR(this->get_logger(), "Failed to initialize IM10A IMU");
             return;
+        }
+
+        // Optional IMU low-pass (Butterworth 2nd order @ report rate)
+        if (this->get_parameter("imu_filter_enable").as_bool()) {
+            double gyro_fc = this->get_parameter("imu_gyro_cutoff_hz").as_double();
+            double grav_fc = this->get_parameter("imu_gravity_cutoff_hz").as_double();
+            reader_.set_filter(gyro_fc, grav_fc, rate_hz);
+            RCLCPP_INFO(this->get_logger(), "IMU filter on — gyro %.0fHz, gravity %.0fHz @ %.0fHz",
+                        gyro_fc, grav_fc, rate_hz);
         }
 
         // QoS for sensor data
