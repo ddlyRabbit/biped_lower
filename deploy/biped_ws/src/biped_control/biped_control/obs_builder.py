@@ -61,6 +61,8 @@ ACTION_SCALE_OVERRIDE = {
     "L_foot_roll": 0.25,
     "R_foot_pitch": 0.5,
     "L_foot_pitch": 0.5,
+    "R_hip_yaw": 0.0,  # yaw locked at default — trained with hip_yaw action scale 0.0
+    "L_hip_yaw": 0.0,
 }
 
 # Action output order from ONNX (must match training ALL_JOINTS with preserve_order=True)

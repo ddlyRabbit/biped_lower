@@ -113,7 +113,7 @@ public:
 
 private:
     std::array<float, 12> filtered_actions_ = {0}; // Holds the EMA output
-    const float EMA_ALPHA = 0.3f;                   // EMA smoothing factor
+    const float EMA_ALPHA = 0.6f;                   // EMA smoothing factor
     double rate_, gain_scale_;
     std::unordered_map<std::string, std::pair<double, double>> gains_;
     ObsBuilder obs_builder_;

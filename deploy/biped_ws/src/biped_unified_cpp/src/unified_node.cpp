@@ -68,7 +68,9 @@ static constexpr double ANKLE_ROLL_HI  =  0.26180;
 // ── Soft-start / ramp timings ────────────────────────────────────
 static constexpr double STAND_RAMP_SECS      = 2.0;
 static constexpr double STAND_GAIN_RAMP_SECS = 1.0;
-static constexpr double WALK_GAIN_RAMP_SECS  = 0.1;
+static constexpr double WALK_GAIN_RAMP_SECS  = 0.1;  // (gain ramp disabled — kept for reference)
+static constexpr double ACTION_RAMP_SECS     = 1.5;  // action ramp after WALK entry
+static constexpr float  EMA_ALPHA            = 0.6f; // EMA smoothing for policy actions
 
 // ── Feedback snapshot ────────────────────────────────────────────
 
@@ -264,6 +266,10 @@ public:
                     RCLCPP_INFO(get_logger(), "FSM: %s -> %s", fsm_state_.c_str(), s.c_str());
                     if (s == "WALK" || s == "SIM_WALK") {
                         walk_start_time_ = now().seconds();
+                    } else if (s == "STAND" || s == "ESTOP" || s == "IDLE") {
+                        RCLCPP_INFO(get_logger(), "Zeroing action buffers on transition to non-walking state.");
+                        obs_builder_.zero_last_action();
+                        filtered_actions_.fill(0.0f);
                     }
                     if (s == "STAND") {
                         stand_start_time_ = now().seconds();
@@ -322,6 +328,7 @@ private:
     double walk_start_time_  = -1.0;
     double stand_start_time_ = 0.0;
     std::unordered_map<std::string, double> stand_start_pos_;
+    std::array<float, 12> filtered_actions_ = {0};  // EMA output, persists across cycles
 
     // Last sent motor commands — re-sent in Phase 1 to prime fresh feedback
     biped_msgs::msg::MITCommandArray last_sent_cmd_;
@@ -542,20 +549,36 @@ private:
             out_names_.data(), 1);
 
         float* out = output.front().GetTensorMutableData<float>();
-        std::array<float, 12> actions;
+
+        // EMA Filter
         for (int i = 0; i < 12; ++i) {
-            actions[i] = std::max(-1.0f, std::min(1.0f, out[i]));
+            float raw_action = std::max(-1.0f, std::min(1.0f, out[i]));
+            filtered_actions_[i] = (EMA_ALPHA * raw_action) + ((1.0f - EMA_ALPHA) * filtered_actions_[i]);
         }
-        obs_builder_.update_last_action(actions);
+        obs_builder_.update_last_action(filtered_actions_);
 
-        auto targets = ObsBuilder::action_to_positions(actions);
+        // --- Action Ramping (1.5s) ---
+        double action_ramp = 1.0;
+        if (walk_start_time_ > 0.0) {
+            double walk_elapsed = now().seconds() - walk_start_time_;
+            action_ramp = std::max(0.0, std::min(1.0, walk_elapsed / ACTION_RAMP_SECS));
+        }
 
-        // Gain ramp after transition to WALK
+        // Apply ramp to the filtered actions
+        std::array<float, 12> transitioned_actions;
+        for (int i = 0; i < 12; ++i) {
+            transitioned_actions[i] = filtered_actions_[i] * action_ramp;
+        }
+
+        auto targets = ObsBuilder::action_to_positions(transitioned_actions);
+
+        // Gain ramp after transition to WALK (disabled — ramp moved onto actions)
         double walk_ramp = 1.0;
         if (walk_start_time_ > 0.0) {
             double elapsed = now().seconds() - walk_start_time_;
             walk_ramp = std::min(1.0, 0.1 + 0.9 * (elapsed / WALK_GAIN_RAMP_SECS));
         }
+        (void)walk_ramp;  // gain ramp disabled — full gains used (see policy_node 17a568c)
         double gs = get_parameter("gain_scale").as_double();
 
         // Build commands
@@ -568,8 +591,10 @@ private:
             cmd.joint_name  = name;
             cmd.position    = targets.at(name);
             cmd.velocity    = 0.0;
-            cmd.kp          = kp_kd.first * gs * walk_ramp;
-            cmd.kd          = kp_kd.second * gs * walk_ramp;
+            // cmd.kp = kp_kd.first * gs * walk_ramp;   // <-- COMMENTED OUT
+            // cmd.kd = kp_kd.second * gs * walk_ramp;  // <-- COMMENTED OUT
+            cmd.kp          = kp_kd.first * gs;         // <-- USE FULL GAIN
+            cmd.kd          = kp_kd.second * gs;        // <-- USE FULL GAIN
             cmd.torque_ff   = 0.0;
             cmd_msg.commands.push_back(cmd);
         }

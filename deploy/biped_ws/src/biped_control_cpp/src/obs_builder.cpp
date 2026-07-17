@@ -113,6 +113,8 @@ std::unordered_map<std::string, double> ObsBuilder::action_to_positions(const st
         float scale = 0.5f;
         if (name.find("foot_roll") != std::string::npos) {
             scale = 0.25f;
+        } else if (name.find("hip_yaw") != std::string::npos) {
+            scale = 0.0f;  // yaw locked at default — trained with hip_yaw action scale 0.0
         }
         targets[name] = DEFAULT_POSITIONS.at(name) + action[i] * scale;
     }
