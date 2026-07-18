@@ -3,6 +3,7 @@ project(biped_driver_cpp)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_compile_options(-Wno-psabi)  # silence benign ARM ABI-change notes (GCC 10.1, std::pair by value)
 
 # ── Dependencies ──────────────────────────────────────────────────
 find_package(ament_cmake REQUIRED)
