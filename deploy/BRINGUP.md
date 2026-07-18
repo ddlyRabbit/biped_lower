@@ -183,8 +183,8 @@ ros2 launch biped_bringup bringup.launch.py \
 | `trajectory_file` | CSV for PLAY_TRAJ | `""` (empty) | Absolute path |
 | `record` | Enable rosbag recording (MCAP) | `true` | `true` / `false` |
 | `imu_filter` | Butterworth low-pass on IMU gyro/gravity (C++ nodes) | `false` | `true` / `false` |
-| `imu_gyro_cutoff_hz` | Gyro cutoff, applied at 200 Hz report rate | `40.0` | `30`–`40` typical |
-| `imu_gravity_cutoff_hz` | Gravity cutoff, applied at 200 Hz report rate | `40.0` | `30`–`40` typical |
+| `imu_gyro_cutoff_hz` | Gyro cutoff, applied at 200 Hz report rate | `20.0` | `20`–`40` typical |
+| `imu_gravity_cutoff_hz` | Gravity cutoff, applied at 200 Hz report rate | `20.0` | `20`–`40` typical |
 
 ### Recommended Configurations (C++)
 

@@ -160,8 +160,8 @@ public:
         declare_parameter("use_game_quaternion", false);
         declare_parameter("imu_reset_pin", 4);
         declare_parameter("imu_filter_enable", false);
-        declare_parameter("imu_gyro_cutoff_hz", 40.0);
-        declare_parameter("imu_gravity_cutoff_hz", 40.0);
+        declare_parameter("imu_gyro_cutoff_hz", 20.0);
+        declare_parameter("imu_gravity_cutoff_hz", 20.0);
 
         std::string robot_cfg_path = get_parameter("robot_config").as_string();
         std::string cal_path       = get_parameter("calibration_file").as_string();

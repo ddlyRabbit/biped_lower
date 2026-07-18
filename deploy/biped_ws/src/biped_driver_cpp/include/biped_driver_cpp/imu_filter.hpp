@@ -3,8 +3,8 @@
  * @brief 2nd-order Butterworth low-pass for IMU vectors (header-only, no ROS).
  *
  * Runs at the IMU report rate (~200 Hz) as an anti-aliasing / vibration
- * filter for the 50 Hz policy. Default 40 Hz cutoff is transparent
- * (≤ −0.6 dB) across the 0–25 Hz band the policy was trained on.
+ * filter for the 50 Hz policy. Default 20 Hz cutoff (−3 dB at 20 Hz,
+ * −5.4 dB at the 25 Hz policy Nyquist).
  */
 
 #pragma once

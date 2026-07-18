@@ -107,9 +107,9 @@ def generate_launch_description():
                               description='Default positions / PD gains / joint limits YAML'),
         DeclareLaunchArgument('imu_filter', default_value='false',
                               description='Enable Butterworth low-pass on IMU gyro/gravity (C++ nodes)'),
-        DeclareLaunchArgument('imu_gyro_cutoff_hz', default_value='40.0',
+        DeclareLaunchArgument('imu_gyro_cutoff_hz', default_value='20.0',
                               description='Gyro low-pass cutoff (Hz), applied at IMU report rate'),
-        DeclareLaunchArgument('imu_gravity_cutoff_hz', default_value='40.0',
+        DeclareLaunchArgument('imu_gravity_cutoff_hz', default_value='20.0',
                               description='Gravity low-pass cutoff (Hz), applied at IMU report rate'),
 
         # Robot description

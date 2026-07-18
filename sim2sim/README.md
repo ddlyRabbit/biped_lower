@@ -41,13 +41,48 @@ python sim2sim/stand_mujoco.py --duration 5      # 5 seconds
 
 ### `play_mujoco.py` — Run ONNX Policy
 
-Runs a trained ONNX student policy in MuJoCo with PD control. Observation spec (45d) matches `biped_env_cfg.py` / `obs_builder.py`.
+Runs a trained ONNX student policy in MuJoCo with PD control (torques at physics
+rate, policy at 50 Hz). Observation spec (45d) matches `biped_env_cfg.py` /
+`obs_builder.py`. Emulates the hardware pipeline: action/proprio/IMU latency,
+EMA action filter, and the deploy IMU Butterworth filter.
 
 ```bash
+# Interactive viewer (arrow keys drive; see key list below)
 python sim2sim/play_mujoco.py --checkpoint deploy/student_flat.onnx
-python sim2sim/play_mujoco.py --checkpoint deploy/student_flat.onnx --headless --duration 10
-python sim2sim/play_mujoco.py --checkpoint deploy/student_flat.onnx --cmd_vx 0.3
+
+# Headless video + CSV log (writes <video>.csv with targets/pos/actions)
+python sim2sim/play_mujoco.py --checkpoint deploy/student_flat.onnx \
+    --headless --duration 10 --video run.mp4 --cmd_vx 0.5
+
+# Full hardware emulation: latency + EMA + IMU filter
+python sim2sim/play_mujoco.py --imu_filter --use_ema_filter --latency_ms 20 --imu_latency_ms 10
+
+# Push-recovery test: 60 N lateral push at t=3s
+python sim2sim/play_mujoco.py --cmd_vx 0.5 --push_time 3 --push_force 0 60 0
 ```
+
+| Option | Default | Description |
+|---|---|---|
+| `--checkpoint` | `deploy/student_flat.onnx` | ONNX policy path |
+| `--urdf` | `heavy` | MJCF variant: `heavy` \| `light` |
+| `--headless` | off | No viewer |
+| `--duration` | 10 s video / ∞ interactive | Playback length (s) |
+| `--video PATH` | — | Save MP4 (+ `.csv` log of cmd/pos/action per joint) |
+| `--cmd_vx / --cmd_vy / --cmd_wz` | `0.0` | Velocity command (m/s, m/s, rad/s) |
+| `--latency_ms` | `0` → 3 policy steps | Hardware latency, split half action / half proprio |
+| `--imu_latency_ms` | `0.0` | IMU latency (physics-rate ring buffer) |
+| `--push_time` | `-1` (off) | Time (s) to apply external push to the base |
+| `--push_duration` | `0.2` | Push length (s) |
+| `--push_force FX FY FZ` | `0 0 0` | Push force vector (N) |
+| `--use_ema_filter` | off | EMA on policy actions (same as deploy) |
+| `--ema_alpha` | `0.6` | EMA alpha (matches deploy) |
+| `--imu_filter` | off | Butterworth LPF on gyro/gravity (mirrors deploy `imu_filter.hpp`) |
+| `--imu_gyro_cutoff_hz` | `20.0` | Gyro cutoff (Hz) |
+| `--imu_gravity_cutoff_hz` | `20.0` | Gravity cutoff (Hz) |
+| `--imu_sample_hz` | `200.0` | Emulated IMU report rate the filter runs at |
+
+**Viewer keys:** arrows = vx/vy · `A`/`D` = yaw · `Space` = zero commands · `Q`/`Esc` = quit.
+Commands clamp to training ranges (vx −0.5…1.5, vy ±0.5, wz ±1.0).
 
 ### `play_traj_mujoco.py` — Kinematic Trajectory Playback
 
@@ -110,7 +145,7 @@ xvfb-run -a python sim2sim/render_zmp_trajectory_mujoco.py --csv /tmp/trajectory
 ```bash
 pip install mujoco numpy
 pip install imageio imageio-ffmpeg   # for play_traj_mujoco.py video export
-pip install mediapy                   # for render_zmp_trajectory_mujoco.py video export
+pip install mediapy                   # for play_mujoco.py / render_zmp_trajectory_mujoco.py video export
 pip install onnxruntime               # for play_mujoco.py policy inference
 ```
 

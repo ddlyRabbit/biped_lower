@@ -27,8 +27,8 @@ public:
         declare_parameter("use_game_quaternion", false);
         declare_parameter("reset_pin", 7);
         declare_parameter("imu_filter_enable", false);
-        declare_parameter("imu_gyro_cutoff_hz", 40.0);
-        declare_parameter("imu_gravity_cutoff_hz", 40.0);
+        declare_parameter("imu_gyro_cutoff_hz", 20.0);
+        declare_parameter("imu_gravity_cutoff_hz", 20.0);
 
         i2c_bus_ = get_parameter("i2c_bus").as_int();
         i2c_addr_ = get_parameter("i2c_address").as_int();

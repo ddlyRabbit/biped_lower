@@ -110,6 +110,53 @@ def get_effort_mj():
 BASE_HEIGHT = 0.802
 
 
+# ─── IMU low-pass (mirrors deploy imu_filter.hpp exactly) ────────────────────
+class ButterworthLPF:
+    """2nd-order Butterworth low-pass (RBJ biquad, DF2T).
+
+    Same coefficients/priming as
+    deploy/biped_ws/src/biped_driver_cpp/include/biped_driver_cpp/imu_filter.hpp.
+    cutoff <= 0 or >= 0.45*sample -> bypass.
+    """
+    def __init__(self, cutoff_hz, sample_hz):
+        self.bypass = cutoff_hz <= 0.0 or sample_hz <= 0.0 or cutoff_hz >= 0.45 * sample_hz
+        self.primed = False
+        self.z1 = self.z2 = 0.0
+        if self.bypass:
+            return
+        w0 = 2.0 * np.pi * cutoff_hz / sample_hz
+        q = 1.0 / np.sqrt(2.0)  # Butterworth
+        alpha = np.sin(w0) / (2.0 * q)
+        cw = np.cos(w0)
+        a0 = 1.0 + alpha
+        self.b0 = (1.0 - cw) / 2.0 / a0
+        self.b1 = (1.0 - cw) / a0
+        self.b2 = (1.0 - cw) / 2.0 / a0
+        self.a1 = (-2.0 * cw) / a0
+        self.a2 = (1.0 - alpha) / a0
+
+    def filter(self, x):
+        if self.bypass:
+            return x
+        if not self.primed:
+            # Steady-state priming: output starts at first input (no transient)
+            self.z2 = (self.b2 - self.a2) * x
+            self.z1 = (self.b1 - self.a1) * x + self.z2
+            self.primed = True
+        y = self.b0 * x + self.z1
+        self.z1 = self.b1 * x - self.a1 * y + self.z2
+        self.z2 = self.b2 * x - self.a2 * y
+        return y
+
+
+class Vec3Filter:
+    def __init__(self, cutoff_hz, sample_hz):
+        self.lpf = [ButterworthLPF(cutoff_hz, sample_hz) for _ in range(3)]
+
+    def apply(self, v):
+        return np.array([f.filter(float(x)) for f, x in zip(self.lpf, v)])
+
+
 def quat_rotate_inverse(q, v):
     """Rotate vector v by inverse of quaternion q (w, x, y, z)."""
     q_w = q[0]
@@ -125,8 +172,12 @@ def build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, imu_dat
     obs = np.zeros(obs_dim, dtype=np.float32)
     offset = 0
 
+    grav_override = None
     if imu_data is not None:
-        base_quat, ang_vel, lin_vel_world = imu_data
+        # (quat, ang_vel, lin_vel_world[, filtered_gravity])
+        base_quat, ang_vel, lin_vel_world = imu_data[:3]
+        if len(imu_data) > 3:
+            grav_override = imu_data[3]
     else:
         quat_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SENSOR, "orientation")
         quat_adr = model.sensor_adr[quat_id]
@@ -144,9 +195,12 @@ def build_observation(data, model, qp_idx, qv_idx, cmd_vel, last_action, imu_dat
         obs[0:3] = lin_vel_body
         offset = 3
 
-    # Projected gravity
-    gravity_world = np.array([0.0, 0.0, -1.0])
-    proj_gravity = quat_rotate_inverse(base_quat, gravity_world)
+    # Projected gravity (filtered body-frame vector if the IMU filter provided one)
+    if grav_override is not None:
+        proj_gravity = grav_override
+    else:
+        gravity_world = np.array([0.0, 0.0, -1.0])
+        proj_gravity = quat_rotate_inverse(base_quat, gravity_world)
 
 
     # [0-2] base angular velocity
@@ -201,7 +255,13 @@ def main():
     parser.add_argument("--push_duration", type=float, default=0.2, help="Duration of push (s)")
     parser.add_argument("--push_force", type=float, nargs=3, default=[0.0, 0.0, 0.0], help="Push force vector [Fx, Fy, Fz] in Newtons")
     parser.add_argument("--use_ema_filter", action="store_true", help="Enable EMA filter on policy actions")
-    parser.add_argument("--ema_alpha", type=float, default=0.3, help="EMA filter alpha value")
+    parser.add_argument("--ema_alpha", type=float, default=0.6, help="EMA filter alpha value (matches deploy)")
+    parser.add_argument("--imu_filter", action="store_true",
+                        help="Butterworth LPF on IMU gyro/gravity (mirrors deploy imu_filter.hpp)")
+    parser.add_argument("--imu_gyro_cutoff_hz", type=float, default=20.0)
+    parser.add_argument("--imu_gravity_cutoff_hz", type=float, default=20.0)
+    parser.add_argument("--imu_sample_hz", type=float, default=200.0,
+                        help="Emulated IMU report rate the filter runs at (hardware: 200 Hz)")
     args = parser.parse_args()
 
     # Load ONNX model
@@ -266,6 +326,18 @@ def main():
 
     PHYSICS_DT = model.opt.timestep
     SUBSTEPS = int(round(POLICY_DT / PHYSICS_DT))
+
+    # IMU low-pass filter (mirrors deploy: runs at the emulated report rate)
+    if args.imu_filter:
+        gyro_lpf = Vec3Filter(args.imu_gyro_cutoff_hz, args.imu_sample_hz)
+        grav_lpf = Vec3Filter(args.imu_gravity_cutoff_hz, args.imu_sample_hz)
+        imu_sample_every = max(1, int(round((1.0 / args.imu_sample_hz) / PHYSICS_DT)))
+        print(f"[INFO] IMU filter on — gyro {args.imu_gyro_cutoff_hz:.0f}Hz, "
+              f"gravity {args.imu_gravity_cutoff_hz:.0f}Hz @ {args.imu_sample_hz:.0f}Hz "
+              f"(every {imu_sample_every} physics steps)")
+    else:
+        gyro_lpf = grav_lpf = None
+        imu_sample_every = 1
     qp_idx = np.array([model.jnt_qposadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)] for n in mj_actuator_names])
     qv_idx = np.array([model.jnt_dofadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)] for n in mj_actuator_names])
     actuator_idx = np.array([mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, n) for n in mj_actuator_names])
@@ -380,14 +452,22 @@ def main():
     gyro_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SENSOR, "angular-velocity")
     gyro_adr = model.sensor_adr[gyro_id]
     
-    init_imu = (
-        data.sensordata[quat_adr:quat_adr + 4].copy(),
-        data.sensordata[gyro_adr:gyro_adr + 3].copy(),
-        data.qvel[0:3].copy()
-    )
+    init_quat = data.sensordata[quat_adr:quat_adr + 4].copy()
+    init_gyro = data.sensordata[gyro_adr:gyro_adr + 3].copy()
+    if gyro_lpf is not None:
+        # Prime filters with the initial sample; held values updated at imu_sample_hz
+        filtered_gyro = gyro_lpf.apply(init_gyro)
+        g = grav_lpf.apply(quat_rotate_inverse(init_quat, np.array([0.0, 0.0, -1.0])))
+        gn = np.linalg.norm(g)
+        filtered_grav = g / gn if gn > 0.1 else np.array([0.0, 0.0, -1.0])
+        init_imu = (init_quat, filtered_gyro, data.qvel[0:3].copy(), filtered_grav)
+    else:
+        filtered_gyro = filtered_grav = None
+        init_imu = (init_quat, init_gyro, data.qvel[0:3].copy(), None)
     for _ in range(imu_buffer.maxlen):
         imu_buffer.append(init_imu)
     delayed_imu = imu_buffer[0]
+    phys_step_count = 0
 
     init_proprio = (data.qpos[qp_idx].copy(), data.qvel[qv_idx].copy())
     for _ in range(proprio_buffer.maxlen):
@@ -462,12 +542,20 @@ def main():
                 target_buffer.append(targets_mj.copy())
                 delayed_targets_mj = target_buffer[0]
                 
-                # Push newest IMU
-                imu_buffer.append((
-                    data.sensordata[quat_adr:quat_adr + 4].copy(),
-                    data.sensordata[gyro_adr:gyro_adr + 3].copy(),
-                    data.qvel[0:3].copy()
-                ))
+                # Push newest IMU (filtered at the emulated report rate, zero-order-held
+                # between reports — same as hardware readers holding the latest report)
+                phys_step_count += 1
+                cur_quat = data.sensordata[quat_adr:quat_adr + 4].copy()
+                cur_gyro = data.sensordata[gyro_adr:gyro_adr + 3].copy()
+                if gyro_lpf is not None:
+                    if phys_step_count % imu_sample_every == 0:
+                        filtered_gyro = gyro_lpf.apply(cur_gyro)
+                        g = grav_lpf.apply(quat_rotate_inverse(cur_quat, np.array([0.0, 0.0, -1.0])))
+                        gn = np.linalg.norm(g)
+                        filtered_grav = g / gn if gn > 0.1 else np.array([0.0, 0.0, -1.0])
+                    imu_buffer.append((cur_quat, filtered_gyro.copy(), data.qvel[0:3].copy(), filtered_grav.copy()))
+                else:
+                    imu_buffer.append((cur_quat, cur_gyro, data.qvel[0:3].copy(), None))
 
                 # Push newest Proprioception
                 proprio_buffer.append((data.qpos[qp_idx].copy(), data.qvel[qv_idx].copy()))

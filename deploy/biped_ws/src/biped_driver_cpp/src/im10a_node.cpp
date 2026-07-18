@@ -15,8 +15,8 @@ public:
         this->declare_parameter<bool>("publish_tf", true);
         this->declare_parameter<double>("rate_hz", 200.0);
         this->declare_parameter<bool>("imu_filter_enable", false);
-        this->declare_parameter<double>("imu_gyro_cutoff_hz", 40.0);
-        this->declare_parameter<double>("imu_gravity_cutoff_hz", 40.0);
+        this->declare_parameter<double>("imu_gyro_cutoff_hz", 20.0);
+        this->declare_parameter<double>("imu_gravity_cutoff_hz", 20.0);
 
         std::string port = this->get_parameter("serial_port").as_string();
         int baud = this->get_parameter("baudrate").as_int();

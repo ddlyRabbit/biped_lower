@@ -451,8 +451,8 @@ All in **motor command-space** (not joint-space). For ankles, per-motor independ
 ## Observation Vector (45d)
 
 Optional IMU filtering (`imu_filter:=true`): 2nd-order Butterworth LPF on gyro and
-gravity at the 200 Hz report rate inside the C++ readers (default 40 Hz cutoff) —
-anti-aliasing for the 50 Hz policy, transparent (≤ −0.6 dB) below 25 Hz. Off by default.
+gravity at the 200 Hz report rate inside the C++ readers (default 20 Hz cutoff) —
+anti-aliasing + vibration rejection for the 50 Hz policy. Off by default.
 
 ```
 [0–2]   base_ang_vel      ← IMU gyro (rad/s, body frame)
