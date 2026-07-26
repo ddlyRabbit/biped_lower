@@ -54,11 +54,11 @@ POLICY_DT = 0.02           # 50 Hz
 # ─── Default positions (V58 deployed, matching training) ─────────────────────
 DEFAULT_POS_ISAAC = {
     "L_hip_pitch": -0.08, "R_hip_pitch": 0.08,
-    "L_hip_roll": 0.0, "R_hip_roll": 0.0,
+    "L_hip_roll": 0.1, "R_hip_roll": -0.1,
     "L_hip_yaw": 0.0, "R_hip_yaw": 0.0,
     "L_knee": 0.25, "R_knee": 0.25,
     "L_foot_pitch": -0.17, "R_foot_pitch": -0.17,
-    "L_foot_roll": 0.0, "R_foot_roll": 0.0,
+    "L_foot_roll": 0.1, "R_foot_roll": -0.1,
 }
 def get_default_pos_mj():
     """Return default positions in MuJoCo actuator order."""
@@ -395,7 +395,7 @@ def main():
         camera.type = mujoco.mjtCamera.mjCAMERA_TRACKING
         camera.trackbodyid = 0
         camera.distance = 1.5
-        camera.azimuth = 90
+        camera.azimuth = 180
         camera.elevation = -10
         camera.lookat[:] = [0, 0, 0.4]
     

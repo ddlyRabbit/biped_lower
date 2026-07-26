@@ -525,11 +525,13 @@ BIPED_CFG = ArticulationCfg(
         joint_pos={
             "right_hip_pitch.*": 0.08,
             "left_hip_pitch.*": -0.08,
-            ".*hip_roll.*": 0.0,
+            "left_hip_roll.*": 0.1,
+            "right_hip_roll.*": -0.1,
             ".*hip_yaw.*": 0.0,
             ".*knee.*": 0.25,
             ".*foot_pitch.*": -0.17,
-            ".*foot_roll.*": 0.0,
+            "left_foot_roll.*": 0.1,
+            "right_foot_roll.*": -0.1,
         },
         joint_vel={".*": 0.0},
     ),
@@ -768,10 +770,10 @@ class RewardsCfg:
     )
     foot_contact_force = RewTerm(
         func="biped_env_cfg:foot_contact_force_l2",
-        weight=-0.0001,
+        weight=-0.01,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_6061.*"),
-            "threshold": 300.0,
+            "threshold": 400.0,
         },
     )
     undesired_contacts = RewTerm(
@@ -788,13 +790,18 @@ class RewardsCfg:
             "threshold": 1.0,
         },
     )
-    joint_deviation_hip = RewTerm(
+    joint_deviation_hip_pitch = RewTerm(
         func=base_mdp.joint_deviation_l1,
         weight=-0.01,
         params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*hip_roll.*", ".*hip_pitch.*"],
-            ),
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*hip_pitch.*"]),
+        },
+    )
+    joint_deviation_hip_roll = RewTerm(
+        func=base_mdp.joint_deviation_l1,
+        weight=-0.005,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*hip_roll.*"]),
         },
     )
     joint_deviation_hip_yaw = RewTerm(
@@ -896,7 +903,7 @@ class EventsCfg:
             "asset_cfg": SceneEntityCfg("robot", body_names="assy_formfg___kd_b_102b_torso_btm"),
             "com_range": {
                 "x": (-0.03, 0.03),
-                "y": (-0.06, 0.06),
+                "y": (-0.15, 0.15),
                 "z": (-0.03, 0.03),
             },
         },
