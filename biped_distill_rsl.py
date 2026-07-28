@@ -63,7 +63,7 @@ else:
     from biped_student_env_cfg import BipedStudentFlatEnvCfg
     env_cfg_class = BipedStudentFlatEnvCfg
     env_id = "Biped-Student-Flat-v0"
-    experiment_name = "biped_distill_flat"
+    experiment_name = "biped_distill_v188"
 
 # Register environment
 gym.register(
