@@ -384,7 +384,7 @@ private:
     // ── ONNX init ────────────────────────────────────────────────
     void init_onnx(const std::string& model_path) {
         try {
-            Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "UnifiedNode");
+            static Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "UnifiedNode");  // must outlive session_ (ORT logger lives in the Env)
             Ort::SessionOptions opts;
 
             // Try CUDA/TensorRT (won't hurt if unavailable, e.g. on Pi)
