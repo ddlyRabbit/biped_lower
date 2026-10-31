@@ -212,7 +212,11 @@ class Emulator:
             except (BlockingIOError, InterruptedError):
                 pass
             except OSError:
-                self.conns[bus].remove(c)
+                self._drop(bus, c)
+
+    def _drop(self, bus, c):
+        if c in self.conns[bus]:
+            self.conns[bus].remove(c)
 
     def handle(self, bus, raw, ms):
         cid, dlc, data = FRAME.unpack(raw[:16])
@@ -258,9 +262,9 @@ class Emulator:
                     except (BlockingIOError, InterruptedError):
                         break
                     except OSError:
-                        self.conns[bus].remove(c); break
+                        self._drop(bus, c); break
                     if not raw:
-                        self.conns[bus].remove(c); break
+                        self._drop(bus, c); break
                     self.rx_frames += 1
                     self.handle(bus, raw, ms)
 

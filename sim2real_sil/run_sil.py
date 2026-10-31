@@ -32,6 +32,10 @@ SCENARIOS = {
     # walk, stop, walk again: catches stale state carried across WALK re-entry
     'reentry': [(0, ('cmd', 'START')), (6, ('support', 0.0, 2.0)), (10, ('cmd', 'WALK')), (10, ('vel', 0.2)),
                 (16, ('cmd', 'STOP')), (19, ('cmd', 'WALK')), (19, ('vel', 0.2)), (25, ('cmd', 'STOP')), (28, ('wait', 0.0))],
+    # held until the policy is walking in place, then released: compares plants without relying on the STAND controller
+    'walk_late_release': [(0, ('cmd', 'START')), (8, ('cmd', 'WALK')), (8, ('vel', 0.0)), (9, ('support', 0.0, 2.0)),
+                          (13, ('vel', 0.3)), (23, ('vel', 0.0)), (24.5, ('support', 1.0, 0.3)), (25, ('cmd', 'STOP')),
+                          (28, ('wait', 0.0))],
     # walk, stop and walk again with the robot held through STOP (as operators did): isolates WALK re-entry
     'reentry_held': [(0, ('cmd', 'START')), (6, ('support', 0.0, 2.0)), (10, ('cmd', 'WALK')), (10, ('vel', 0.2)),
                      (15.5, ('support', 1.0, 0.3)), (16, ('cmd', 'STOP')), (19, ('cmd', 'WALK')), (19, ('vel', 0.2)),
@@ -160,7 +164,7 @@ def main():
     spin = threading.Thread(target=rclpy.spin, args=(probe,), daemon=True); spin.start()
     t_boot = time.time(); booted = False
     while time.time() - t_boot < a.boot_timeout:
-        if probe.state is not None and probe.n_js > 20:
+        if probe.state is not None and probe.n_js > 20 and probe.safety is True:   # operator waits for safety OK
             booted = True; break
         if launch.poll() is not None:
             break

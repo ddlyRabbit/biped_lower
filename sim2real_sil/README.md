@@ -57,6 +57,8 @@ sim2real_sil/replay_commit.sh <commit> stand runs/<name> unified:=false can_driv
 - `stand`: hold, START, release.
 - `walk`: the August procedure.
 - `reentry`: WALK, STOP, WALK.
+- `reentry_held`: the same, held through STOP.
+- `walk_late_release`: released only after WALK starts.
 
 **Emulator faults:** pass `--fault '{"can_drop":0.1}'`, `{"imu_rot":[[…]]}` (IMU mounting or sign error) or `{"imu_freeze_s":0.14}`.
 
@@ -69,16 +71,40 @@ sim2real_sil/replay_commit.sh <commit> stand runs/<name> unified:=false can_driv
 | boot | No e-stop before START. |
 | hold | Joint-velocity RMS < 0.5 rad/s while held. |
 | stand | No fall, and tilt < 20°, after release. |
+| gains | Every motor executes the commanded gain to within 5%. Not applied to `unified:=true`, because unified_node ignores `/joint_commands`. |
 | walk | No fall or e-stop, and forward speed ≥ 50% of the command. |
 | stop | No fall within 3 s of STOP. |
-| reentry | The second WALK entry's torque peak is ≤ 1.5× the first. |
+| reentry | The second WALK entry's torque peak is ≤ max(1.5× the first, first + 10 Nm). |
+
+## Results (31 Oct 2026)
+
+**Historical replays.** Each commit is built as it was, and only the Ort::Env fix is applied. The plant, emulator and verdict rules are the same for every run.
+
+| Catalogue problem | Bug commit | Fix commit | Result |
+|---|---|---|---|
+| D114: C++ MIT scaling table set to 200 | `gains` FAIL: the motors executed 2.5–25× the commanded Kp (3000 for 120) | `gains` pass (1.00) | **caught** |
+| D127: C++ safety tilt check inverted by the new gravity convention (fatal) | `boot` FAIL: "Pitch ±180° exceeds limit" while upright, so safety never clears and START is impossible | boot pass | **caught** |
+| D130: uninitialised gain-ramp timer (STAND vibration) | hold pass | — | not reproduced: the defect is undefined behaviour, and the uninitialised value was benign in this build |
+| D152: stale last action on WALK re-entry | inconclusive | inconclusive | the June policy falls while walking in this plant before re-entry can be compared |
+
+April-era commits also fall in STAND after release, at both bug and fix commits. Their crouched default pose and lower gains do not stand unsupported on this plant, so the `stand` rule does not tell them apart.
+
+**Ankle linkage, counterfactual at HEAD.** The robot is released after WALK starts, then walks at 0.3 m/s.
+
+| Ankle model | Forward speed |
+|---|---|
+| As the hardware applies it | **0.02 m/s** (fails `walk`) |
+| `--ankle-joint-space` (as trained) | **0.19 m/s** |
+
+Same stack, same policy. The independent fault-injection harness gives 0.065 vs 0.20 m/s.
 
 ## What it found at the last pushed commit (f4e66b7)
 
 1. **`unified_node` and `policy_node_cpp` keep their `Ort::Env` as a local in `init_onnx()`.** The session outlives it, so this is a use-after-free. With ONNX Runtime 1.31 the first inference in WALK dies with SIGBUS inside ORT's logger. It apparently did no harm with the Pi's ORT version. Fixed in this branch by making the Env `static`.
 2. **`unified:=true` cannot walk.** `unified_node` publishes `/joint_commands` best-effort, while `safety_node_cpp` subscribes reliable. ROS 2 never connects the two, so the safety node's command watchdog sees nothing once the state machine stops publishing in WALK, and e-stops about 0.15 s into WALK. Not fixed here; the change is one QoS line, but it is a safety-path decision.
 3. **With the separate C++ nodes the robot stands and steps, but does not walk forward.** It steps at about 1.4 Hz for 16 s at 0.3 m/s commanded and covers 0.04 m/s. The drivers send averaged ankle gains to both motors, so through the linkage the ankle is 3.25× stiffer in pitch and 1.9× in roll than trained. The independent fault-injection harness predicts the same: 0.065 m/s with the as-deployed ankle gains, 0.20 m/s with the trained ones. The `--ankle-joint-space` counterfactual tests this directly.
-4. **STOP during walking returns to STAND and the robot falls about 1.4 s later.** The STAND ramp starts from the mid-step pose. On the real robot it was held, so this needs confirming.
+4. **STOP during walking drops the robot.** On STAND entry `state_machine_node_cpp` sets the gains to 10% Kp and 20% Kd for the 2 s position ramp, then ramps them back up. That soft start is meant for standing up from limp, but it also runs on WALK → STAND, so a free-standing robot collapses about 1 s after STOP. The real robot was held at that moment.
+5. **The STAND controller relies on the stiff ankles.** With the ankle PD in joint space at the trained gains (30/2.8), the robot falls when released in STAND. It stands as deployed only because the linkage makes the ankles 3.25× stiffer.
 
 ## Limits
 

@@ -9,7 +9,7 @@ Rules (each is skipped when the scenario does not exercise it):
   stand     after the support is released in STAND: no fall, tilt stays below 20 deg
   walk      in WALK: no fall and no e-stop; with a forward command, mean forward speed >= 50% of the command
   stop      after STOP returns to STAND: no fall within 3 s
-  reentry   on the second WALK entry: peak joint torque in the first 0.5 s <= 1.5x the peak of the first entry
+  reentry   on the second WALK entry: peak joint torque in the first 0.5 s <= max(1.5x, +10 Nm) of the first entry's
   gains     the gain each motor executes is within 5% of the gain the controller commanded (5th-95th percentile)
 A run passes when every rule it exercises passes.
 
@@ -68,7 +68,7 @@ def verdict(run):
                 a, b = el2t(wv), el2t(wv + 0.5); w = (t >= a) & (t <= b)
                 pk.append(float(np.abs(tau[w]).max()) if w.any() else np.nan)
             R['_entry_tau_peaks'] = [round(x, 1) for x in pk]
-            R['reentry'] = bool(pk[1] <= 1.5 * pk[0])
+            R['reentry'] = bool(pk[1] <= max(1.5 * pk[0], pk[0] + 10.0))   # 10 Nm floor: small peaks are noise
     # gains: every motor executes the gain the controller commanded (ankle motors: mean of the two joint gains)
     ratios = []
     for s in T:
@@ -83,7 +83,8 @@ def verdict(run):
                 kc = ck.get(m)
             if kc and kc > 0:
                 ratios.append(kexe / kc)
-    if len(ratios) > 20:
+    unified = any('unified:=true' in x for x in S.get('launch_args', []))   # unified_node ignores /joint_commands
+    if len(ratios) > 20 and not unified:
         r = np.array(ratios); R['_kp_exec_over_cmd'] = [round(float(np.percentile(r, 5)), 2), round(float(np.percentile(r, 95)), 2)]
         R['gains'] = bool(np.all(np.abs(np.percentile(r, [5, 95]) - 1) < 0.05))
     rules = {k: v for k, v in R.items() if not k.startswith('_')}
