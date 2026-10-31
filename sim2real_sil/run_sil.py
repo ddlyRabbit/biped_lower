@@ -32,6 +32,10 @@ SCENARIOS = {
     # walk, stop, walk again: catches stale state carried across WALK re-entry
     'reentry': [(0, ('cmd', 'START')), (6, ('support', 0.0, 2.0)), (10, ('cmd', 'WALK')), (10, ('vel', 0.2)),
                 (16, ('cmd', 'STOP')), (19, ('cmd', 'WALK')), (19, ('vel', 0.2)), (25, ('cmd', 'STOP')), (28, ('wait', 0.0))],
+    # walk, stop and walk again with the robot held through STOP (as operators did): isolates WALK re-entry
+    'reentry_held': [(0, ('cmd', 'START')), (6, ('support', 0.0, 2.0)), (10, ('cmd', 'WALK')), (10, ('vel', 0.2)),
+                     (15.5, ('support', 1.0, 0.3)), (16, ('cmd', 'STOP')), (19, ('cmd', 'WALK')), (19, ('vel', 0.2)),
+                     (19.5, ('support', 0.0, 1.0)), (24.5, ('support', 1.0, 0.3)), (25, ('cmd', 'STOP')), (28, ('wait', 0.0))],
     # stand only, held then released: catches stand-ramp and gain-ramp problems
     'stand': [(0, ('cmd', 'START')), (6, ('support', 0.0, 2.0)), (14, ('wait', 0.0))],
 }
