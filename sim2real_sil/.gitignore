@@ -1,0 +1,3 @@
+simcan/*.so
+runs/
+__pycache__/

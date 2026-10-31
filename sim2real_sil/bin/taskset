@@ -1,0 +1,8 @@
+#!/bin/sh
+# SIL stand-in for taskset: the launch file pins nodes to Pi 5 cores (e.g. "taskset -c 2"). On a machine with
+# fewer cores that call fails and the node never starts, so map the core list onto the cores that exist.
+if [ "$1" = "-c" ]; then
+  n=$(nproc); core=$(( ${2%%[,-]*} % n )); shift 2
+  exec /usr/bin/taskset -c "$core" "$@"
+fi
+exec /usr/bin/taskset "$@"
