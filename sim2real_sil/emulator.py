@@ -331,6 +331,7 @@ class Emulator:
         return dict(t=float(d.time), z=z, x=float(d.qpos[0]), y=float(d.qpos[1]), tilt_deg=float(np.degrees(np.arccos(np.clip(up, -1, 1)))),
                     support=self.support, enabled=sum(m.enabled for m in self.motors.values()),
                     n_cmd={n: m.n_cmd for n, m in self.motors.items()}, rtf=self.rtf, lag_max=self.lag_max,
+                    kp_exec={n: (m.cmd[2] if (m.cmd and m.enabled) else 0.0) for n, m in self.motors.items()},
                     rx=self.rx_frames, tx=self.tx_frames)
 
     def save(self, path):

@@ -10,6 +10,7 @@ Rules (each is skipped when the scenario does not exercise it):
   walk      in WALK: no fall and no e-stop; with a forward command, mean forward speed >= 50% of the command
   stop      after STOP returns to STAND: no fall within 3 s
   reentry   on the second WALK entry: peak joint torque in the first 0.5 s <= 1.5x the peak of the first entry
+  gains     the gain each motor executes is within 5% of the gain the controller commanded (5th-95th percentile)
 A run passes when every rule it exercises passes.
 
 MIT License, Copyright (c) 2026 Abhinav Roy
@@ -68,6 +69,23 @@ def verdict(run):
                 pk.append(float(np.abs(tau[w]).max()) if w.any() else np.nan)
             R['_entry_tau_peaks'] = [round(x, 1) for x in pk]
             R['reentry'] = bool(pk[1] <= 1.5 * pk[0])
+    # gains: every motor executes the gain the controller commanded (ankle motors: mean of the two joint gains)
+    ratios = []
+    for s in T:
+        ck, ek = s.get('cmd_kp') or {}, s.get('kp_exec') or {}
+        for m, kexe in ek.items():
+            if kexe <= 0:
+                continue
+            if m.endswith(('_top', '_bottom')):
+                a, b = ck.get(m[0] + '_foot_pitch'), ck.get(m[0] + '_foot_roll')
+                kc = 0.5 * (a + b) if a and b else None
+            else:
+                kc = ck.get(m)
+            if kc and kc > 0:
+                ratios.append(kexe / kc)
+    if len(ratios) > 20:
+        r = np.array(ratios); R['_kp_exec_over_cmd'] = [round(float(np.percentile(r, 5)), 2), round(float(np.percentile(r, 95)), 2)]
+        R['gains'] = bool(np.all(np.abs(np.percentile(r, [5, 95]) - 1) < 0.05))
     rules = {k: v for k, v in R.items() if not k.startswith('_')}
     R['pass'] = all(rules.values())
     R['failed'] = [k for k, v in rules.items() if not v]

@@ -46,6 +46,13 @@ class Probe(Node):
         self.create_subscription(Bool, '/safety/status', self.on_safety, 10)
         self.create_subscription(String, '/safety/fault', lambda m: self.ev('safety_fault', m.data), 10)
         self.create_subscription(JointState, '/joint_states', self.on_js, be)
+        self.cmd_kp = {}
+        try:   # commanded gains, to check that the motors execute what the controller asked for
+            from biped_msgs.msg import MITCommandArray
+            self.create_subscription(MITCommandArray, '/joint_commands',
+                                     lambda m: self.cmd_kp.update({c.joint_name: float(c.kp) for c in m.commands}), 10)
+        except ImportError:
+            pass
         self.pub_cmd = self.create_publisher(String, '/state_command', 10)
         self.pub_vel = self.create_publisher(Twist, '/cmd_vel', 10)
         self.vel = None
@@ -173,7 +180,7 @@ def main():
             i += 1
         st = ctl(os.path.join(sdir, 'ctl'), {'cmd': 'state'}, reply=True)
         if st:
-            st['el'] = el; st['fsm'] = probe.state; truth.append(st)
+            st['el'] = el; st['fsm'] = probe.state; st['cmd_kp'] = dict(probe.cmd_kp); truth.append(st)
         if launch.poll() is not None:
             probe.ev('launch_exited', launch.returncode); break
         time.sleep(0.1)
