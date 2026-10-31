@@ -54,7 +54,7 @@ public:
 
         // Load ONNX model
         try {
-            Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "PolicyNode");
+            static Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "PolicyNode");  // must outlive session_ (ORT logger lives in the Env)
             Ort::SessionOptions session_options;
             
             // Try enabling TensorRT / CUDA execution provider
